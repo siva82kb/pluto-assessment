@@ -126,9 +126,9 @@ class QtPluto(QObject):
 
         # Check and verify button events.
         if len(self.currdata) > 0 and len(self.prevdata) > 0:    
-            if self.prevdata[8] == 0.0 and self.currdata[8] == 1.0:
-                self.btnpressed.emit()
             if self.prevdata[8] == 1.0 and self.currdata[8] == 0.0:
+                self.btnpressed.emit()
+            if self.prevdata[8] == 0.0 and self.currdata[8] == 1.0:
                 self.btnreleased.emit()
 
 

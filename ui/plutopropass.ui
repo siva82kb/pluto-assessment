@@ -43,19 +43,19 @@
       <enum>QLayout::SetDefaultConstraint</enum>
      </property>
      <item>
+      <widget class="QPushButton" name="pbCalibration">
+       <property name="text">
+        <string>Calibrate PLUTO</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="pbSubject">
        <property name="toolTip">
         <string>Select the subject to assess</string>
        </property>
        <property name="text">
         <string>Select Subject</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="pbCalibration">
-       <property name="text">
-        <string>Calibrate PLUTO</string>
        </property>
       </widget>
      </item>

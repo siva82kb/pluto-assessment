@@ -22,6 +22,9 @@ from PyQt5.QtWidgets import (
     QInputDialog
 )
 from datetime import datetime as dt
+import re
+import glob
+import pathlib
 import enum
 import json
 import random
@@ -33,7 +36,10 @@ import time
 from qtpluto import QtPluto
 
 from ui_plutopropass import Ui_PlutoPropAssessor
+from ui_plutocalib import Ui_CalibrationWindow
 
+# Module level constants.
+DATA_DIR = "propassessment"
 
 class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     """Main window of the PLUTO proprioception assessment program.
@@ -46,16 +52,32 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
 
         # PLUTO COM
         self.pluto = QtPluto("COM4")
-        self.pluto.newdata.connect(self.print)
-        self.pluto.btnpressed.connect(self.btnevent)
-        self.pluto.btnreleased.connect(self.btnevent)
-        # _con = self.pluto.isconnected
-        # print(f"[{_con}]" if _con != "" else "Disconnected")
+        self.pluto.newdata.connect(self._callback_newdata)
+        self.pluto.btnpressed.connect(self._callback_btn_pressed)
+        self.pluto.btnreleased.connect(self._callback_btn_released)
+        
+        # Subject details
+        self._subjid = None
+        self._calib = False
+        self._datadir = None
         
         # Initialize timers.
         self.sbtimer = QTimer()
         self.sbtimer.timeout.connect(self._callback_sb_timer)
         self.sbtimer.start(1000)
+
+        # Attach callback to the buttons
+        self.pbSubject.clicked.connect(self._callback_select_subject)
+        self.pbCalibration.clicked.connect(self._callback_calibrate)
+
+        # Other windows
+        self._calibwnd = None
+        self._testdevwnd = None
+        self._assesswnd = None
+        self._wnddata = {}
+
+        # Update UI
+        self.update_ui()
 
         # # Fix size.
         # self.setFixedSize(self.geometry().width(),
@@ -130,6 +152,52 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         # self.update_ui()
         # self.pluto.start()
     
+    #
+    # Controls callback
+    #
+    def _callback_select_subject(self):
+        _subjid, _done = QInputDialog.getText(
+             self,
+             'Select Subject',
+             'Enter subject ID:'
+        )
+        # Check if a valid input was given.
+        if _done is False:
+            return
+        
+        # Only alphabets and numbers are allowed.
+        if re.match("^[A-Za-z0-9_-]*$", _subjid):
+            # Check if the user name already exists
+            _path = pathlib.Path(DATA_DIR, _subjid.lower())
+            # Check if the user knows that this user name exists.
+            if _path.exists():
+                # Check if the user is OK with this. Else they will need to
+                # create a new subject ID.
+                reply = QMessageBox.question(
+                    self, 'Existing Subject ID',
+                    f'Subject ID: [{_subjid.lower()}] exists? Continue with this ID?',
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+                if reply == QMessageBox.No:
+                    return
+            # Set subject ID, and create the folder if needed.
+            self._set_subjectid(_subjid.lower())
+        
+        # update UI
+        self.update_ui()
+    
+    def _callback_calibrate(self):
+        # Create an instance of the calibration window and open it as a modal 
+        # window.
+        self._calibwnd = QtWidgets.QMainWindow()
+        self._wndui = Ui_CalibrationWindow()
+        self._calibwnd.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
+        self._wndui.setupUi(self._calibwnd)
+        self._calibwnd.closeEvent = self._calibwnd_close_event
+        self._calibwnd.show()
+        self._update_calibwnd_ui()
+    
     # 
     # Timer callbacks
     #
@@ -142,28 +210,78 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             ))
         )
 
-    # Print new data
-    def print(self):
+    #
+    # Signal callbacks
+    #
+    def _callback_newdata(self):
+        """Update the UI of the appropriate window.
+        """
+        if self._calibwnd is not None:
+            self._update_calibwnd_ui()
+    
+    def _callback_btn_pressed(self):
         pass
-        # self.statusBar().showMessage(
-        #     " | ".join((
-        #         f"Status: {self.pluto.status:3d}",
-        #         f"Error: {self.pluto.error:3d}",
-        #         f"Actuated: {self.pluto.actuated:2d}",
-        #         f"Angle: {self.pluto.angle:3.1f}",
-        #         f"Torque:  {self.pluto.torque:3.1f}",
-        #         f"Control: {self.pluto.control:3.1f}",
-        #         f"Desired: {self.pluto.desired:3.1f}",
-        #         f"Button: {self.pluto.button:1.0f}",
-        #     ))
-        # )
     
-    def btnevent(self):
-        if self.pluto.button == 0.0:
-            print("Button Pressed")
+    def _callback_btn_released(self):
+        """
+        Handle this depnding on what window is currently open.
+        """
+        print("dsasfhsdfh")
+        # Calibration Window
+        if self._calibwnd is not None:
+            self._calib = True
+            self._update_calibwnd_ui()
+
+    
+    #
+    # Other callbacks
+    #
+    def _calibwnd_close_event(self, event):
+        print("closed")
+
+    #
+    # UI Update function
+    #
+    def update_ui(self):
+        # Disable buttons if needed.
+        self.pbSubject.setEnabled(self._subjid is None)
+        self.pbTestDevice.setEnabled(self._subjid is not None and self._calib is True)
+        self.pbPropAssessment.setEnabled(self._subjid is not None and self._calib is True)
+
+        # Calibration button
+        if self._calib is False:
+            self.pbCalibration.setText(f"Calibrate")
         else:
-            print("Button Released")
+            self.pbCalibration.setText("Recalibrate")
+        
+        # Subject ID button
+        if self._subjid is not None:
+            self.pbSubject.setText(f"Subject: {self._subjid}")
+        else:
+            self.pbSubject.setText("Select Subject")
+        
+    #
+    # Supporting functions
+    #
+    def _set_subjectid(self, subjid):
+        self._subjid = subjid
+        # set data dirr and create if needed.
+        self._datadir = pathlib.Path(DATA_DIR, self._subjid)
+        self._datadir.mkdir(exist_ok=True)
     
+    #
+    # Calibration Window Functions
+    #
+    def _update_calibwnd_ui(self):
+        if self._calib is False:
+            self._wndui.lblCalibStatus.setText("Not done.")
+            self._wndui.lblHandDistance.setText("- NA- ")
+            self._wndui.lblInstruction2.setText("")
+        else:
+            self._wndui.lblCalibStatus.setText("Done!")
+            self._wndui.lblHandDistance.setText(f"{self.pluto.angle:3.1f}cm")
+            self._wndui.lblInstruction2.setText("Press the PLUTO button againt to exit.")
+
     # @property
     # def connected(self):
     #     return self._client is not None
