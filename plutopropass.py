@@ -30,7 +30,7 @@ import struct
 # import qasync
 import numpy as np
 import time
-from qtjedi import JediComm
+from qtpluto import QtPluto
 
 from ui_plutopropass import Ui_MainWindow
 
@@ -45,8 +45,10 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
 
         # PLUTO COM
-        self.pluto = JediComm("COM4")
-        self.pluto.newdata_signal.connect(self.print)
+        self.pluto = QtPluto("COM4")
+        self.pluto.newdata.connect(self.print)
+        self.pluto.btnpressed.connect(self.btnevent)
+        self.pluto.btnreleased.connect(self.btnevent)
         
         # # Fix size.
         # self.setFixedSize(self.geometry().width(),
@@ -119,13 +121,28 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_MainWindow):
         # self._timer.timeout.connect(self._callback_status_time)
         # self._timer.start(500)
         # self.update_ui()
-        self.pluto.start()
+        # self.pluto.start()
     
     # Print new data
-    def print(self, data):
-        self.lblTempText.setText(','.join([str(_d) for _d in data]))
-
-
+    def print(self):
+        self.lblTempText.setText(
+            " | ".join((
+                f"Status: {self.pluto.status:3d}",
+                f"Error: {self.pluto.error:3d}",
+                f"Actuated: {self.pluto.actuated:2d}",
+                f"Angle: {self.pluto.angle:3.1f}",
+                f"Torque: {self.pluto.torque:3.1f}",
+                f"Control: {self.pluto.control:3.1f}",
+                f"Desired: {self.pluto.desired:3.1f}",
+                f"Button: {self.pluto.button:1.0f}",
+            ))
+        )
+    
+    def btnevent(self):
+        if self.pluto.button == 0.0:
+            print("Button Pressed")
+        else:
+            print("Button Released")
     # @property
     # def connected(self):
     #     return self._client is not None

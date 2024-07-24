@@ -1,0 +1,144 @@
+"""
+Module implementing a QObject for abstracing PLUTO which uses the qtjedi
+to connect to the device, unpack data, and send/receive signals.
+
+Author: Sivakumar Balasubramanian
+Date: 24 July 2024
+Email: siva82kb@gmail.com
+"""
+
+from PyQt5.QtCore import QObject, pyqtSignal
+from qtjedi import JediComm
+from collections import deque
+from datetime import datetime
+import struct
+
+
+class CircularBuffer:
+    """Custom cricular buffer for holding streaming data.
+    """
+    
+    def __init__(self, capacity):
+        self.buffer = deque(maxlen=capacity)
+
+    def enqueue(self, item):
+        self.buffer.append(item)
+
+    def dequeue(self):
+        if len(self.buffer) == 0:
+            raise IndexError("deque is empty")
+        return self.buffer.popleft()
+
+    def peek(self):
+        if len(self.buffer) == 0:
+            raise IndexError("deque is empty")
+        return self.buffer[0]
+
+    def __len__(self):
+        return len(self.buffer)
+
+    def __repr__(self):
+        return f"CircularBuffer({list(self.buffer)})"
+    
+
+class QtPluto(QObject):
+    """
+    Class to handle PLUTO IO operations. 
+    """
+    newdata = pyqtSignal()
+    btnpressed = pyqtSignal()
+    btnreleased = pyqtSignal()
+    datanames = (
+        "time",
+        "status",
+        "error",
+        "actuated",
+        "angle",
+        "torque",
+        "control",
+        "desired",
+        "button"
+    )
+
+    def __init__(self, port=None, baudrate=115200) -> None:
+        super().__init__()
+        self.dev = JediComm(port, baudrate)
+        # Upacked data from PLUTO with time stamp.
+        self.currdata = []
+        self.prevdata = []
+
+        # Call back for newdata_signal
+        self.dev.newdata_signal.connect(self._callback_newdata)
+
+        # start the communication
+        self.dev.start()
+    
+    @property
+    def status(self):
+        return self.currdata[1] if len(self.currdata) > 0 else None
+    
+    @property
+    def error(self):
+        return self.currdata[2] if len(self.currdata) > 0 else None
+    
+    @property
+    def actuated(self):
+        return self.currdata[3] if len(self.currdata) > 0 else None
+    
+    @property
+    def angle(self):
+        return self.currdata[4] if len(self.currdata) > 0 else None
+    
+    @property
+    def torque(self):
+        return self.currdata[5] if len(self.currdata) > 0 else None
+    
+    @property
+    def torque(self):
+        return self.currdata[6] if len(self.currdata) > 0 else None
+    
+    @property
+    def control(self):
+        return self.currdata[6] if len(self.currdata) > 0 else None
+    
+    @property
+    def desired(self):
+        return self.currdata[7] if len(self.currdata) > 0 else None
+    
+    @property
+    def button(self):
+        return self.currdata[8] if len(self.currdata) > 0 else None
+
+
+    def _callback_newdata(self, newdata):
+        """
+        Handles newdata packect recevied through the COM port.
+        """
+        # Store previous data
+        self.prevdata = self.currdata
+        # Unpack and update current data
+        self.currdata = [datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')]
+        # status
+        self.currdata.append(newdata[0])
+        # error
+        self.currdata.append(255 * newdata[2] + newdata[1])
+        # actuated
+        self.currdata.append(newdata[3])
+        # Robot sensor data
+        for i in range(4, 24, 4):
+            self.currdata.append(struct.unpack('f', bytes(newdata[i:i+4]))[0])
+        
+        # Emit newdata signal for other listeners
+        self.newdata.emit()
+
+        # Check and verify button events.
+        if len(self.currdata) > 0 and len(self.prevdata) > 0:    
+            if self.prevdata[8] == 0.0 and self.currdata[8] == 1.0:
+                self.btnpressed.emit()
+            if self.prevdata[8] == 1.0 and self.currdata[8] == 0.0:
+                self.btnreleased.emit()
+
+
+    def send_message(self, message):
+        self.button_click.emit(message)
+

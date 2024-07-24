@@ -149,7 +149,6 @@ class JediComm(QThread):
                 # Handle full packet.
                 if self._state == JediParsingStates.FoundFullPacket:
                     self.newdata_signal.emit(self._in_payload)
-                    print(self._in_payload)
                     self._state = JediParsingStates.LookingForHeader
         except serial.serialutil.SerialException:
             return
