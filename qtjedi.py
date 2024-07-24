@@ -47,12 +47,18 @@ class JediComm(QThread):
         self._abort = False
         self._sleeping = False
         # self.setDaemon(False)
-
+    
     @property
     def sleeping(self):
         """ Returns if the thread is sleeping.
         """
         return self._sleeping
+    
+    def is_open(self):
+        """Returns if the serial port is open.
+        """
+        return self._port if self._ser.is_open else ""
+
 
     def send_message(self, outbytes):
         _outpayload = [255, 255, len(outbytes)+1, *outbytes]

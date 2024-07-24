@@ -12,35 +12,10 @@ from qtjedi import JediComm
 from collections import deque
 from datetime import datetime
 import struct
-
-
-class CircularBuffer:
-    """Custom cricular buffer for holding streaming data.
-    """
-    
-    def __init__(self, capacity):
-        self.buffer = deque(maxlen=capacity)
-
-    def enqueue(self, item):
-        self.buffer.append(item)
-
-    def dequeue(self):
-        if len(self.buffer) == 0:
-            raise IndexError("deque is empty")
-        return self.buffer.popleft()
-
-    def peek(self):
-        if len(self.buffer) == 0:
-            raise IndexError("deque is empty")
-        return self.buffer[0]
-
-    def __len__(self):
-        return len(self.buffer)
-
-    def __repr__(self):
-        return f"CircularBuffer({list(self.buffer)})"
     
 
+# Frame rate estimation window
+FR_WINDOW_N = 100
 class QtPluto(QObject):
     """
     Class to handle PLUTO IO operations. 
@@ -66,13 +41,17 @@ class QtPluto(QObject):
         # Upacked data from PLUTO with time stamp.
         self.currdata = []
         self.prevdata = []
+        # framerate related stuff
+        self._currt = None
+        self._prevt = None
+        self._deltimes = []
 
         # Call back for newdata_signal
         self.dev.newdata_signal.connect(self._callback_newdata)
 
         # start the communication
         self.dev.start()
-    
+
     @property
     def status(self):
         return self.currdata[1] if len(self.currdata) > 0 else None
@@ -109,6 +88,11 @@ class QtPluto(QObject):
     def button(self):
         return self.currdata[8] if len(self.currdata) > 0 else None
 
+    def framerate(self):
+        return FR_WINDOW_N / sum(self._deltimes) if sum(self._deltimes) != 0 else 0.0
+ 
+    def is_connected(self):
+        return self.dev.is_open()
 
     def _callback_newdata(self, newdata):
         """
@@ -117,7 +101,8 @@ class QtPluto(QObject):
         # Store previous data
         self.prevdata = self.currdata
         # Unpack and update current data
-        self.currdata = [datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')]
+        self._currt = datetime.now()
+        self.currdata = [self._currt.strftime('%Y-%m-%d %H:%M:%S.%f')]
         # status
         self.currdata.append(newdata[0])
         # error
@@ -127,6 +112,14 @@ class QtPluto(QObject):
         # Robot sensor data
         for i in range(4, 24, 4):
             self.currdata.append(struct.unpack('f', bytes(newdata[i:i+4]))[0])
+        
+        # Update frame rate related data.
+        if self._prevt is not None:
+            _delt = (self._currt - self._prevt).microseconds * 1e-6
+            self._deltimes.append(_delt)
+            if len(self._deltimes) > FR_WINDOW_N:
+                self._deltimes.pop(0)
+        self._prevt = self._currt
         
         # Emit newdata signal for other listeners
         self.newdata.emit()

@@ -32,12 +32,12 @@ import numpy as np
 import time
 from qtpluto import QtPluto
 
-from ui_plutopropass import Ui_MainWindow
+from ui_plutopropass import Ui_PlutoPropAssessor
 
-class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_MainWindow):
+
+class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     """Main window of the PLUTO proprioception assessment program.
     """
-    
     
     def __init__(self, *args, **kwargs) -> None:
         """View initializer."""
@@ -49,7 +49,14 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pluto.newdata.connect(self.print)
         self.pluto.btnpressed.connect(self.btnevent)
         self.pluto.btnreleased.connect(self.btnevent)
+        # _con = self.pluto.isconnected
+        # print(f"[{_con}]" if _con != "" else "Disconnected")
         
+        # Initialize timers.
+        self.sbtimer = QTimer()
+        self.sbtimer.timeout.connect(self._callback_sb_timer)
+        self.sbtimer.start(1000)
+
         # # Fix size.
         # self.setFixedSize(self.geometry().width(),
         #                   self.geometry().height())
@@ -123,26 +130,40 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_MainWindow):
         # self.update_ui()
         # self.pluto.start()
     
-    # Print new data
-    def print(self):
-        self.lblTempText.setText(
-            " | ".join((
-                f"Status: {self.pluto.status:3d}",
-                f"Error: {self.pluto.error:3d}",
-                f"Actuated: {self.pluto.actuated:2d}",
-                f"Angle: {self.pluto.angle:3.1f}",
-                f"Torque: {self.pluto.torque:3.1f}",
-                f"Control: {self.pluto.control:3.1f}",
-                f"Desired: {self.pluto.desired:3.1f}",
-                f"Button: {self.pluto.button:1.0f}",
+    # 
+    # Timer callbacks
+    #
+    def _callback_sb_timer(self):
+        _con = self.pluto.is_connected()
+        self.statusBar().showMessage(
+            ' | '.join((
+                _con if _con != "" else "Disconnected",
+                f"FR: {self.pluto.framerate():3.1f}Hz"
             ))
         )
+
+    # Print new data
+    def print(self):
+        pass
+        # self.statusBar().showMessage(
+        #     " | ".join((
+        #         f"Status: {self.pluto.status:3d}",
+        #         f"Error: {self.pluto.error:3d}",
+        #         f"Actuated: {self.pluto.actuated:2d}",
+        #         f"Angle: {self.pluto.angle:3.1f}",
+        #         f"Torque:  {self.pluto.torque:3.1f}",
+        #         f"Control: {self.pluto.control:3.1f}",
+        #         f"Desired: {self.pluto.desired:3.1f}",
+        #         f"Button: {self.pluto.button:1.0f}",
+        #     ))
+        # )
     
     def btnevent(self):
         if self.pluto.button == 0.0:
             print("Button Pressed")
         else:
             print("Button Released")
+    
     # @property
     # def connected(self):
     #     return self._client is not None

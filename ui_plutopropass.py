@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'plutopropassessment.ui'
+# Form implementation generated from reading ui file 'ui/plutopropass.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -11,38 +11,47 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-class Ui_MainWindow(object):
-    def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(800, 600)
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
+class Ui_PlutoPropAssessor(object):
+    def setupUi(self, PlutoPropAssessor):
+        PlutoPropAssessor.setObjectName("PlutoPropAssessor")
+        PlutoPropAssessor.resize(342, 139)
+        PlutoPropAssessor.setMinimumSize(QtCore.QSize(342, 139))
+        PlutoPropAssessor.setMaximumSize(QtCore.QSize(342, 139))
+        self.centralwidget = QtWidgets.QWidget(PlutoPropAssessor)
         self.centralwidget.setObjectName("centralwidget")
-        self.lblTempText = QtWidgets.QLabel(self.centralwidget)
-        self.lblTempText.setGeometry(QtCore.QRect(40, 20, 711, 71))
-        self.lblTempText.setObjectName("lblTempText")
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 21))
-        self.menubar.setObjectName("menubar")
-        MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.verticalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(10, 10, 321, 101))
+        self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
+        self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
+        self.verticalLayout.setSizeConstraint(QtWidgets.QLayout.SetDefaultConstraint)
+        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout.setSpacing(0)
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.pbSubject = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        self.pbSubject.setObjectName("pbSubject")
+        self.verticalLayout.addWidget(self.pbSubject)
+        self.pbCalibration = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        self.pbCalibration.setObjectName("pbCalibration")
+        self.verticalLayout.addWidget(self.pbCalibration)
+        self.pbTestDevice = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        self.pbTestDevice.setObjectName("pbTestDevice")
+        self.verticalLayout.addWidget(self.pbTestDevice)
+        self.pbPropAssessment = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        self.pbPropAssessment.setObjectName("pbPropAssessment")
+        self.verticalLayout.addWidget(self.pbPropAssessment)
+        PlutoPropAssessor.setCentralWidget(self.centralwidget)
+        self.statusbar = QtWidgets.QStatusBar(PlutoPropAssessor)
         self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
+        PlutoPropAssessor.setStatusBar(self.statusbar)
 
-        self.retranslateUi(MainWindow)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        self.retranslateUi(PlutoPropAssessor)
+        QtCore.QMetaObject.connectSlotsByName(PlutoPropAssessor)
 
-    def retranslateUi(self, MainWindow):
+    def retranslateUi(self, PlutoPropAssessor):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.lblTempText.setText(_translate("MainWindow", "TextLabel"))
-
-
-if __name__ == '__main__':
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    propass = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(propass)
-    propass.show()
-    sys.exit(app.exec_())
+        PlutoPropAssessor.setWindowTitle(_translate("PlutoPropAssessor", "PLUTO Proprioception Assessment"))
+        self.pbSubject.setToolTip(_translate("PlutoPropAssessor", "Select the subject to assess"))
+        self.pbSubject.setText(_translate("PlutoPropAssessor", "Select Subject"))
+        self.pbCalibration.setText(_translate("PlutoPropAssessor", "Calibrate PLUTO"))
+        self.pbTestDevice.setText(_translate("PlutoPropAssessor", "Test Device"))
+        self.pbPropAssessment.setText(_translate("PlutoPropAssessor", "Proprioception Assessment"))
