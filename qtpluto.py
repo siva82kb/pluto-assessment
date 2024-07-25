@@ -12,7 +12,8 @@ from qtjedi import JediComm
 from collections import deque
 from datetime import datetime
 import struct
-    
+
+import plutodefs
 
 # Frame rate estimation window
 FR_WINDOW_N = 100
@@ -57,12 +58,28 @@ class QtPluto(QObject):
         return self.currdata[1] if len(self.currdata) > 0 else None
     
     @property
+    def datatype(self):
+        return self.status >> 4 if len(self.currdata) > 0 else None
+    
+    @property
+    def controltype(self):
+        return self.status & 0x0D if len(self.currdata) > 0 else None
+    
+    @property
+    def calibration(self):
+        return self.status & 0x01 if len(self.currdata) > 0 else None
+
+    @property
     def error(self):
         return self.currdata[2] if len(self.currdata) > 0 else None
     
     @property
+    def mechanism(self):
+        return self.currdata[3] >> 4 if len(self.currdata) > 0 else None
+    
+    @property
     def actuated(self):
-        return self.currdata[3] if len(self.currdata) > 0 else None
+        return self.currdata[3] & 0x01 if len(self.currdata) > 0 else None
     
     @property
     def angle(self):
@@ -110,9 +127,10 @@ class QtPluto(QObject):
         # actuated
         self.currdata.append(newdata[3])
         # Robot sensor data
-        for i in range(4, 24, 4):
+        for i in range(4, 20, 4):
             self.currdata.append(struct.unpack('f', bytes(newdata[i:i+4]))[0])
-        
+        # pluto button
+        self.currdata.append(newdata[20])
         # Update frame rate related data.
         if self._prevt is not None:
             _delt = (self._currt - self._prevt).microseconds * 1e-6
@@ -131,7 +149,6 @@ class QtPluto(QObject):
             if self.prevdata[8] == 0.0 and self.currdata[8] == 1.0:
                 self.btnreleased.emit()
 
-
-    def send_message(self, message):
-        self.button_click.emit(message)
-
+    def calibrate(self):
+        """Function to set the encoder calibration.
+        """

@@ -35,6 +35,7 @@ import numpy as np
 import time
 from qtpluto import QtPluto
 
+import plutodefs as pdef
 from ui_plutopropass import Ui_PlutoPropAssessor
 from ui_plutocalib import Ui_CalibrationWindow
 
@@ -45,13 +46,13 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     """Main window of the PLUTO proprioception assessment program.
     """
     
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, port, *args, **kwargs) -> None:
         """View initializer."""
         super(PlutoPropAssesor, self).__init__(*args, **kwargs)
         self.setupUi(self)
 
         # PLUTO COM
-        self.pluto = QtPluto("COM4")
+        self.pluto = QtPluto(port)
         self.pluto.newdata.connect(self._callback_newdata)
         self.pluto.btnpressed.connect(self._callback_btn_pressed)
         self.pluto.btnreleased.connect(self._callback_btn_released)
@@ -216,6 +217,13 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     def _callback_newdata(self):
         """Update the UI of the appropriate window.
         """
+        sys.stdout.write("\r" + 
+            " | ".join((
+                f"{pdef.OutDataType[self.pluto.datatype]}",
+                f"{pdef.ControlType[self.pluto.controltype]}",
+                f"{pdef.CalibrationStatus[self.pluto.calibration]}"
+            ))
+        )
         if self._calibwnd is not None:
             self._update_calibwnd_ui()
     
@@ -226,12 +234,16 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         """
         Handle this depnding on what window is currently open.
         """
-        print("dsasfhsdfh")
         # Calibration Window
         if self._calibwnd is not None:
-            self._calib = True
-            self._update_calibwnd_ui()
-
+            # Handle button release event
+            if  self._calib is False:
+                self._calib = True
+                self._update_calibwnd_ui()
+            else:
+                self._calibwnd.close()
+                self._calibwnd = None
+                self.update_ui()
     
     #
     # Other callbacks
@@ -650,7 +662,7 @@ if __name__ == "__main__":
     #                     level=logging.INFO)
     
     app = QtWidgets.QApplication(sys.argv)
-    mywin = PlutoPropAssesor()
+    mywin = PlutoPropAssesor("COM5")
     # ImageUpdate()
     mywin.show()
     sys.exit(app.exec_())

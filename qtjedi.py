@@ -59,7 +59,6 @@ class JediComm(QThread):
         """
         return self._port if self._ser.is_open else ""
 
-
     def send_message(self, outbytes):
         _outpayload = [255, 255, len(outbytes)+1, *outbytes]
         _outpayload.append(sum(_outpayload) % 256)
@@ -151,7 +150,7 @@ class JediComm(QThread):
                         self._state = JediParsingStates.FoundFullPacket
                     else:
                         self._state = JediParsingStates.LookingForHeader
-
+                
                 # Handle full packet.
                 if self._state == JediParsingStates.FoundFullPacket:
                     self.newdata_signal.emit(self._in_payload)
