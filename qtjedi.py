@@ -63,7 +63,7 @@ class JediComm(QThread):
         _outpayload = [255, 255, len(outbytes)+1, *outbytes]
         _outpayload.append(sum(_outpayload) % 256)
         # Send payload.
-        if _DEBUG:
+        if True:
             sys.stdout.write("\n Out data: ")
             for _elem in _outpayload:
                 sys.stdout.write(f"{_elem} ")

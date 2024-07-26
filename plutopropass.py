@@ -38,6 +38,7 @@ from qtpluto import QtPluto
 import plutodefs as pdef
 from ui_plutopropass import Ui_PlutoPropAssessor
 from ui_plutocalib import Ui_CalibrationWindow
+from ui_plutodataview import Ui_DevDataWindow
 
 # Module level constants.
 DATA_DIR = "propassessment"
@@ -72,10 +73,14 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self.pbCalibration.clicked.connect(self._callback_calibrate)
 
         # Other windows
+        self._devdatawnd = None
         self._calibwnd = None
         self._testdevwnd = None
         self._assesswnd = None
         self._wnddata = {}
+
+        # Open the device data viewer by default.
+        self._open_devdata_viewer() 
 
         # Update UI
         self.update_ui()
@@ -217,13 +222,14 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     def _callback_newdata(self):
         """Update the UI of the appropriate window.
         """
-        sys.stdout.write("\r" + 
-            " | ".join((
-                f"{pdef.OutDataType[self.pluto.datatype]}",
-                f"{pdef.ControlType[self.pluto.controltype]}",
-                f"{pdef.CalibrationStatus[self.pluto.calibration]}"
-            ))
-        )
+        # Update data viewer window.
+        self._disp_update_counter += 1
+        self._disp_update_counter %= 10
+        if self._disp_update_counter == 0:
+            self._update_devdatawnd_ui()
+        # Update calibration status
+        self._calib = self.pluto.calibration == 1
+        # Update other windows
         if self._calibwnd is not None:
             self._update_calibwnd_ui()
     
@@ -238,7 +244,9 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         if self._calibwnd is not None:
             # Handle button release event
             if  self._calib is False:
-                self._calib = True
+                # Send calibration command.
+                self.pluto.calibrate(pdef.get_code(pdef.Mehcanisms, "HOC"))
+                # self._calib = True
                 self._update_calibwnd_ui()
             else:
                 self._calibwnd.close()
@@ -293,7 +301,40 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             self._wndui.lblCalibStatus.setText("Done!")
             self._wndui.lblHandDistance.setText(f"{self.pluto.angle:3.1f}cm")
             self._wndui.lblInstruction2.setText("Press the PLUTO button againt to exit.")
-
+        
+    #
+    # Device Data Viewer Functions 
+    #
+    def _open_devdata_viewer(self):
+        self._devdatawnd = QtWidgets.QMainWindow()
+        self._devdatawndui = Ui_DevDataWindow()
+        self._devdatawndui.setupUi(self._devdatawnd)
+        self._devdatawnd.show()
+        self._disp_update_counter = 0
+        self._update_devdatawnd_ui()
+    
+    def _update_devdatawnd_ui(self):
+        # Check if new data is available
+        if len(self.pluto.currdata) == 0:
+            self._devdatawndui.textDevData.setText("No data available.")
+            return
+        # New data available. Format and display
+        _dispdata = (
+            "PLUTO Data",
+            "----------",
+            f"Time    : {self.pluto.currdata[0]}",
+            f"Status  : {pdef.OutDataType[self.pluto.datatype]} | {pdef.ControlType[self.pluto.controltype]} | {pdef.CalibrationStatus[self.pluto.calibration]}",
+            f"Error   : {pdef.ErrorTypes[self.pluto.error]}",
+            f"Mech    : {pdef.Mehcanisms[self.pluto.mechanism]:>5s} | Calib   : {pdef.CalibrationStatus[self.pluto.calibration]}",
+            f"Actd    : {self.pluto.actuated}",
+            f"Angle   : {self.pluto.angle:3.1f}deg",
+            f"Torque  : {self.pluto.torque:3.1f}Nm",
+            f"Control : {self.pluto.control:3.1f}",
+            f"Target  : {self.pluto.desired:3.1f}Nm",
+            f"Button  : {self.pluto.button}",
+        )    
+        self._devdatawndui.textDevData.setText('\n'.join(_dispdata))
+    
     # @property
     # def connected(self):
     #     return self._client is not None

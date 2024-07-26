@@ -13,7 +13,7 @@ from collections import deque
 from datetime import datetime
 import struct
 
-import plutodefs
+import plutodefs as pdef
 
 # Frame rate estimation window
 FR_WINDOW_N = 100
@@ -149,6 +149,12 @@ class QtPluto(QObject):
             if self.prevdata[8] == 0.0 and self.currdata[8] == 1.0:
                 self.btnreleased.emit()
 
-    def calibrate(self):
+    def calibrate(self, mech):
         """Function to set the encoder calibration.
         """
+        if not self.is_connected():
+            return
+        self.dev.send_message([
+            pdef.get_code(pdef.InDataType, "CALIBRATE"),
+            pdef.get_code(pdef.Mehcanisms, "HOC")
+        ])

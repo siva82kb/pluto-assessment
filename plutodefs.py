@@ -12,7 +12,6 @@ ControlType = {
     0x06: "TORQUE",
     0x03: "ACTIVEASSIST",
     0x04: "RESIST",
-    0X05: "CALIBRATION",
     0x02: "ACTIVE",
     0x07: "SPEED",
 }
@@ -42,11 +41,11 @@ InDataType = {
     0x05: "SET_CONTROL_PARAM",
     0x06: "GET_CONTROL_PARAM",
     0x07: "CALIBRATE",
-    0x08: "SET_MECHANISM",
-    0x09: "GET_VERSION",
+    0x10: "GET_VERSION",
 }
 
 ErrorTypes = {
+    0x0000: "NOERR",
     0x0001: "ANGSENSERR",
     0x0002: "VELSENSERR",
     0x0004: "TORQSENSERR",
@@ -63,3 +62,11 @@ CalibrationStatus = {
     0x01: "YESCALIB",
 }
 
+def get_code(def_dict, name):
+    """Gets the code corresponding to the given name from the definition 
+    dictionary.
+    """
+    for code, value in def_dict.items():
+        if value == name:
+            return code
+    return None
