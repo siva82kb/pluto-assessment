@@ -15,14 +15,12 @@ class Ui_DevDataWindow(object):
     def setupUi(self, DevDataWindow):
         DevDataWindow.setObjectName("DevDataWindow")
         DevDataWindow.setEnabled(False)
-        DevDataWindow.resize(370, 450)
-        DevDataWindow.setMinimumSize(QtCore.QSize(370, 450))
-        DevDataWindow.setMaximumSize(QtCore.QSize(370, 450))
+        DevDataWindow.resize(431, 450)
         self.centralwidget = QtWidgets.QWidget(DevDataWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.textDevData = QtWidgets.QTextEdit(self.centralwidget)
         self.textDevData.setEnabled(False)
-        self.textDevData.setGeometry(QtCore.QRect(10, 10, 351, 431))
+        self.textDevData.setGeometry(QtCore.QRect(10, 10, 411, 431))
         font = QtGui.QFont()
         font.setFamily("Space Mono")
         font.setPointSize(10)
@@ -33,6 +31,7 @@ class Ui_DevDataWindow(object):
         self.textDevData.setStyleSheet("background-color: rgb(0, 0, 0);\n"
 "font: 10pt \"Space Mono\";\n"
 "color: rgb(0, 255, 60);")
+        self.textDevData.setMarkdown("")
         self.textDevData.setObjectName("textDevData")
         DevDataWindow.setCentralWidget(self.centralwidget)
 
@@ -46,4 +45,4 @@ class Ui_DevDataWindow(object):
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
 "</style></head><body style=\" font-family:\'Space Mono\'; font-size:10pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:8pt;\">adgasdgads</span></p></body></html>"))
+"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))

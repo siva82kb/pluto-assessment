@@ -156,5 +156,5 @@ class QtPluto(QObject):
             return
         self.dev.send_message([
             pdef.get_code(pdef.InDataType, "CALIBRATE"),
-            pdef.get_code(pdef.Mehcanisms, "HOC")
+            pdef.get_code(pdef.Mehcanisms, mech)
         ])

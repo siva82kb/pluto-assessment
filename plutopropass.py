@@ -72,12 +72,18 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self.pbSubject.clicked.connect(self._callback_select_subject)
         self.pbCalibration.clicked.connect(self._callback_calibrate)
 
+        # Attach callback to other events
+        # self.closeEvent = self._calibwnd_close_event
+
         # Other windows
         self._devdatawnd = None
         self._calibwnd = None
         self._testdevwnd = None
         self._assesswnd = None
         self._wnddata = {}
+
+        # State machine related variables
+        self._calib_sm_vars = None
 
         # Open the device data viewer by default.
         self._open_devdata_viewer() 
@@ -196,6 +202,8 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     def _callback_calibrate(self):
         # Create an instance of the calibration window and open it as a modal 
         # window.
+        # First reset calibration.
+        self.pluto.calibrate("NOMECH")
         self._calibwnd = QtWidgets.QMainWindow()
         self._wndui = Ui_CalibrationWindow()
         self._calibwnd.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
@@ -242,22 +250,18 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         """
         # Calibration Window
         if self._calibwnd is not None:
-            # Handle button release event
-            if  self._calib is False:
-                # Send calibration command.
-                self.pluto.calibrate(pdef.get_code(pdef.Mehcanisms, "HOC"))
-                # self._calib = True
-                self._update_calibwnd_ui()
-            else:
-                self._calibwnd.close()
-                self._calibwnd = None
-                self.update_ui()
+            # Run the calibration state machine.
+            self._run_calibration_state_machine()
     
     #
     # Other callbacks
     #
     def _calibwnd_close_event(self, event):
         print("closed")
+        # # Close the data viewer window if its open.
+        # if self._devdatawnd is not None:
+        #     self._devdatawnd.close()
+        #     self._devdatawnd = None
 
     #
     # UI Update function
@@ -335,6 +339,34 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         )    
         self._devdatawndui.textDevData.setText('\n'.join(_dispdata))
     
+    #
+    # State Machine Functions
+    #
+    def _init_calibration_state_machine(self):
+        self._calib_sm_vars = {
+            "state": "WAIT-FOR-ZERO-SET",
+            "event": None,
+            "eventdata": None
+        }
+
+    def _run_calibration_state_machine(self):
+        # State machine code.
+        if self._calib_sm_vars["state"] == "WAIT-FOR-ZERO-SET":
+            # Waiting for encoder offset to be set.
+            # Check if the button press release event has happened.
+            if self._calib_sm_vars["event"] == "PLUTO-BTN-RELEASED":
+                # Send calibration command.
+                self.pluto.calibrate("HOC")
+                self._update_calibwnd_ui()
+                # Move to next state to check correct range.
+                self._calib_sm_vars["state"] = "WAIT-FOR-ROM-CHECK"
+            elif self._calib_sm_vars["event"] == "WAIT-FOR-ROM-CHECK":
+                # Check if the button press release event has happened.
+                if self._calib_sm_vars["event"] == "PLUTO-BTN-RELEASED":
+                    # Check if the full range has been achieved.
+
+
+
     # @property
     # def connected(self):
     #     return self._client is not None
