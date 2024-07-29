@@ -36,6 +36,7 @@ import time
 from qtpluto import QtPluto
 
 import plutodefs as pdef
+import plutostatemachines as psm
 from ui_plutopropass import Ui_PlutoPropAssessor
 from ui_plutocalib import Ui_CalibrationWindow
 from ui_plutodataview import Ui_DevDataWindow
@@ -82,87 +83,16 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._assesswnd = None
         self._wnddata = {}
 
-        # State machine related variables
-        self._calib_sm_vars = None
+        # State machines for new windows
+        self._smachines = {
+            "calib": None
+        }
 
         # Open the device data viewer by default.
         self._open_devdata_viewer() 
 
         # Update UI
         self.update_ui()
-
-        # # Fix size.
-        # self.setFixedSize(self.geometry().width(),
-        #                   self.geometry().height())
-        
-        # # BLE client.
-        # self._client = None
-        # self._fatal = False
-        # self._prgState = PRGSTATE_NONE
-        # self._err = 0
-        
-        # # File saving related variables.,
-        # self._flist = []
-        # self._flist_temp = []
-        # self._currfname = []
-        # self._currfhndl = None
-        # self._strm_disp_cnt = 0
-        # self._dockstn_enable = False
-        
-        # # stream logging.
-        # self._strm_fname = ""
-        # self._strm_fhndl = None
-        
-        # # Welcome message
-        # self.display("Welcome to ARIMU Viewer", False)
-        
-        # # Populate COM ports combo box.
-        # for p in comports():
-        #     self.cb_com_devices.addItem(p.name, p.name)
-        
-        # # ARIMU Response Handler.
-        # self._arimu_resp_hndlrs = {STATUS: self._handle_status_response,
-        #                            PING: self._handle_ping_response,
-        #                            LISTFILES: self._handle_listfiles_response,
-        #                            GETFILEDATA: self._handle_getfiledata_response,
-        #                            DELETEFILE: self._handle_deletefile_response,
-        #                            SETTIME: self._handle_settime_response,
-        #                            GETTIME: self._handle_gettime_response,
-        #                            STARTSTREAM: self._handle_start_stream_response,
-        #                            STOPSTREAM: self._handle_stop_stream_response,
-        #                            STARTDOCKSTNCOMM: self._handle_start_dockstncomm_response,
-        #                            STOPDOCKSTNCOMM: self._handle_stop_dockstncomm_response,
-        #                            SETSUBJECT: self._handle_setsubject_response,
-        #                            GETSUBJECT: self._handle_getsubject_response,
-        #                            CURRENTFILENAME: self._handle_currentfilename_response,
-        #                            STARTEXPT: self._handle_startexpt_response,
-        #                            STOPEXPT: self._handle_stopexpt_response,
-        #                            STARTNORMAL: self._handle_startnormal_response,
-        #                            STOPNORMAL: self._handle_stopnormal_response,
-        #                            SETTONONE: self._handle_settonone_response}
-        
-        # # Attach callbacks.
-        # self.btn_connect_com.clicked.connect(self._callback_connect_to_arimu)
-        # self.btn_ping.clicked.connect(self._callback_ping_arimu)
-        # self.btn_get_time.clicked.connect(self._callback_gettime_arimu)
-        # self.btn_set_time.clicked.connect(self._callback_settime_arimu)
-        # self.btn_get_subjname.clicked.connect(self._callback_get_subjname_arimu)
-        # self.btn_set_subjname.clicked.connect(self._callback_set_subjname_arimu)
-        # self.btn_get_current_filename.clicked.connect(self._callback_set_currentfilename_arimu)
-        # self.btn_get_files.clicked.connect(self._callback_get_files_arimu)
-        # self.btn_get_file_data.clicked.connect(self._callback_get_file_data_arimu)
-        # self.btn_delete_file.clicked.connect(self._callback_delete_file_arimu)
-        # self.btn_start_stop_normal.clicked.connect(self._callback_start_stop_normal_arimu)
-        # self.btn_start_stop_expt.clicked.connect(self._callback_start_stop_expt_arimu)
-        # self.btn_start_stop_stream.clicked.connect(self._callback_start_stop_strm_arimu)
-        # self.gb_arimu_dockstn.clicked.connect(self._callback_dockstn_selected_arimu)
-        
-        # # Populate the list of ARIMU devices.
-        # self._timer = QTimer()
-        # self._timer.timeout.connect(self._callback_status_time)
-        # self._timer.start(500)
-        # self.update_ui()
-        # self.pluto.start()
     
     #
     # Controls callback
@@ -204,12 +134,16 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         # window.
         # First reset calibration.
         self.pluto.calibrate("NOMECH")
+        self.pluto.calibrate("NOMECH")
+        self.pluto.calibrate("NOMECH")
         self._calibwnd = QtWidgets.QMainWindow()
         self._wndui = Ui_CalibrationWindow()
         self._calibwnd.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         self._wndui.setupUi(self._calibwnd)
         self._calibwnd.closeEvent = self._calibwnd_close_event
         self._calibwnd.show()
+        # Start the calibration statemachine
+        self._smachines["calib"] = psm.PlutoCalibrationStateMachine(self.pluto)
         self._update_calibwnd_ui()
     
     # 
@@ -239,6 +173,11 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._calib = self.pluto.calibration == 1
         # Update other windows
         if self._calibwnd is not None:
+            self._smachines["calib"].run_statemachine(
+                None,
+                "HOC"
+            )
+            # Update UI
             self._update_calibwnd_ui()
     
     def _callback_btn_pressed(self):
@@ -250,18 +189,18 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         """
         # Calibration Window
         if self._calibwnd is not None:
-            # Run the calibration state machine.
-            self._run_calibration_state_machine()
-    
+            self._smachines["calib"].run_statemachine(
+                psm.PlutoButtonEvents.RELEASED,
+                "HOC"
+            )
+            # Update UI
+            self._update_calibwnd_ui()
+
     #
     # Other callbacks
     #
     def _calibwnd_close_event(self, event):
-        print("closed")
-        # # Close the data viewer window if its open.
-        # if self._devdatawnd is not None:
-        #     self._devdatawnd.close()
-        #     self._devdatawnd = None
+        pass
 
     #
     # UI Update function
@@ -297,15 +236,28 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     # Calibration Window Functions
     #
     def _update_calibwnd_ui(self):
-        if self._calib is False:
+        # Update based on the current state of the Calib statemachine
+        if self._smachines['calib'].state == psm.PlutoCalibStates.WAIT_FOR_ZERO_SET:
             self._wndui.lblCalibStatus.setText("Not done.")
             self._wndui.lblHandDistance.setText("- NA- ")
-            self._wndui.lblInstruction2.setText("")
-        else:
-            self._wndui.lblCalibStatus.setText("Done!")
+            self._wndui.lblInstruction2.setText("Press the PLUTO button set zero.")
+        elif self._smachines['calib'].state == psm.PlutoCalibStates.WAIT_FOR_ROM_SET:
+            self._wndui.lblCalibStatus.setText("Zero set.")
             self._wndui.lblHandDistance.setText(f"{self.pluto.angle:3.1f}cm")
-            self._wndui.lblInstruction2.setText("Press the PLUTO button againt to exit.")
-        
+            self._wndui.lblInstruction2.setText("Press the PLUTO button set ROM.")
+        elif self._smachines['calib'].state == psm.PlutoCalibStates.WAIT_FOR_CLOSE:
+            self._wndui.lblCalibStatus.setText("All Done!")
+            self._wndui.lblHandDistance.setText(f"{self.pluto.angle:3.1f}cm")
+            self._wndui.lblInstruction2.setText("Press the PLUTO button to close window.")
+        elif self._smachines['calib'].state == psm.PlutoCalibStates.CALIB_ERROR:
+            self._wndui.lblCalibStatus.setText("Error!")
+            self._wndui.lblInstruction2.setText("Press the PLUTO button to close window.")
+        else:
+            self._calibwnd.close()
+            self._calibwnd = None
+            self._wndui = None
+            self._smachines["calib"] = None
+
     #
     # Device Data Viewer Functions 
     #
@@ -338,33 +290,6 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             f"Button  : {self.pluto.button}",
         )    
         self._devdatawndui.textDevData.setText('\n'.join(_dispdata))
-    
-    #
-    # State Machine Functions
-    #
-    def _init_calibration_state_machine(self):
-        self._calib_sm_vars = {
-            "state": "WAIT-FOR-ZERO-SET",
-            "event": None,
-            "eventdata": None
-        }
-
-    def _run_calibration_state_machine(self):
-        # State machine code.
-        if self._calib_sm_vars["state"] == "WAIT-FOR-ZERO-SET":
-            # Waiting for encoder offset to be set.
-            # Check if the button press release event has happened.
-            if self._calib_sm_vars["event"] == "PLUTO-BTN-RELEASED":
-                # Send calibration command.
-                self.pluto.calibrate("HOC")
-                self._update_calibwnd_ui()
-                # Move to next state to check correct range.
-                self._calib_sm_vars["state"] = "WAIT-FOR-ROM-CHECK"
-            elif self._calib_sm_vars["event"] == "WAIT-FOR-ROM-CHECK":
-                # Check if the button press release event has happened.
-                if self._calib_sm_vars["event"] == "PLUTO-BTN-RELEASED":
-                    # Check if the full range has been achieved.
-
 
 
     # @property

@@ -62,6 +62,13 @@ CalibrationStatus = {
     0x01: "YESCALIB",
 }
 
+PlutoAngleRanges = {
+    "WFE": 120,
+    "WUD": 120,
+    "WPS": 120,
+    "HOC": 140,
+}
+
 def get_code(def_dict, name):
     """Gets the code corresponding to the given name from the definition 
     dictionary.
