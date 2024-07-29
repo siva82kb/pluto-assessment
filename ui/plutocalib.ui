@@ -59,6 +59,9 @@
            <pointsize>12</pointsize>
           </font>
          </property>
+         <property name="styleSheet">
+          <string notr="true">color: rgb(170, 0, 0);</string>
+         </property>
          <property name="text">
           <string>Calibration:</string>
          </property>
@@ -84,6 +87,9 @@
            <family>Bahnschrift Light</family>
            <pointsize>12</pointsize>
           </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">color: rgb(170, 0, 0);</string>
          </property>
          <property name="text">
           <string>Handle Distance:</string>
@@ -112,6 +118,9 @@
          <family>Bahnschrift Light</family>
          <pointsize>12</pointsize>
         </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: rgb(0, 0, 127);</string>
        </property>
        <property name="text">
         <string/>

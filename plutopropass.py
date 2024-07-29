@@ -40,6 +40,7 @@ import plutostatemachines as psm
 from ui_plutopropass import Ui_PlutoPropAssessor
 from ui_plutocalib import Ui_CalibrationWindow
 from ui_plutodataview import Ui_DevDataWindow
+from ui_plutotestcontrol import Ui_PlutoTestControlWindow
 
 # Module level constants.
 DATA_DIR = "propassessment"
@@ -72,6 +73,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         # Attach callback to the buttons
         self.pbSubject.clicked.connect(self._callback_select_subject)
         self.pbCalibration.clicked.connect(self._callback_calibrate)
+        self.pbTestDevice.clicked.connect(self._callback_test_device)
 
         # Attach callback to other events
         # self.closeEvent = self._calibwnd_close_event
@@ -146,6 +148,23 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._smachines["calib"] = psm.PlutoCalibrationStateMachine(self.pluto)
         self._update_calibwnd_ui()
     
+    def _callback_test_device(self):
+        print("sdfhsdfh")
+        self._testdevwnd = QtWidgets.QMainWindow()
+        self._wndui = Ui_PlutoTestControlWindow()
+        self._testdevwnd.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
+        self._wndui.setupUi(self._testdevwnd)
+        # Attach events to the controls.
+        self._testdevwnd.closeEvent = self._calibwnd_close_event
+        self._wndui.radioNone.clicked.connect(self._callback_test_device_control_selected)
+        self._wndui.radioPosition.clicked.connect(self._callback_test_device_control_selected)
+        self._wndui.radioTorque.clicked.connect(self._callback_test_device_control_selected)
+        self._wndui.hSliderTgtValue.valueChanged.connect(self._callback_test_device_target_changed)
+        self._testdevwnd.show()
+        # Start the calibration statemachine
+        # self._smachines["calib"] = psm.PlutoCalibrationStateMachine(self.pluto)
+        self._update_testwnd_ui()
+
     # 
     # Timer callbacks
     #
@@ -169,8 +188,9 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._disp_update_counter %= 10
         if self._disp_update_counter == 0:
             self._update_devdatawnd_ui()
+            self.update_ui()
         # Update calibration status
-        self._calib = self.pluto.calibration == 1
+        self._calib = (self.pluto.calibration == 1)
         # Update other windows
         if self._calibwnd is not None:
             self._smachines["calib"].run_statemachine(
@@ -201,6 +221,9 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     #
     def _calibwnd_close_event(self, event):
         pass
+    
+    def _testwnd_close_event(self, event):
+        pass
 
     #
     # UI Update function
@@ -222,7 +245,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             self.pbSubject.setText(f"Subject: {self._subjid}")
         else:
             self.pbSubject.setText("Select Subject")
-        
+
     #
     # Supporting functions
     #
@@ -257,6 +280,16 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             self._calibwnd = None
             self._wndui = None
             self._smachines["calib"] = None
+    
+    def _update_testwnd_ui(self):
+        _nocontrol = not (self._wndui.radioTorque.isChecked()
+                          or self._wndui.radioPosition.isChecked())
+        self._wndui.hSliderTgtValue.setEnabled(not _nocontrol)
+        # Check the status of the radio buttons.
+        if _nocontrol:
+            self._wndui.lblTargetValue.setText(f"No Control Selected")
+        else:
+            self._wndui.lblTargetValue.setText(f"Target Value:")
 
     #
     # Device Data Viewer Functions 
@@ -291,374 +324,33 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         )    
         self._devdatawndui.textDevData.setText('\n'.join(_dispdata))
 
+    #
+    # Test window controls
+    #
+    def _callback_test_device_control_selected(self, event):
+        # Check what has been selected.
+        if self._wndui.radioNone.isChecked():
+            self.pluto.set_control("NONE")
+        elif self._wndui.radioTorque.isChecked():
+            self.pluto.set_control("TORQUE", 0)
+        elif self._wndui.radioPosition.isChecked():
+            self.pluto.set_control("POSITION", 0)
+        self._update_testwnd_ui()
+    
+    def _callback_test_device_target_changed(self, event):
+        self._update_testwnd_ui()
 
-    # @property
-    # def connected(self):
-    #     return self._client is not None
-    
-    # def display(self, msg, currtime=True):
-    #     _headstr = (f"[{dt.now().strftime('%y/%m/%d %H:%M:%S')}] "
-    #                 if currtime
-    #                 else "" )
-    #     self.text_console.appendPlainText(
-    #         f"{_headstr} {msg}"
-    #     )
-    
-    # def display_response(self, msg, currtime=True):
-    #     self.text_console.appendPlainText(
-    #         f"{msg}"
-    #     )
-    
-    # def _display_error(self, err1, err2):
-    #     # Display all errors.
-    #     _errs = [Error_Types1[i]
-    #              for i, _b in enumerate(get_number_bits(err1)[::-1])
-    #              if _b == 1]
-    #     self.display(f"Error: {' | '.join(_errs)}")
-    
-    # def update_ui(self):
-    #     # Update State and Error.
-    #     if self._err == 0x00:
-    #         self.lbl_status.setText(f"{ARIMU_States[self._prgState]} | No Errors")
-    #     else:
-    #         _errs = [Error_Types1[i]
-    #                  for i, _b in enumerate(get_number_bits(self._err)[::-1])
-    #                  if _b == 1]
-    #         self.lbl_status.setText(f"{ARIMU_States[self._prgState]}"
-    #                                 + f"| Error: {' | '.join(_errs)}")
-        
-    #     # Enable/Disable connect button.
-    #     self.btn_connect_com.setEnabled(
-    #         self.cb_com_devices.count() != 0 or 
-    #         (self.cb_com_devices.count() > 0 and
-    #          self.cb_com_devices.currentItem() is None)
-    #         )
-        
-    #     if self.connected:
-    #         self.cb_com_devices.setEnabled(False)
-    #         self.btn_connect_com.setText("Disconnect")
-    #     else:
-    #         self.cb_com_devices.setEnabled(True)
-    #         self.btn_connect_com.setText("Connect")
-    #     # Enable ARIMU commands.
-    #     self.btn_ping.setEnabled(self.connected)
-    #     self.btn_get_time.setEnabled(self.connected)
-    #     self.btn_set_time.setEnabled(self.connected)
-    #     self.btn_get_files.setEnabled(self.connected)
-    #     self.btn_start_stop_normal.setEnabled(self.connected and
-    #                                           self._prgState == PRGSTATE_NONE or
-    #                                           self._prgState == PRGSTATE_NORMAL)
-    #     if (self._prgState == PRGSTATE_NORMAL):
-    #         self.btn_start_stop_normal.setText("Stop Normal")
-    #     else:
-    #         self.btn_start_stop_normal.setText("Start Normal")
-            
-    #     self.btn_start_stop_expt.setEnabled(self.connected and
-    #                                         self._prgState == PRGSTATE_NONE or
-    #                                         self._prgState == PRGSTATE_EXPERIMENT)
-    #     if (self._prgState == PRGSTATE_EXPERIMENT):
-    #         self.btn_start_stop_expt.setText("Stop Experiment")
-    #     else:
-    #         self.btn_start_stop_expt.setText("Start Experiment")
-            
-    #     self.btn_start_stop_stream.setEnabled(self.connected and
-    #                                           self._prgState == PRGSTATE_NONE or
-    #                                           self._prgState == PRGSTATE_STREAMING)
-    #     if (self._prgState == PRGSTATE_STREAMING):
-    #         self.btn_start_stop_stream.setText("Stop Streaming")
-    #     else:
-    #         self.btn_start_stop_stream.setText("Start Streaming")
-            
-    #     self.btn_get_subjname.setEnabled(self.connected)
-    #     self.btn_set_subjname.setEnabled(self.connected)
-    #     self.btn_get_current_filename.setEnabled(self.connected)
-        
-    #     # Update start/stop experiment
-    #     if (self._prgState == PRGSTATE_EXPERIMENT):
-    #         self.btn_start_stop_expt.setText("Stop Experiment")
-    #     else:
-    #         self.btn_start_stop_expt.setText("Start Experiment")
-            
-    #     # Update start/stop straming
-    #     if (self._prgState == PRGSTATE_STREAMING):
-    #         self.btn_start_stop_stream.setText("Stop Streaming")
-    #     else:
-    #         self.btn_start_stop_stream.setText("Start Streaming")
-    
-    # def _callback_connect_to_arimu(self):
-    #     self._client = qtjedi.JediComm(self.cb_com_devices.currentData(),
-    #                                    115200)
-    #     self._client.newdata_signal.connect(self._handle_new_packets)
-    #     self._client.start()
-    #     time.sleep(1.0)
-    #     # Get the status of the device.
-    #     self._client.send_message([STATUS])
-    #     self.update_ui()
-    
-    # def _callback_status_time(self):
-    #     if self.connected:
-    #         self.update_ui()
-        
-    #     # Ping the docking station if in DOCKSTNCOMM mode.
-    #     if self._prgState == PRGSTATE_DOCKSTNCOMM:
-    #         self._client.send_message([DOCKSTNPING])
-    
-    # def _handle_new_packets(self, payload):
-    #     # Handle packet.
-    #     _cmd, self._prgState, self._err, *_pl = payload
-    #     self._arimu_resp_hndlrs[_cmd](_pl)
-    #     self.update_ui()
-    
-    # def _handle_status_response(self, payload):
-    #     self.update_ui()
-            
-    # def _handle_ping_response(self, payload):
-    #     self.display_response(f"Device name: {bytearray(payload).decode()}")
-    
-    # def _handle_gettime_response(self, payload):
-    #     _pldbytes = [bytearray(payload[i:i+4])
-    #                  for i in range(0, 28, 4)]
-    #     # Group payload components.
-    #     _temp = [struct.unpack('<L', _pldbytes[i])[-1]
-    #              for i in range(7)]
-    #     _ts = (f'{_temp[0]:02d}-{_temp[1]:02d}-{_temp[2]:02d}'
-    #            + f'T{_temp[3]}:{_temp[4]}:{_temp[5]}.{_temp[6]}')
-    #     _currt = dt.strptime(_ts, '%y-%m-%dT%H:%M:%S.%f')
-    #     # Micros data.
-    #     _microst = struct.unpack('<L', bytearray(payload[28:32]))[-1]
-    #     self.display_response(f"Current time: {_currt} | Micros: {_microst} us")
-    
-    # def _handle_settime_response(self, payload):
-    #     _pldbytes = [bytearray(payload[i:i+4])
-    #                  for i in range(0, 28, 4)]
-    #     # Group payload components.
-    #     _temp = [struct.unpack('<L', _pldbytes[i])[-1]
-    #              for i in range(7)]
-    #     _ts = (f'{_temp[0]:02d}-{_temp[1]:02d}-{_temp[2]:02d}'
-    #            + f'T{_temp[3]}:{_temp[4]}:{_temp[5]}.{_temp[6]}')
-    #     _currt = dt.strptime(_ts, '%y-%m-%dT%H:%M:%S.%f')
-    #     # Micros data.
-    #     _microst = struct.unpack('<L', bytearray(payload[28:32]))[-1]
-    #     self.display_response(f"Current time: {_currt} | Micros: {_microst} us")
-    
-    # def _handle_setsubject_response(self, payload):
-    #     self.display_response(f"Current subject: {bytearray(payload).decode()}")
-        
-    # def _handle_getsubject_response(self, payload):
-    #     self.display_response(f"Current subject: {bytearray(payload).decode()}")
-    
-    # def _handle_currentfilename_response(self, payload):
-    #     self.display_response(f"Current filename: {bytearray(payload).decode()}")
-    
-    # def _handle_listfiles_response(self, payload):
-    #     # Decode nad build file list.
-    #     # 1. check if this is the start of file list.
-    #     _str = bytearray(payload).decode()
-    #     if _str[0] == '[':
-    #         # Create a new list.
-    #         self._flist = []
-    #         self._flist_temp = bytearray(payload).decode()[1:-1].split(",")
-    #     elif len(self._flist) == 0 and len(self._flist_temp) != 0:
-    #         # Check if end of list is reached.
-    #         if _str[-1] == ']':
-    #             # End of file list.
-    #             self._flist_temp += bytearray(payload).decode()[0:-2].split(",")
-    #             self._flist = self._flist_temp
-    #             self._flist_temp = []
-    #         else:
-    #             self._flist_temp += bytearray(payload).decode()[0:-1].split(",")
-    #     if len(self._flist) != 0:
-    #         self.display_response(f"List of fisles ({len(self._flist)}): {' | '.join(self._flist)}")
-    #         self.lbl_stream.setText("")
-    #     else:
-    #         self.lbl_stream.setText(f"Getting file list ... {len(self._flist_temp)}")
-    
-    # def _handle_getfiledata_response(self, payload):
-    #     if payload[0] == FILEHEADER:
-    #         # Create new file.
-    #         self._currfhndl = open(self._currfname, "wb")
-    #         self.display_response(f"File size: {struct.unpack('<L', bytearray(payload[1:5]))}")
-    #     else:
-    #         sys.stdout.write(f"\rObtained: {payload[1] * 100 / 255:03.1f}%")
-    #         if self._currfhndl is not None:
-    #             self._currfhndl.write(bytearray(payload[2:]))
-    #         if payload[1] == 255:
-    #             self._currfhndl.close()
-    #             self._currfname = ""
-    #             self.display_response(f"File {self._currfname} saved!")
-    
-    # def _handle_deletefile_response(self, payload):
-    #     if payload[0] == FILEDELETED:
-    #         self.display_response(f"File {self._currfname} deleted!")
-    #     if payload[0] == FILENOTDELETED:
-    #         self.display_response(f"File {self._currfname} not deleted!")
-            
-    # def _handle_start_stream_response(self, payload):
-    #     self._strm_disp_cnt += 1
-    #     # Decode data and display on the streaming strip.
-    #     if len(payload) == 20:
-    #         _epoch = struct.unpack('<L', bytearray(payload[0:4]))[0]
-    #         _micros = struct.unpack('<L', bytearray(payload[4:8]))[0]
-    #         _imu = struct.unpack('<6h', bytearray(payload[8:20]))
-    #         # Write row.
-    #         if self._strm_fhndl is not None:
-    #             _str = ",".join((f"{_epoch}",
-    #                              f"{_micros}",
-    #                              ",".join(map(str, _imu))))
-    #             self._strm_fhndl.write(f"{_str}\n")
-    #         if self._strm_disp_cnt % 10 == 0:
-    #             _str = f"{_micros // 1000:06d} | acc: ({_imu[0]:+6d}, {_imu[1]:+6d}, {_imu[2]:+6d})"
-    #             _str += f" | gyr: ({_imu[3]:+6d}, {_imu[4]:+6d}, {_imu[5]:+6d})"
-    #             self.lbl_stream.setText(_str)
-    
-    # def _handle_stop_stream_response(self, payload):
-    #     # Close stream file
-    #     if self._strm_fhndl is not None:
-    #         self._strm_fhndl.close()
-    #         self._strm_fhndl = None
-    #     self.lbl_stream.setText("")
-    
-    # def _handle_startnormal_response(self, payload):
-    #     self.display_response("Started Normal Mode.")
+    #
+    # Main window close event
+    # 
+    def closeEvent(self, event):
+        # Close the data viewer window
+        if self._devdatawnd is not None:
+            self._devdatawnd.close()
 
-    # def _handle_stopnormal_response(self, payload):
-    #     self.display_response("Stopped Normal Mode.")
-
-    # def _handle_startexpt_response(self, payload):
-    #     self.display_response("Started Experiment Mode")
-        
-    # def _handle_stopexpt_response(self, payload):
-    #     self.display_response("Stopped Experiment Mode")
-    
-    # def _handle_start_dockstncomm_response(self, payload):
-    #     self.display_response("Started Docking Station Communication Mode.")
-    #     self.gb_arimu_dockstn.setChecked(True)
-        
-    # def _handle_stop_dockstncomm_response(self, payload):
-    #     self.display_response("Termianted Docking Station Communication Mode.")
-    #     self.gb_arimu_dockstn.setChecked(False)
-    
-    # def _handle_settonone_response(self, payload):
-    #     self.display_response("Set to None Mode.")
-
-    # def _callback_ping_arimu(self):
-    #     # Send PING message to ARIMU
-    #     self.display("Pinging ARIMU ... ")
-    #     self._client.send_message([PING])
-    
-    # def _callback_gettime_arimu(self):
-    #     # Get time
-    #     self.display("Getting time ... ")
-    #     self._client.send_message([GETTIME])
-    
-    # def _callback_settime_arimu(self):
-    #     # Set time
-    #     _currt = dt.now()
-    #     self.display(f"Setting time to {_currt.strftime('%y/%m/%d %H:%M:%S.%f')}")
-    #     _dtvals = (struct.pack("<L", _currt.year % 100)
-    #                + struct.pack("<L", _currt.month)
-    #                + struct.pack("<L", _currt.day)
-    #                + struct.pack("<L", _currt.hour)
-    #                + struct.pack("<L", _currt.minute)
-    #                + struct.pack("<L", _currt.second)
-    #                + struct.pack("<L", _currt.microsecond // 10000))
-    #     self._client.send_message(bytearray([SETTIME]) + _dtvals)
-    
-    # def _callback_get_subjname_arimu(self):
-    #     self.display("Get Subject Name ... ")
-    #     self._client.send_message([GETSUBJECT])
-    
-    # def _callback_set_subjname_arimu(self):
-    #     self.display("Set Subject Name ... ")
-    #     text, ok = QInputDialog.getText(self, 'Subject Name', 'Enter subjecty name:')
-    #     if ok:
-    #         self._client.send_message(bytearray([SETSUBJECT])
-    #                                   + bytearray(text, "ascii")
-    #                                   + bytearray([0]))
-    
-    # def _callback_set_currentfilename_arimu(self):
-    #     self.display("Get Current Data Filename ... ")
-    #     self._client.send_message([CURRENTFILENAME])
-    
-    # def _callback_get_files_arimu(self):
-    #     self.display("Get list of files ... ")
-    #     self._client.send_message([LISTFILES])
-    
-    # def _callback_get_file_data_arimu(self):
-    #     _file, ok = QInputDialog.getItem(self, "Which file?", 
-    #                                      "Select file: ", self._flist,
-    #                                      0, False)
-    #     if ok:                        
-    #         self._currfname = _file
-    #         self.display(f"Get file data ... {self._currfname}")
-    #         self._client.send_message(bytearray([GETFILEDATA])
-    #                                 + bytearray(self._currfname, "ascii")
-    #                                 + bytearray([0]))
-
-    # def _callback_delete_file_arimu(self):
-    #     _file, ok = QInputDialog.getItem(self, "Which file?", 
-    #                                      "Select file: ", self._flist,
-    #                                      0, False)
-    #     if ok:                        
-    #         self._currfname = _file
-    #         self.display(f"Delete file ... {self._currfname}")
-    #         self._client.send_message(bytearray([DELETEFILE])
-    #                                   + bytearray(self._currfname, "ascii")
-    #                                   + bytearray([0]))
-    
-    # def _callback_start_stop_normal_arimu(self):
-    #     # Check the current status.
-    #     if self.btn_start_stop_normal.text() == "Start Normal":
-    #         self.display("Starting Normal Mode ...")
-    #         self._client.send_message([STARTNORMAL])
-    #     else:
-    #         self.display("Stopping Normal Mode ...")
-    #         self._client.send_message([STOPNORMAL])
-        
-    # def _callback_start_stop_expt_arimu(self):
-    #     # Check the current status.
-    #     if self.btn_start_stop_expt.text() == "Start Experiment":
-    #         self.display("Starting Experiment Mode ...")
-    #         self._client.send_message([STARTEXPT])
-    #     else:
-    #         self.display("Stopping Experiment Mode ...")
-    #         self._client.send_message([STOPEXPT])
-        
-    # def _callback_start_stop_strm_arimu(self):
-    #     # Check the current status.
-    #     if self.btn_start_stop_stream.text() == "Start Streaming":
-    #         self.display("Starting Streaming Mode ...")
-    #         self._client.send_message([STARTSTREAM])
-    #         self._strm_disp_cnt = 0
-    #         # open file.
-    #         self._strm_fname = f"streamdata/stream_data_{dt.now().strftime('%y_%m_%d_%H_%M_%S')}.csv"
-    #         self._strm_fhndl = open(self._strm_fname, "w")
-    #         self._strm_fhndl.write("epoch,micros,ax,ay,az,gx,gy,gz\n")
-    #     else:
-    #         self.display("Stopping Streaming Mode ...")
-    #         self._client.send_message([STOPSTREAM])
-
-    # def _callback_dockstn_selected_arimu(self):
-    #     # Check the current state.
-    #     if self.gb_arimu_dockstn.isChecked():
-    #         # Swtich on docking station mode.
-    #         self.display("Starting Docking Station Communication Mode ...")
-    #         self._client.send_message([STARTDOCKSTNCOMM])
-    #     else:
-    #         # Switch off docking station mode.
-    #         self.display("Terminating Docking Station Communication Mode ...")
-    #         self._client.send_message([STOPDOCKSTNCOMM])
 
 
 if __name__ == "__main__":
-    # Logger
-    # _logfile = f"logs/log-{dt.now().strftime('%Y-%m-%d-%H-%M-%S')}.log"
-    # _fmt = '%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s'
-    # logging.basicConfig(filename=_logfile,
-    #                     format=_fmt,
-    #                     datefmt='%Y-%m-%d %H:%M:%S',
-    #                     level=logging.INFO)
-    
     app = QtWidgets.QApplication(sys.argv)
     mywin = PlutoPropAssesor("COM5")
     # ImageUpdate()

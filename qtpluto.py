@@ -63,7 +63,7 @@ class QtPluto(QObject):
     
     @property
     def controltype(self):
-        return self.status & 0x0D if len(self.currdata) > 0 else None
+        return (self.status & 0x0E) >> 1 if len(self.currdata) > 0 else None
     
     @property
     def calibration(self):
@@ -157,4 +157,14 @@ class QtPluto(QObject):
         self.dev.send_message([
             pdef.get_code(pdef.InDataType, "CALIBRATE"),
             pdef.get_code(pdef.Mehcanisms, mech)
+        ])
+    
+    def set_control(self, control, target):
+        """Function to set the encoder calibration.
+        """
+        if not self.is_connected():
+            return
+        self.dev.send_message([
+            pdef.get_code(pdef.InDataType, "SET_CONTROL_PARAM"),
+            pdef.get_code(pdef.ControlType, control)
         ])
