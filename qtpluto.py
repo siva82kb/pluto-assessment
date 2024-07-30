@@ -164,7 +164,7 @@ class QtPluto(QObject):
         """
         if not self.is_connected():
             return
-        self.dev.send_message([
-            pdef.get_code(pdef.InDataType, "SET_CONTROL_PARAM"),
-            pdef.get_code(pdef.ControlType, control)
-        ])
+        _payload = [pdef.get_code(pdef.InDataType, "SET_CONTROL_PARAM"),
+                    pdef.get_code(pdef.ControlType, control) | 0x08]
+        _payload += list(struct.pack('f', target))
+        self.dev.send_message(_payload)

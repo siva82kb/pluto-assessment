@@ -7,20 +7,14 @@
     <x>0</x>
     <y>0</y>
     <width>342</width>
-    <height>139</height>
+    <height>163</height>
    </rect>
   </property>
-  <property name="minimumSize">
-   <size>
-    <width>342</width>
-    <height>139</height>
-   </size>
-  </property>
-  <property name="maximumSize">
-   <size>
-    <width>342</width>
-    <height>139</height>
-   </size>
+  <property name="font">
+   <font>
+    <family>Bahnschrift Light</family>
+    <pointsize>10</pointsize>
+   </font>
   </property>
   <property name="windowTitle">
    <string>PLUTO Proprioception Assessment</string>
@@ -32,7 +26,7 @@
       <x>10</x>
       <y>10</y>
       <width>321</width>
-      <height>101</height>
+      <height>122</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
@@ -44,6 +38,12 @@
      </property>
      <item>
       <widget class="QPushButton" name="pbCalibration">
+       <property name="font">
+        <font>
+         <family>Bahnschrift Light</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string>Calibrate PLUTO</string>
        </property>
@@ -51,6 +51,12 @@
      </item>
      <item>
       <widget class="QPushButton" name="pbSubject">
+       <property name="font">
+        <font>
+         <family>Bahnschrift Light</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
        <property name="toolTip">
         <string>Select the subject to assess</string>
        </property>
@@ -61,13 +67,38 @@
      </item>
      <item>
       <widget class="QPushButton" name="pbTestDevice">
+       <property name="font">
+        <font>
+         <family>Bahnschrift Light</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string>Test Device</string>
        </property>
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="pbRomAssess">
+       <property name="font">
+        <font>
+         <family>Bahnschrift Light</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Assess ROM</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="pbPropAssessment">
+       <property name="font">
+        <font>
+         <family>Bahnschrift Light</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string>Proprioception Assessment</string>
        </property>

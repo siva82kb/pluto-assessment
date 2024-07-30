@@ -11,27 +11,25 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-class Ui_MainWindow(object):
-    def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1261, 600)
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
+class Ui_AssessmentVisualizer(object):
+    def setupUi(self, AssessmentVisualizer):
+        AssessmentVisualizer.setObjectName("AssessmentVisualizer")
+        AssessmentVisualizer.resize(751, 323)
+        AssessmentVisualizer.setMinimumSize(QtCore.QSize(751, 323))
+        AssessmentVisualizer.setMaximumSize(QtCore.QSize(751, 323))
+        self.centralwidget = QtWidgets.QWidget(AssessmentVisualizer)
         self.centralwidget.setObjectName("centralwidget")
-        self.hand_open_close = QtWidgets.QGraphicsView(self.centralwidget)
-        self.hand_open_close.setGeometry(QtCore.QRect(0, 1, 1261, 401))
-        self.hand_open_close.setObjectName("hand_open_close")
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1261, 21))
-        self.menubar.setObjectName("menubar")
-        MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.hocGraph = QtWidgets.QGraphicsView(self.centralwidget)
+        self.hocGraph.setGeometry(QtCore.QRect(10, 10, 731, 231))
+        self.hocGraph.setObjectName("hocGraph")
+        AssessmentVisualizer.setCentralWidget(self.centralwidget)
+        self.statusbar = QtWidgets.QStatusBar(AssessmentVisualizer)
         self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
+        AssessmentVisualizer.setStatusBar(self.statusbar)
 
-        self.retranslateUi(MainWindow)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        self.retranslateUi(AssessmentVisualizer)
+        QtCore.QMetaObject.connectSlotsByName(AssessmentVisualizer)
 
-    def retranslateUi(self, MainWindow):
+    def retranslateUi(self, AssessmentVisualizer):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        AssessmentVisualizer.setWindowTitle(_translate("AssessmentVisualizer", "MainWindow"))

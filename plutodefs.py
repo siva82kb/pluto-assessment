@@ -69,6 +69,11 @@ PlutoAngleRanges = {
     "HOC": 140,
 }
 
+PlutoTargetRanges = {
+    "TORQUE": [-1, 1],
+    "POSITION": [-135, 0],
+}
+
 def get_code(def_dict, name):
     """Gets the code corresponding to the given name from the definition 
     dictionary.

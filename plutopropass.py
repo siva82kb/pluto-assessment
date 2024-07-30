@@ -21,6 +21,7 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QInputDialog
 )
+import pyqtgraph as pg
 from datetime import datetime as dt
 import re
 import glob
@@ -41,6 +42,7 @@ from ui_plutopropass import Ui_PlutoPropAssessor
 from ui_plutocalib import Ui_CalibrationWindow
 from ui_plutodataview import Ui_DevDataWindow
 from ui_plutotestcontrol import Ui_PlutoTestControlWindow
+from ui_plutoromassess import Ui_RomAssessWindow
 
 # Module level constants.
 DATA_DIR = "propassessment"
@@ -64,6 +66,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._subjid = None
         self._calib = False
         self._datadir = None
+        self._set_subjectid("test")
         
         # Initialize timers.
         self.sbtimer = QTimer()
@@ -74,6 +77,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self.pbSubject.clicked.connect(self._callback_select_subject)
         self.pbCalibration.clicked.connect(self._callback_calibrate)
         self.pbTestDevice.clicked.connect(self._callback_test_device)
+        self.pbRomAssess.clicked.connect(self._callback_assess_rom)
 
         # Attach callback to other events
         # self.closeEvent = self._calibwnd_close_event
@@ -82,7 +86,8 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._devdatawnd = None
         self._calibwnd = None
         self._testdevwnd = None
-        self._assesswnd = None
+        self._romwnd = None
+        self._propwnd = None
         self._wnddata = {}
 
         # State machines for new windows
@@ -149,7 +154,6 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._update_calibwnd_ui()
     
     def _callback_test_device(self):
-        print("sdfhsdfh")
         self._testdevwnd = QtWidgets.QMainWindow()
         self._wndui = Ui_PlutoTestControlWindow()
         self._testdevwnd.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
@@ -164,6 +168,26 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         # Start the calibration statemachine
         # self._smachines["calib"] = psm.PlutoCalibrationStateMachine(self.pluto)
         self._update_testwnd_ui()
+
+    def _callback_assess_rom(self):
+        self._romwnd = QtWidgets.QMainWindow()
+        self._wndui = Ui_RomAssessWindow()
+        self._romwnd.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
+        self._wndui.setupUi(self._romwnd)
+        
+        # Add graph to the window
+        self._romassess_add_graph()
+
+        # Attach events to the controls.
+        self._romwnd.closeEvent = self._calibwnd_close_event
+        # self._wndui.radioNone.clicked.connect(self._callback_test_device_control_selected)
+        # self._wndui.radioPosition.clicked.connect(self._callback_test_device_control_selected)
+        # self._wndui.radioTorque.clicked.connect(self._callback_test_device_control_selected)
+        # self._wndui.hSliderTgtValue.valueChanged.connect(self._callback_test_device_target_changed)
+        self._romwnd.show()
+        # Start the calibration statemachine
+        # self._smachines["calib"] = psm.PlutoCalibrationStateMachine(self.pluto)
+        self._update_romwnd_ui()
 
     # 
     # Timer callbacks
@@ -191,6 +215,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             self.update_ui()
         # Update calibration status
         self._calib = (self.pluto.calibration == 1)
+        
         # Update other windows
         if self._calibwnd is not None:
             self._smachines["calib"].run_statemachine(
@@ -199,6 +224,9 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             )
             # Update UI
             self._update_calibwnd_ui()
+        
+        if self._romwnd is not None:
+            self._update_romwnd_ui()
     
     def _callback_btn_pressed(self):
         pass
@@ -232,6 +260,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         # Disable buttons if needed.
         self.pbSubject.setEnabled(self._subjid is None)
         self.pbTestDevice.setEnabled(self._subjid is not None and self._calib is True)
+        self.pbRomAssess.setEnabled(self._subjid is not None and self._calib is True)
         self.pbPropAssessment.setEnabled(self._subjid is not None and self._calib is True)
 
         # Calibration button
@@ -289,8 +318,43 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         if _nocontrol:
             self._wndui.lblTargetValue.setText(f"No Control Selected")
         else:
-            self._wndui.lblTargetValue.setText(f"Target Value:")
+            # Set the text based on the control selected.
+            _str = "Target Value: "
+            _ctrl = "TORQUE" if self._wndui.radioTorque.isChecked() else "POSITION"
+            _str += f"[{pdef.PlutoTargetRanges[_ctrl][0]:3.0f}, {pdef.PlutoTargetRanges[_ctrl][1]:3.0f}]"
+            _str += f" {self._pos2tgt(self._wndui.hSliderTgtValue.value()):-3.1f}Nm"
+            self._wndui.lblTargetValue.setText(_str)
+    
+    def _update_romwnd_ui(self):
+        # Update the graph display
+        self.line1.setData([self.pluto.angle, self.pluto.angle], [-30, 30])
+        self.line2.setData([-self.pluto.angle, -self.pluto.angle], [-30, 30])
 
+    def _romassess_add_graph(self):
+        """Function to add graph and other objects for displaying HOC movements.
+        """
+        _pgobj = pg.PlotWidget()
+        _templayout = QtWidgets.QGridLayout()
+        _templayout.addWidget(_pgobj)
+        _pen = pg.mkPen(color=(255, 0, 0))
+        self._wndui.hocGraph.setLayout(_templayout)
+        _pgobj.setYRange(-20, 20)
+        _pgobj.setXRange(-150, 150)
+        _pgobj.getAxis('bottom').setStyle(showValues=False)
+        _pgobj.getAxis('left').setStyle(showValues=False)
+        self.line1 = pg.PlotDataItem(
+            [0, 0],
+            [-30, 30],
+            pen=pg.mkPen(color = '#FF6B33',width=2)
+        )
+        self.line2 = pg.PlotDataItem(
+            [0, 0],
+            [-30, 30],
+            pen=pg.mkPen(color = '#FF6B33',width=2)
+        )
+        _pgobj.addItem(self.line1)
+        _pgobj.addItem(self.line2)
+    
     #
     # Device Data Viewer Functions 
     #
@@ -319,7 +383,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             f"Angle   : {self.pluto.angle:3.1f}deg",
             f"Torque  : {self.pluto.torque:3.1f}Nm",
             f"Control : {self.pluto.control:3.1f}",
-            f"Target  : {self.pluto.desired:3.1f}Nm",
+            f"Target  : {self.pluto.desired:3.1f}",
             f"Button  : {self.pluto.button}",
         )    
         self._devdatawndui.textDevData.setText('\n'.join(_dispdata))
@@ -330,15 +394,53 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     def _callback_test_device_control_selected(self, event):
         # Check what has been selected.
         if self._wndui.radioNone.isChecked():
-            self.pluto.set_control("NONE")
+            self.pluto.set_control("NONE", 0)
         elif self._wndui.radioTorque.isChecked():
+            self.pluto.set_control("TORQUE", 0)
+            # Reset the target value
+            self._wndui.hSliderTgtValue.setValue(self._tgt2pos(0))
+            # Now send the target value.
             self.pluto.set_control("TORQUE", 0)
         elif self._wndui.radioPosition.isChecked():
             self.pluto.set_control("POSITION", 0)
+            # Reset the target value
+            self._wndui.hSliderTgtValue.setValue(self._tgt2pos(self.pluto.angle))
+            # Now send the target value.
+            self.pluto.set_control("POSITION", self.pluto.angle)
         self._update_testwnd_ui()
     
     def _callback_test_device_target_changed(self, event):
+        # Get the current target position and send it to the device.
+        _tgt = self._pos2tgt(self._wndui.hSliderTgtValue.value())
+        _ctrl = "TORQUE" if self._wndui.radioTorque.isChecked() else "POSITION"
+        self.pluto.set_control(_ctrl, _tgt)
         self._update_testwnd_ui()
+    
+    def _tgt2pos(self, value):
+        # Make sure this is not called by mistake for no control selection.
+        if not (self._wndui.radioTorque.isChecked()
+                or self._wndui.radioPosition.isChecked()):
+            return 0
+        # Make the convesion
+        _mins, _maxs = (self._wndui.hSliderTgtValue.minimum(),
+                        self._wndui.hSliderTgtValue.maximum())
+        _ctrl = 'POSITION' if self._wndui.radioPosition.isChecked() else 'TORQUE'
+        _minv, _maxv = (pdef.PlutoTargetRanges[_ctrl][0],
+                        pdef.PlutoTargetRanges[_ctrl][1])
+        return int(_mins + (_maxs - _mins) * (value - _minv) / (_maxv - _minv))
+
+    def _pos2tgt(self, value):
+        # Make sure this is not called by mistake for no control selection.
+        if not (self._wndui.radioTorque.isChecked()
+                or self._wndui.radioPosition.isChecked()):
+            return 0
+        # Make the convesion
+        _mins, _maxs = (self._wndui.hSliderTgtValue.minimum(),
+                        self._wndui.hSliderTgtValue.maximum())
+        _ctrl = 'POSITION' if self._wndui.radioPosition.isChecked() else 'TORQUE'
+        _minv, _maxv = (pdef.PlutoTargetRanges[_ctrl][0],
+                        pdef.PlutoTargetRanges[_ctrl][1])
+        return _minv + (_maxv - _minv) * (value - _mins) / (_maxs - _mins)
 
     #
     # Main window close event
