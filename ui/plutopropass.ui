@@ -89,6 +89,9 @@
        <property name="text">
         <string>Assess ROM</string>
        </property>
+       <property name="shortcut">
+        <string>Ctrl+S, Ctrl+S</string>
+       </property>
       </widget>
      </item>
      <item>

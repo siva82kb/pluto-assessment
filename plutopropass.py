@@ -66,6 +66,10 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._subjid = None
         self._calib = False
         self._datadir = None
+        self._romdata = {
+            "AROM": 0.0,
+            "PROM": 0.0
+        }
         self._set_subjectid("test")
         
         # Initialize timers.
@@ -92,7 +96,8 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
 
         # State machines for new windows
         self._smachines = {
-            "calib": None
+            "calib": None,
+            "rom": None
         }
 
         # Open the device data viewer by default.
@@ -137,20 +142,22 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self.update_ui()
     
     def _callback_calibrate(self):
-        # Create an instance of the calibration window and open it as a modal 
-        # window.
+        # Create the calibration statemachine
+        self._smachines["calib"] = psm.PlutoCalibrationStateMachine(self.pluto)
+        
         # First reset calibration.
         self.pluto.calibrate("NOMECH")
         self.pluto.calibrate("NOMECH")
         self.pluto.calibrate("NOMECH")
+        
+        # Create an instance of the calibration window and open it as a modal 
+        # window.
         self._calibwnd = QtWidgets.QMainWindow()
         self._wndui = Ui_CalibrationWindow()
         self._calibwnd.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         self._wndui.setupUi(self._calibwnd)
         self._calibwnd.closeEvent = self._calibwnd_close_event
         self._calibwnd.show()
-        # Start the calibration statemachine
-        self._smachines["calib"] = psm.PlutoCalibrationStateMachine(self.pluto)
         self._update_calibwnd_ui()
     
     def _callback_test_device(self):
@@ -165,11 +172,17 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._wndui.radioTorque.clicked.connect(self._callback_test_device_control_selected)
         self._wndui.hSliderTgtValue.valueChanged.connect(self._callback_test_device_target_changed)
         self._testdevwnd.show()
-        # Start the calibration statemachine
-        # self._smachines["calib"] = psm.PlutoCalibrationStateMachine(self.pluto)
         self._update_testwnd_ui()
 
     def _callback_assess_rom(self):
+        # Create the ROM statemachine
+        self._smachines["rom"] = psm.PlutoRomAssessmentStateMachine(
+            self.pluto,
+            self._romdata["AROM"],
+            self._romdata["PROM"]
+        )
+        
+        # Create the window
         self._romwnd = QtWidgets.QMainWindow()
         self._wndui = Ui_RomAssessWindow()
         self._romwnd.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
@@ -180,13 +193,9 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
 
         # Attach events to the controls.
         self._romwnd.closeEvent = self._calibwnd_close_event
-        # self._wndui.radioNone.clicked.connect(self._callback_test_device_control_selected)
-        # self._wndui.radioPosition.clicked.connect(self._callback_test_device_control_selected)
-        # self._wndui.radioTorque.clicked.connect(self._callback_test_device_control_selected)
-        # self._wndui.hSliderTgtValue.valueChanged.connect(self._callback_test_device_target_changed)
+        self._wndui.pbArom.clicked.connect(self._callback_arom_clicked)
+        self._wndui.pbProm.clicked.connect(self._callback_prom_clicked)
         self._romwnd.show()
-        # Start the calibration statemachine
-        # self._smachines["calib"] = psm.PlutoCalibrationStateMachine(self.pluto)
         self._update_romwnd_ui()
 
     # 
@@ -226,6 +235,9 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             self._update_calibwnd_ui()
         
         if self._romwnd is not None:
+            self._smachines["rom"].run_statemachine(
+                None
+            )
             self._update_romwnd_ui()
     
     def _callback_btn_pressed(self):
@@ -241,17 +253,34 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
                 psm.PlutoButtonEvents.RELEASED,
                 "HOC"
             )
+
             # Update UI
             self._update_calibwnd_ui()
+            return
+        
+        # ROM Assessment Window
+        if self._romwnd is not None:
+            self._smachines["rom"].run_statemachine(
+                psm.PlutoButtonEvents.RELEASED
+            )
+            # Update ROM data
+            self._romdata["AROM"] = self._smachines["rom"].arom
+            self._romdata["PROM"] = self._smachines["rom"].prom
+            
+            # Update IO
+            self._update_romwnd_ui()
+            return
 
     #
     # Other callbacks
     #
     def _calibwnd_close_event(self, event):
-        pass
+        self._smachines["calib"] = None
+        self._calibwnd = None
     
     def _testwnd_close_event(self, event):
-        pass
+        self._smachines["rom"] = None
+        self._romwnd = None
 
     #
     # UI Update function
@@ -327,8 +356,36 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     
     def _update_romwnd_ui(self):
         # Update the graph display
-        self.line1.setData([self.pluto.angle, self.pluto.angle], [-30, 30])
-        self.line2.setData([-self.pluto.angle, -self.pluto.angle], [-30, 30])
+        # Current position
+        self.currPosLine1.setData([self.pluto.angle, self.pluto.angle], [-30, 30])
+        self.currPosLine2.setData([-self.pluto.angle, -self.pluto.angle], [-30, 30])
+        # AROPM position
+        self.aromLine1.setData([self._romdata["AROM"], self._romdata["AROM"]], [-30, 30])
+        self.aromLine2.setData([-self._romdata["AROM"], -self._romdata["AROM"]], [-30, 30])
+        # PROPM position
+        self.promLine1.setData([self._romdata["PROM"], self._romdata["PROM"]], [-30, 30])
+        self.promLine2.setData([-self._romdata["PROM"], -self._romdata["PROM"]], [-30, 30])
+
+        # Udpate based on the current state of the ROM statemachine
+        self._wndui.textInstruction.setText(self._smachines['rom'].instruction)
+        self._wndui.pbArom.setText(f"Assess AROM [{self._romdata['AROM']:3.2f}]")
+        self._wndui.pbProm.setText(f"Assess PROM [{self._romdata['PROM']:3.2f}]")
+        if self._smachines['rom'].state == psm.PlutoRomAssessStates.FREE_RUNNING:
+            # Enable both buttons
+            self._wndui.pbArom.setEnabled(True)
+            self._wndui.pbProm.setEnabled(True)
+        elif self._smachines['rom'].state == psm.PlutoRomAssessStates.AROM_ASSESS:
+            # Disable both buttons
+            self._wndui.pbArom.setEnabled(False)
+            self._wndui.pbProm.setEnabled(False)
+        elif self._smachines['rom'].state == psm.PlutoRomAssessStates.PROM_ASSESS:
+            # Disable both buttons
+            self._wndui.pbArom.setEnabled(False)
+            self._wndui.pbProm.setEnabled(False)
+        else:
+            # Enable both buttons
+            self._wndui.pbArom.setEnabled(True)
+            self._wndui.pbProm.setEnabled(True)
 
     def _romassess_add_graph(self):
         """Function to add graph and other objects for displaying HOC movements.
@@ -342,18 +399,48 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         _pgobj.setXRange(-150, 150)
         _pgobj.getAxis('bottom').setStyle(showValues=False)
         _pgobj.getAxis('left').setStyle(showValues=False)
-        self.line1 = pg.PlotDataItem(
+        
+        # Current position lines
+        self.currPosLine1 = pg.PlotDataItem(
             [0, 0],
             [-30, 30],
-            pen=pg.mkPen(color = '#FF6B33',width=2)
+            pen=pg.mkPen(color = '#FFFFFF',width=2)
         )
-        self.line2 = pg.PlotDataItem(
+        self.currPosLine2 = pg.PlotDataItem(
             [0, 0],
             [-30, 30],
-            pen=pg.mkPen(color = '#FF6B33',width=2)
+            pen=pg.mkPen(color = '#FFFFFF',width=2)
         )
-        _pgobj.addItem(self.line1)
-        _pgobj.addItem(self.line2)
+        _pgobj.addItem(self.currPosLine1)
+        _pgobj.addItem(self.currPosLine2)
+        
+        # AROM Lines
+        self.aromLine1 = pg.PlotDataItem(
+            [0, 0],
+            [-30, 30],
+            pen=pg.mkPen(color = '#FF8888',width=4)
+        )
+        self.aromLine2 = pg.PlotDataItem(
+            [0, 0],
+            [-30, 30],
+            pen=pg.mkPen(color = '#FF8888',width=4)
+        )
+        _pgobj.addItem(self.aromLine1)
+        _pgobj.addItem(self.aromLine2)
+        
+        # PROM Lines
+        self.promLine1 = pg.PlotDataItem(
+            [0, 0],
+            [-30, 30],
+            pen=pg.mkPen(color = '#8888FF',width=2)
+        )
+        self.promLine2 = pg.PlotDataItem(
+            [0, 0],
+            [-30, 30],
+            pen=pg.mkPen(color = '#8888FF',width=2)
+        )
+        _pgobj.addItem(self.promLine1)
+        _pgobj.addItem(self.promLine2)
     
     #
     # Device Data Viewer Functions 
@@ -441,6 +528,19 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         _minv, _maxv = (pdef.PlutoTargetRanges[_ctrl][0],
                         pdef.PlutoTargetRanges[_ctrl][1])
         return _minv + (_maxv - _minv) * (value - _mins) / (_maxs - _mins)
+
+    # ROM Window Controls
+    def _callback_arom_clicked(self, event):
+        self._smachines["rom"].run_statemachine(
+            psm.PlutoRomAssessEvent.AROM_SELECTED
+        )
+        self._update_romwnd_ui()
+    
+    def _callback_prom_clicked(self, event):
+        self._smachines["rom"].run_statemachine(
+            psm.PlutoRomAssessEvent.PROM_SELECTED
+        )
+        self._update_romwnd_ui()
 
     #
     # Main window close event

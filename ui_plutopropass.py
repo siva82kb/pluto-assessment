@@ -80,4 +80,5 @@ class Ui_PlutoPropAssessor(object):
         self.pbSubject.setText(_translate("PlutoPropAssessor", "Select Subject"))
         self.pbTestDevice.setText(_translate("PlutoPropAssessor", "Test Device"))
         self.pbRomAssess.setText(_translate("PlutoPropAssessor", "Assess ROM"))
+        self.pbRomAssess.setShortcut(_translate("PlutoPropAssessor", "Ctrl+S, Ctrl+S"))
         self.pbPropAssessment.setText(_translate("PlutoPropAssessor", "Proprioception Assessment"))
