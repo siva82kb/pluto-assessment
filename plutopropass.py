@@ -7,7 +7,12 @@ Email: siva82kb@gmail.com
 """
 
 import sys
-import os
+import re
+import pathlib
+import json
+from qtpluto import QtPluto
+from datetime import datetime as dt
+
 from PyQt5 import (
     QtCore,
     QtWidgets,)
@@ -22,19 +27,6 @@ from PyQt5.QtWidgets import (
     QInputDialog
 )
 import pyqtgraph as pg
-from datetime import datetime as dt
-import re
-import glob
-import pathlib
-import enum
-import json
-import random
-import struct
-# import asyncio
-# import qasync
-import numpy as np
-import time
-from qtpluto import QtPluto
 
 import plutodefs as pdef
 import plutostatemachines as psm
@@ -64,12 +56,14 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         
         # Subject details
         self._subjid = None
+        self._currsess = None
         self._calib = False
         self._datadir = None
         self._romdata = {
             "AROM": 0.0,
             "PROM": 0.0
         }
+        self._propassdata = None
         self._set_subjectid("test")
         
         # Initialize timers.
@@ -138,6 +132,9 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             # Set subject ID, and create the folder if needed.
             self._set_subjectid(_subjid.lower())
         
+        # Write the subject details JSON file.
+        self._write_subject_json()
+
         # update UI
         self.update_ui()
     
@@ -192,7 +189,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._romassess_add_graph()
 
         # Attach events to the controls.
-        self._romwnd.closeEvent = self._calibwnd_close_event
+        self._romwnd.closeEvent = self._romwnd_close_event
         self._wndui.pbArom.clicked.connect(self._callback_arom_clicked)
         self._wndui.pbProm.clicked.connect(self._callback_prom_clicked)
         self._romwnd.show()
@@ -275,12 +272,21 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     # Other callbacks
     #
     def _calibwnd_close_event(self, event):
-        self._smachines["calib"] = None
         self._calibwnd = None
+        self._wndui = None
+        self._smachines["calib"] = None
     
     def _testwnd_close_event(self, event):
-        self._smachines["rom"] = None
+        self._testwnd = None
+        self._wndui = None
+
+    def _romwnd_close_event(self, event):
+        # Write the subject details JSON file.
+        self._write_subject_json()
+        # Reset variables
         self._romwnd = None
+        self._wndui = None
+        self._smachines["rom"] = None
 
     #
     # UI Update function
@@ -300,17 +306,24 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         
         # Subject ID button
         if self._subjid is not None:
-            self.pbSubject.setText(f"Subject: {self._subjid}")
+            self.pbSubject.setText(f"Subject: {self._subjid} [{self._currsess}]")
         else:
             self.pbSubject.setText("Select Subject")
+        
+        # Update ROM values on button text.
+        if self._romdata["AROM"] > 0 and self._romdata["PROM"] > 0:
+            self.pbRomAssess.setText(f"Assess ROM [AROM: {self._romdata['AROM']:5.2f}cm | AROM: {self._romdata['PROM']:5.2f}cm]")
+        else:
+            self.pbRomAssess.setText("Assess ROM")
 
     #
     # Supporting functions
     #
     def _set_subjectid(self, subjid):
         self._subjid = subjid
-        # set data dirr and create if needed.
-        self._datadir = pathlib.Path(DATA_DIR, self._subjid)
+        self._currsess = dt.now().strftime("%Y-%m-%d-%H-%M-%S")
+        # set data dirr and create if needed.        
+        self._datadir = pathlib.Path(DATA_DIR, self._subjid, self._currsess)
         self._datadir.mkdir(exist_ok=True)
     
     #
@@ -324,20 +337,17 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             self._wndui.lblInstruction2.setText("Press the PLUTO button set zero.")
         elif self._smachines['calib'].state == psm.PlutoCalibStates.WAIT_FOR_ROM_SET:
             self._wndui.lblCalibStatus.setText("Zero set.")
-            self._wndui.lblHandDistance.setText(f"{self.pluto.angle:3.1f}cm")
+            self._wndui.lblHandDistance.setText(f"{self.pluto.hocdisp:5.2f}cm")
             self._wndui.lblInstruction2.setText("Press the PLUTO button set ROM.")
         elif self._smachines['calib'].state == psm.PlutoCalibStates.WAIT_FOR_CLOSE:
             self._wndui.lblCalibStatus.setText("All Done!")
-            self._wndui.lblHandDistance.setText(f"{self.pluto.angle:3.1f}cm")
+            self._wndui.lblHandDistance.setText(f"{self.pluto.hocdisp:5.2f}cm")
             self._wndui.lblInstruction2.setText("Press the PLUTO button to close window.")
         elif self._smachines['calib'].state == psm.PlutoCalibStates.CALIB_ERROR:
             self._wndui.lblCalibStatus.setText("Error!")
             self._wndui.lblInstruction2.setText("Press the PLUTO button to close window.")
         else:
             self._calibwnd.close()
-            self._calibwnd = None
-            self._wndui = None
-            self._smachines["calib"] = None
     
     def _update_testwnd_ui(self):
         _nocontrol = not (self._wndui.radioTorque.isChecked()
@@ -357,35 +367,59 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     def _update_romwnd_ui(self):
         # Update the graph display
         # Current position
-        self.currPosLine1.setData([self.pluto.angle, self.pluto.angle], [-30, 30])
-        self.currPosLine2.setData([-self.pluto.angle, -self.pluto.angle], [-30, 30])
-        # AROPM position
-        self.aromLine1.setData([self._romdata["AROM"], self._romdata["AROM"]], [-30, 30])
-        self.aromLine2.setData([-self._romdata["AROM"], -self._romdata["AROM"]], [-30, 30])
-        # PROPM position
-        self.promLine1.setData([self._romdata["PROM"], self._romdata["PROM"]], [-30, 30])
-        self.promLine2.setData([-self._romdata["PROM"], -self._romdata["PROM"]], [-30, 30])
+        if self._smachines["rom"].state == psm.PlutoRomAssessStates.FREE_RUNNING:
+            self.currPosLine1.setData(
+                [self.pluto.hocdisp, self.pluto.hocdisp],
+                [-30, 30]
+            )
+            self.currPosLine2.setData(
+                [-self.pluto.hocdisp, -self.pluto.hocdisp],
+                [-30, 30]
+            )
+        elif self._smachines["rom"].state == psm.PlutoRomAssessStates.AROM_ASSESS:
+            self.currPosLine1.setData([0, 0], [-30, 30])
+            self.currPosLine2.setData([0, 0], [-30, 30])
+            # AROM position
+            self.aromLine1.setData(
+                [self.pluto.hocdisp, self.pluto.hocdisp],
+                [-30, 30]
+            )
+            self.aromLine2.setData(
+                [-self.pluto.hocdisp, -self.pluto.hocdisp],
+                [-30, 30]
+            )
+        elif self._smachines["rom"].state == psm.PlutoRomAssessStates.PROM_ASSESS:
+            self.currPosLine1.setData([0, 0], [-30, 30])
+            self.currPosLine2.setData([0, 0], [-30, 30])
+            # PROM position
+            self.promLine1.setData(
+                [self.pluto.hocdisp, self.pluto.hocdisp],
+                [-30, 30]
+            )
+            self.promLine2.setData(
+                [-self.pluto.hocdisp, -self.pluto.hocdisp],
+                [-30, 30]
+            )
 
         # Udpate based on the current state of the ROM statemachine
+        if self._wndui is None:
+            return
+        
+        # Window still exists.
         self._wndui.textInstruction.setText(self._smachines['rom'].instruction)
-        self._wndui.pbArom.setText(f"Assess AROM [{self._romdata['AROM']:3.2f}]")
-        self._wndui.pbProm.setText(f"Assess PROM [{self._romdata['PROM']:3.2f}]")
-        if self._smachines['rom'].state == psm.PlutoRomAssessStates.FREE_RUNNING:
-            # Enable both buttons
-            self._wndui.pbArom.setEnabled(True)
-            self._wndui.pbProm.setEnabled(True)
-        elif self._smachines['rom'].state == psm.PlutoRomAssessStates.AROM_ASSESS:
-            # Disable both buttons
-            self._wndui.pbArom.setEnabled(False)
-            self._wndui.pbProm.setEnabled(False)
-        elif self._smachines['rom'].state == psm.PlutoRomAssessStates.PROM_ASSESS:
-            # Disable both buttons
-            self._wndui.pbArom.setEnabled(False)
-            self._wndui.pbProm.setEnabled(False)
-        else:
-            # Enable both buttons
-            self._wndui.pbArom.setEnabled(True)
-            self._wndui.pbProm.setEnabled(True)
+        self._wndui.label.setText(f"PLUTO ROM Assessment [{self.pluto.hocdisp:5.2f}cm]")
+        self._wndui.pbArom.setText(f"Assess AROM [{self._romdata['AROM']:5.2f}cm]")
+        self._wndui.pbProm.setText(f"Assess PROM [{self._romdata['PROM']:5.2f}cm]")
+        self._wndui.pbArom.setEnabled(
+            self._smachines['rom'].state == psm.PlutoRomAssessStates.FREE_RUNNING
+        )
+        self._wndui.pbProm.setEnabled(
+            self._smachines['rom'].state == psm.PlutoRomAssessStates.FREE_RUNNING
+        )
+
+        # Close if needed
+        if self._smachines['rom'].state == psm.PlutoRomAssessStates.ROM_DONE:
+            self._romwnd.close()
 
     def _romassess_add_graph(self):
         """Function to add graph and other objects for displaying HOC movements.
@@ -396,7 +430,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         _pen = pg.mkPen(color=(255, 0, 0))
         self._wndui.hocGraph.setLayout(_templayout)
         _pgobj.setYRange(-20, 20)
-        _pgobj.setXRange(-150, 150)
+        _pgobj.setXRange(-10, 10)
         _pgobj.getAxis('bottom').setStyle(showValues=False)
         _pgobj.getAxis('left').setStyle(showValues=False)
         
@@ -418,12 +452,12 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self.aromLine1 = pg.PlotDataItem(
             [0, 0],
             [-30, 30],
-            pen=pg.mkPen(color = '#FF8888',width=4)
+            pen=pg.mkPen(color = '#FF8888',width=2)
         )
         self.aromLine2 = pg.PlotDataItem(
             [0, 0],
             [-30, 30],
-            pen=pg.mkPen(color = '#FF8888',width=4)
+            pen=pg.mkPen(color = '#FF8888',width=2)
         )
         _pgobj.addItem(self.aromLine1)
         _pgobj.addItem(self.aromLine2)
@@ -459,20 +493,25 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             self._devdatawndui.textDevData.setText("No data available.")
             return
         # New data available. Format and display
-        _dispdata = (
+        _dispdata = [
             "PLUTO Data",
             "----------",
             f"Time    : {self.pluto.currdata[0]}",
             f"Status  : {pdef.OutDataType[self.pluto.datatype]} | {pdef.ControlType[self.pluto.controltype]} | {pdef.CalibrationStatus[self.pluto.calibration]}",
             f"Error   : {pdef.ErrorTypes[self.pluto.error]}",
-            f"Mech    : {pdef.Mehcanisms[self.pluto.mechanism]:>5s} | Calib   : {pdef.CalibrationStatus[self.pluto.calibration]}",
+            f"Mech    : {pdef.Mehcanisms[self.pluto.mechanism]:<5s} | Calib   : {pdef.CalibrationStatus[self.pluto.calibration]}",
             f"Actd    : {self.pluto.actuated}",
-            f"Angle   : {self.pluto.angle:3.1f}deg",
+        ]
+        _dispdata += [
+            f"Angle   : {self.pluto.angle:-07.2f}deg"
+            + f" [{self.pluto.hocdisp:05.2f}cm]" if self._calib else ""
+        ]
+        _dispdata += [
             f"Torque  : {self.pluto.torque:3.1f}Nm",
             f"Control : {self.pluto.control:3.1f}",
             f"Target  : {self.pluto.desired:3.1f}",
             f"Button  : {self.pluto.button}",
-        )    
+        ]
         self._devdatawndui.textDevData.setText('\n'.join(_dispdata))
 
     #
@@ -550,6 +589,20 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         if self._devdatawnd is not None:
             self._devdatawnd.close()
 
+    #
+    # Data logging fucntions
+    #
+    def _write_subject_json(self):
+        _subjdata = {
+            "SubjectID": self._subjid,
+            "Session": self._currsess,
+            "ROM": self._romdata,
+            "PropAssessment": self._propassdata
+        }
+        print(_subjdata)
+        print(self._datadir / "session_details.json")
+        with open(self._datadir / "session_details.json", "w") as _f:
+            json.dump(_subjdata, _f, indent=4)
 
 
 if __name__ == "__main__":

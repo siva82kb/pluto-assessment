@@ -86,6 +86,10 @@ class QtPluto(QObject):
         return self.currdata[4] if len(self.currdata) > 0 else None
     
     @property
+    def hocdisp(self):
+        return pdef.HOCScale * abs(self.currdata[4]) if len(self.currdata) > 0 else None
+    
+    @property
     def torque(self):
         return self.currdata[5] if len(self.currdata) > 0 else None
     

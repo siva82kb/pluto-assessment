@@ -6,6 +6,8 @@ Date: 25 July 2024
 Email: siva82kb@gmail.com
 """
 
+import numpy as np
+
 ControlType = {
     0x00: "NONE",
     0x01: "POSITION",
@@ -73,6 +75,9 @@ PlutoTargetRanges = {
     "TORQUE": [-1, 1],
     "POSITION": [-135, 0],
 }
+
+# Hand Openiong and Closing Mechanism Conversion Factor
+HOCScale = 3.97 * np.pi / 180
 
 def get_code(def_dict, name):
     """Gets the code corresponding to the given name from the definition 

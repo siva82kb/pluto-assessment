@@ -107,6 +107,9 @@ class PlutoRomAssessmentStateMachine():
         self._instruction = "Select AROM or PROM to assess."
         self._arom = aromval if aromval >= 0 else 0
         self._prom = promval if promval >= 0 else 0
+        # Indicates if both AROM and PROM have been done for this
+        # particular instance of the statemachine.
+        self._apromflag = 0x00
         self._pluto = plutodev
         self._stateactions = {
             PlutoRomAssessStates.FREE_RUNNING: self._free_running,
@@ -114,7 +117,7 @@ class PlutoRomAssessmentStateMachine():
             PlutoRomAssessStates.PROM_ASSESS: self._prom_assess,
             PlutoRomAssessStates.ROM_DONE: self._rom_done
         }
-        print(self._state)
+        
     
     @property
     def state(self):
@@ -141,17 +144,23 @@ class PlutoRomAssessmentStateMachine():
         # Wait for AROM or PROM to be selected.
         if event == PlutoRomAssessEvent.AROM_SELECTED:
             self._state = PlutoRomAssessStates.AROM_ASSESS
-            print(self._state)
             self._instruction = "Assessing AROM. Press the PLUTO Button when done."
+            self._apromflag |= 0x01
         elif event == PlutoRomAssessEvent.PROM_SELECTED:
             self._state = PlutoRomAssessStates.PROM_ASSESS
             print(self._state)
             self._instruction = "Assessing PROM. Press the PLUTO Button when done."
+            self._apromflag |= 0x02
+        # Check if both AROM and PROM have been assessed.
+        if self._apromflag == 0x03:
+            self._instruction = "ROM Assessment Done. Press the PLUTO Button to exit."
+            if event == PlutoButtonEvents.RELEASED:
+                self._state = PlutoRomAssessStates.ROM_DONE
     
     def _arom_assess(self, event):
         # Check if the button release event has happened.
         if event == PlutoButtonEvents.RELEASED:
-            self._arom = abs(self._pluto.angle)
+            self._arom = abs(self._pluto.hocdisp)
             # Update PROM if needed
             self._prom = self._arom if self._arom > self._prom else self._prom
             # Update the instruction
@@ -161,8 +170,8 @@ class PlutoRomAssessmentStateMachine():
     def _prom_assess(self, event):
         # Check if the button release event has happened.
         if event == PlutoButtonEvents.RELEASED:
-            if abs(self._pluto.angle) >= self._arom:
-                self._prom = abs(self._pluto.angle)
+            if abs(self._pluto.hocdisp) >= self._arom:
+                self._prom = abs(self._pluto.hocdisp)
                 # Update the instruction
                 self._instruction = "Select AROM or PROM to assess."
                 self._state = PlutoRomAssessStates.FREE_RUNNING
