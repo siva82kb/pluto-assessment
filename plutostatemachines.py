@@ -21,7 +21,6 @@ class PlutoRomAssessEvent(Enum):
     AROM_SELECTED = 0
     PROM_SELECTED = 1
 
-
 class PlutoCalibStates(Enum):
     WAIT_FOR_ZERO_SET = 0
     WAIT_FOR_ROM_SET = 1
@@ -99,6 +98,102 @@ class PlutoRomAssessStates(Enum):
     AROM_ASSESS = 1
     PROM_ASSESS = 2
     ROM_DONE = 3
+
+
+class PlutoRomAssessmentStateMachine():
+    def __init__(self, plutodev, aromval, promval):
+        self._state = PlutoRomAssessStates.FREE_RUNNING
+        self._instruction = "Select AROM or PROM to assess."
+        self._arom = aromval if aromval >= 0 else 0
+        self._prom = promval if promval >= 0 else 0
+        # Indicates if both AROM and PROM have been done for this
+        # particular instance of the statemachine.
+        self._apromflag = 0x00
+        self._pluto = plutodev
+        self._stateactions = {
+            PlutoRomAssessStates.FREE_RUNNING: self._free_running,
+            PlutoRomAssessStates.AROM_ASSESS: self._arom_assess,
+            PlutoRomAssessStates.PROM_ASSESS: self._prom_assess,
+            PlutoRomAssessStates.ROM_DONE: self._rom_done
+        }
+        
+    
+    @property
+    def state(self):
+        return self._state
+    
+    @property
+    def instruction(self):
+        return self._instruction
+    
+    @property
+    def arom(self):
+        return self._arom
+    
+    @property
+    def prom(self):
+        return self._prom
+
+    def run_statemachine(self, event):
+        """Execute the state machine depending on the given even that has occured.
+        """
+        self._stateactions[self._state](event)
+    
+    def _free_running(self, event):
+        # Wait for AROM or PROM to be selected.
+        if event == PlutoRomAssessEvent.AROM_SELECTED:
+            self._state = PlutoRomAssessStates.AROM_ASSESS
+            self._instruction = "Assessing AROM. Press the PLUTO Button when done."
+            self._apromflag |= 0x01
+        elif event == PlutoRomAssessEvent.PROM_SELECTED:
+            self._state = PlutoRomAssessStates.PROM_ASSESS
+            print(self._state)
+            self._instruction = "Assessing PROM. Press the PLUTO Button when done."
+            self._apromflag |= 0x02
+        # Check if both AROM and PROM have been assessed.
+        if self._apromflag == 0x03:
+            self._instruction = "ROM Assessment Done. Press the PLUTO Button to exit."
+            if event == PlutoButtonEvents.RELEASED:
+                self._state = PlutoRomAssessStates.ROM_DONE
+    
+    def _arom_assess(self, event):
+        # Check if the button release event has happened.
+        if event == PlutoButtonEvents.RELEASED:
+            self._arom = abs(self._pluto.hocdisp)
+            # Update PROM if needed
+            self._prom = self._arom if self._arom > self._prom else self._prom
+            # Update the instruction
+            self._instruction = "Select AROM or PROM to assess."
+            self._state = PlutoRomAssessStates.FREE_RUNNING
+ 
+    def _prom_assess(self, event):
+        # Check if the button release event has happened.
+        if event == PlutoButtonEvents.RELEASED:
+            if abs(self._pluto.hocdisp) >= self._arom:
+                self._prom = abs(self._pluto.hocdisp)
+                # Update the instruction
+                self._instruction = "Select AROM or PROM to assess."
+                self._state = PlutoRomAssessStates.FREE_RUNNING
+            else:
+                # Update the instruction
+                self._instruction = "Error! PROM cannot be less than AROM.\nAssessing PROM. Press the PLUTO Button when done."
+    
+    def _rom_done(self, event):
+        pass
+
+
+
+
+class PlutoPropAssessStates(Enum):
+    PROP_DONE = 0
+    WAIT_FOR_START = 1
+    WAIT_FOR_HAPTIC_DISPAY_START = 2
+    TRIAL_HAPTIC_DISPLAY = 3
+    INTRA_TRIAL_REST = 4
+    TRIAL_ASSESSMENT = 5
+    INTER_TRIAL_REST = 6
+    PROTOCOL_PAUSE = 7
+    PROTOCOL_STOP = 8
 
 
 class PlutoRomAssessmentStateMachine():

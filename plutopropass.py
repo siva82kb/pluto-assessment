@@ -35,6 +35,7 @@ from ui_plutocalib import Ui_CalibrationWindow
 from ui_plutodataview import Ui_DevDataWindow
 from ui_plutotestcontrol import Ui_PlutoTestControlWindow
 from ui_plutoromassess import Ui_RomAssessWindow
+from ui_plutopropassessctrl import Ui_ProprioceptionAssessWindow
 
 # Module level constants.
 DATA_DIR = "propassessment"
@@ -60,9 +61,13 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._calib = False
         self._datadir = None
         self._romdata = {
-            "AROM": 0.0,
-            "PROM": 0.0
+            "AROM": 5.0,
+            "PROM": 7.0
         }
+        # self._romdata = {
+        #     "AROM": 0.0,
+        #     "PROM": 0.0
+        # }
         self._propassdata = None
         self._set_subjectid("test")
         
@@ -76,6 +81,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self.pbCalibration.clicked.connect(self._callback_calibrate)
         self.pbTestDevice.clicked.connect(self._callback_test_device)
         self.pbRomAssess.clicked.connect(self._callback_assess_rom)
+        self.pbPropAssessment.clicked.connect(self._callback_assess_prop)
 
         # Attach callback to other events
         # self.closeEvent = self._calibwnd_close_event
@@ -91,7 +97,8 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         # State machines for new windows
         self._smachines = {
             "calib": None,
-            "rom": None
+            "rom": None,
+            "prop": None
         }
 
         # Open the device data viewer by default.
@@ -195,6 +202,24 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._romwnd.show()
         self._update_romwnd_ui()
 
+    def _callback_assess_prop(self):
+        # Create the proprioception assessment statemachine
+        self._smachines["prop"] = None
+        
+        # Create the window
+        self._propwnd = QtWidgets.QMainWindow()
+        self._wndui = Ui_ProprioceptionAssessWindow()
+        self._propwnd.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
+        self._wndui.setupUi(self._propwnd)
+        
+        # Add graph to the window
+        self._propassess_add_graph()
+
+        # Attach events to the controls.
+        self._propwnd.closeEvent = self._propwnd_close_event
+        self._propwnd.show()
+        self._update_propwnd_ui()
+
     # 
     # Timer callbacks
     #
@@ -236,6 +261,9 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
                 None
             )
             self._update_romwnd_ui()
+
+        if self._propwnd is not None:
+            self._update_propwnd_ui()
     
     def _callback_btn_pressed(self):
         pass
@@ -281,12 +309,19 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._wndui = None
 
     def _romwnd_close_event(self, event):
+        print("ROM Close")
         # Write the subject details JSON file.
         self._write_subject_json()
         # Reset variables
         self._romwnd = None
         self._wndui = None
         self._smachines["rom"] = None
+
+    def _propwnd_close_event(self, event):
+        # Reset variables
+        self._propwnd = None
+        self._wndui = None
+        self._smachines["prop"] = None
 
     #
     # UI Update function
@@ -296,7 +331,12 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self.pbSubject.setEnabled(self._subjid is None)
         self.pbTestDevice.setEnabled(self._subjid is not None and self._calib is True)
         self.pbRomAssess.setEnabled(self._subjid is not None and self._calib is True)
-        self.pbPropAssessment.setEnabled(self._subjid is not None and self._calib is True)
+        self.pbPropAssessment.setEnabled(
+            self._subjid is not None 
+            and self._calib is True
+            and self._romdata["AROM"] > 0
+            and self._romdata["PROM"] > 0
+        )
 
         # Calibration button
         if self._calib is False:
@@ -368,35 +408,35 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         # Update the graph display
         # Current position
         if self._smachines["rom"].state == psm.PlutoRomAssessStates.FREE_RUNNING:
-            self.currPosLine1.setData(
+            self._wndui.currPosLine1.setData(
                 [self.pluto.hocdisp, self.pluto.hocdisp],
                 [-30, 30]
             )
-            self.currPosLine2.setData(
+            self._wndui.currPosLine2.setData(
                 [-self.pluto.hocdisp, -self.pluto.hocdisp],
                 [-30, 30]
             )
         elif self._smachines["rom"].state == psm.PlutoRomAssessStates.AROM_ASSESS:
-            self.currPosLine1.setData([0, 0], [-30, 30])
-            self.currPosLine2.setData([0, 0], [-30, 30])
+            self._wndui.currPosLine1.setData([0, 0], [-30, 30])
+            self._wndui.currPosLine2.setData([0, 0], [-30, 30])
             # AROM position
-            self.aromLine1.setData(
+            self._wndui.aromLine1.setData(
                 [self.pluto.hocdisp, self.pluto.hocdisp],
                 [-30, 30]
             )
-            self.aromLine2.setData(
+            self._wndui.aromLine2.setData(
                 [-self.pluto.hocdisp, -self.pluto.hocdisp],
                 [-30, 30]
             )
         elif self._smachines["rom"].state == psm.PlutoRomAssessStates.PROM_ASSESS:
-            self.currPosLine1.setData([0, 0], [-30, 30])
-            self.currPosLine2.setData([0, 0], [-30, 30])
+            self._wndui.currPosLine1.setData([0, 0], [-30, 30])
+            self._wndui.currPosLine2.setData([0, 0], [-30, 30])
             # PROM position
-            self.promLine1.setData(
+            self._wndui.promLine1.setData(
                 [self.pluto.hocdisp, self.pluto.hocdisp],
                 [-30, 30]
             )
-            self.promLine2.setData(
+            self._wndui.promLine2.setData(
                 [-self.pluto.hocdisp, -self.pluto.hocdisp],
                 [-30, 30]
             )
@@ -420,6 +460,19 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         # Close if needed
         if self._smachines['rom'].state == psm.PlutoRomAssessStates.ROM_DONE:
             self._romwnd.close()
+    
+    def _update_propwnd_ui(self):
+        # Update current hand position
+        self._wndui.currPosLine1.setData(
+            [self.pluto.hocdisp, self.pluto.hocdisp],
+            [-30, 30]
+        )
+        self._wndui.currPosLine2.setData(
+            [-self.pluto.hocdisp, -self.pluto.hocdisp],
+            [-30, 30]
+        )
+        # Update hand displacement display
+        self._wndui.label.setText(f"PLUTO Proprioception Assessment [{self.pluto.hocdisp:5.2f}cm]")
 
     def _romassess_add_graph(self):
         """Function to add graph and other objects for displaying HOC movements.
@@ -435,46 +488,115 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         _pgobj.getAxis('left').setStyle(showValues=False)
         
         # Current position lines
-        self.currPosLine1 = pg.PlotDataItem(
+        self._wndui.currPosLine1 = pg.PlotDataItem(
             [0, 0],
             [-30, 30],
             pen=pg.mkPen(color = '#FFFFFF',width=2)
         )
-        self.currPosLine2 = pg.PlotDataItem(
+        self._wndui.currPosLine2 = pg.PlotDataItem(
             [0, 0],
             [-30, 30],
             pen=pg.mkPen(color = '#FFFFFF',width=2)
         )
-        _pgobj.addItem(self.currPosLine1)
-        _pgobj.addItem(self.currPosLine2)
+        _pgobj.addItem(self._wndui.currPosLine1)
+        _pgobj.addItem(self._wndui.currPosLine2)
         
         # AROM Lines
-        self.aromLine1 = pg.PlotDataItem(
+        self._wndui.aromLine1 = pg.PlotDataItem(
             [0, 0],
             [-30, 30],
             pen=pg.mkPen(color = '#FF8888',width=2)
         )
-        self.aromLine2 = pg.PlotDataItem(
+        self._wndui.aromLine2 = pg.PlotDataItem(
             [0, 0],
             [-30, 30],
             pen=pg.mkPen(color = '#FF8888',width=2)
         )
-        _pgobj.addItem(self.aromLine1)
-        _pgobj.addItem(self.aromLine2)
+        _pgobj.addItem(self._wndui.aromLine1)
+        _pgobj.addItem(self._wndui.aromLine2)
         
         # PROM Lines
-        self.promLine1 = pg.PlotDataItem(
+        self._wndui.promLine1 = pg.PlotDataItem(
             [0, 0],
             [-30, 30],
             pen=pg.mkPen(color = '#8888FF',width=2)
         )
-        self.promLine2 = pg.PlotDataItem(
+        self._wndui.promLine2 = pg.PlotDataItem(
             [0, 0],
             [-30, 30],
             pen=pg.mkPen(color = '#8888FF',width=2)
         )
-        _pgobj.addItem(self.promLine1)
-        _pgobj.addItem(self.promLine2)
+        _pgobj.addItem(self._wndui.promLine1)
+        _pgobj.addItem(self._wndui.promLine2)
+    
+    def _propassess_add_graph(self):
+        """Function to add graph and other objects for displaying HOC movements.
+        """
+        _pgobj = pg.PlotWidget()
+        _templayout = QtWidgets.QGridLayout()
+        _templayout.addWidget(_pgobj)
+        _pen = pg.mkPen(color=(255, 0, 0))
+        self._wndui.hocGraph.setLayout(_templayout)
+        _pgobj.setYRange(-20, 20)
+        _pgobj.setXRange(-10, 10)
+        _pgobj.getAxis('bottom').setStyle(showValues=False)
+        _pgobj.getAxis('left').setStyle(showValues=False)
+        
+        # Current position lines
+        self._wndui.currPosLine1 = pg.PlotDataItem(
+            [0, 0],
+            [-30, 30],
+            pen=pg.mkPen(color = '#FFFFFF',width=1)
+        )
+        self._wndui.currPosLine2 = pg.PlotDataItem(
+            [0, 0],
+            [-30, 30],
+            pen=pg.mkPen(color = '#FFFFFF',width=1)
+        )
+        _pgobj.addItem(self._wndui.currPosLine1)
+        _pgobj.addItem(self._wndui.currPosLine2)
+        
+        # AROM Lines
+        self._wndui.aromLine1 = pg.PlotDataItem(
+            [self._romdata["AROM"], self._romdata["AROM"]],
+            [-30, 30],
+            pen=pg.mkPen(color = '#FF8888',width=1, style=QtCore.Qt.DotLine)
+        )
+        self._wndui.aromLine2 = pg.PlotDataItem(
+            [-self._romdata["AROM"], -self._romdata["AROM"]],
+            [-30, 30],
+            pen=pg.mkPen(color = '#FF8888',width=1, style=QtCore.Qt.DotLine)
+        )
+        _pgobj.addItem(self._wndui.aromLine1)
+        _pgobj.addItem(self._wndui.aromLine2)
+        
+        # PROM Lines
+        self._wndui.promLine1 = pg.PlotDataItem(
+            [self._romdata["PROM"], self._romdata["PROM"]],
+            [-30, 30],
+            pen=pg.mkPen(color = '#8888FF',width=1, style=QtCore.Qt.DotLine)
+        )
+        self._wndui.promLine2 = pg.PlotDataItem(
+            [-self._romdata["PROM"], -self._romdata["PROM"]],
+            [-30, 30],
+            pen=pg.mkPen(color = '#8888FF',width=1, style=QtCore.Qt.DotLine)
+        )
+        _pgobj.addItem(self._wndui.promLine1)
+        _pgobj.addItem(self._wndui.promLine2)
+        
+        # Target Lines
+        self._wndui.tgtLine1 = pg.PlotDataItem(
+            [0, 0],
+            [-30, 30],
+            pen=pg.mkPen(color = '#00FF00',width=2)
+        )
+        self._wndui.tgtLine2 = pg.PlotDataItem(
+            [0, 0],
+            [-30, 30],
+            pen=pg.mkPen(color = '#00FF00',width=2)
+        )
+        _pgobj.addItem(self._wndui.tgtLine1)
+        _pgobj.addItem(self._wndui.tgtLine2)
     
     #
     # Device Data Viewer Functions 
@@ -599,8 +721,6 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             "ROM": self._romdata,
             "PropAssessment": self._propassdata
         }
-        print(_subjdata)
-        print(self._datadir / "session_details.json")
         with open(self._datadir / "session_details.json", "w") as _f:
             json.dump(_subjdata, _f, indent=4)
 
