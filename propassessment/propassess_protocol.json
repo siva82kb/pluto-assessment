@@ -6,6 +6,7 @@
         0.75
     ],
     "min_target_sep": 1,
+    "move_speed": 0.5,
     "demo_duration": 5,
     "intrat_rest_duration": 3,
     "intert_rest_duration": 5

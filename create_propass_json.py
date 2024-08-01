@@ -21,6 +21,9 @@ propassess_protocol = {
     # Minimum target separation (cm).
     "min_target_sep": 1,
     
+    # Duration for haptic demonstration (cm/seconds).
+    "move_speed": 0.5,
+    
     # Duration for haptic demonstration (seconds).
     "demo_duration": 5,
     

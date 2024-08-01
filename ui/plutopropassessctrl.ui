@@ -58,7 +58,7 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_2">
        <item>
-        <widget class="QPushButton" name="pbStartStopProtocl">
+        <widget class="QPushButton" name="pbStartStopProtocol">
          <property name="font">
           <font>
            <family>Bahnschrift Light</family>
@@ -86,20 +86,7 @@
       </layout>
      </item>
      <item>
-      <widget class="QLabel" name="label_2">
-       <property name="font">
-        <font>
-         <family>Bahnschrift Light</family>
-         <pointsize>12</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>TextLabel</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QTextEdit" name="textInstruction">
+      <widget class="QTextEdit" name="textInformation">
        <property name="enabled">
         <bool>false</bool>
        </property>
@@ -112,18 +99,18 @@
        <property name="maximumSize">
         <size>
          <width>729</width>
-         <height>71</height>
+         <height>120</height>
         </size>
        </property>
        <property name="font">
         <font>
-         <family>Bahnschrift Light</family>
-         <pointsize>12</pointsize>
+         <family>Space Mono</family>
+         <pointsize>8</pointsize>
         </font>
        </property>
        <property name="styleSheet">
-        <string notr="true">color: rgb(0, 0, 127);
-background-color: rgb(240, 240, 240);</string>
+        <string notr="true">color: rgb(85, 255, 0);
+background-color: rgb(0, 0, 0);</string>
        </property>
       </widget>
      </item>
