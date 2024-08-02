@@ -58,11 +58,15 @@ class Ui_ProprioceptionAssessWindow(object):
         self.textInformation.setMinimumSize(QtCore.QSize(729, 71))
         self.textInformation.setMaximumSize(QtCore.QSize(729, 120))
         font = QtGui.QFont()
-        font.setFamily("Space Mono")
+        font.setFamily("Cascadia Mono")
         font.setPointSize(8)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(50)
         self.textInformation.setFont(font)
         self.textInformation.setStyleSheet("color: rgb(85, 255, 0);\n"
-"background-color: rgb(0, 0, 0);")
+"background-color: rgb(0, 0, 0);\n"
+"font: 8pt \"Cascadia Mono\";")
         self.textInformation.setObjectName("textInformation")
         self.verticalLayout.addWidget(self.textInformation)
         ProprioceptionAssessWindow.setCentralWidget(self.centralwidget)

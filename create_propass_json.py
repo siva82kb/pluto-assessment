@@ -24,6 +24,12 @@ propassess_protocol = {
     # Duration for haptic demonstration (cm/seconds).
     "move_speed": 0.5,
     
+    # Duration for deciding the hand is on or off target (seconds).
+    "on_off_target_duration": 1,
+
+    # Target error threshold (cm).
+    "target_error_th": 0.25,
+
     # Duration for haptic demonstration (seconds).
     "demo_duration": 5,
     

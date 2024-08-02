@@ -24,6 +24,12 @@ class PlutoRomAssessEvent(Enum):
 class PlutoPropAssessEvents(Enum):
     STARTSTOP_CLICKED = 0
     PAUSE_CLICKED = 1
+    HAPTIC_DEMO_TARGET_REACHED_TIMEOUT = 2
+    HAPTIC_DEMO_OFF_TARGET_TIMEOUT = 3
+    HAPTIC_DEMO_ON_TARGET_TIMEOUT = 4
+    FULL_RANGE_REACHED = 5
+    INTRA_TRIAL_REST_TIMEOUT = 6
+    INTER_TRIAL_REST_TIMEOUT = 7
 
 class PlutoCalibStates(Enum):
     WAIT_FOR_ZERO_SET = 0
@@ -192,25 +198,29 @@ class PlutoPropAssessStates(Enum):
     PROP_DONE = 0
     WAIT_FOR_START = 1
     WAIT_FOR_HAPTIC_DISPAY_START = 2
-    TRIAL_HAPTIC_DISPLAY = 3
-    INTRA_TRIAL_REST = 4
-    TRIAL_ASSESSMENT = 5
-    INTER_TRIAL_REST = 6
-    PROTOCOL_PAUSE = 7
-    PROTOCOL_STOP = 8
+    TRIAL_HAPTIC_DISPLAY_MOVING = 3
+    TRIAL_HAPTIC_DISPLAY = 4
+    INTRA_TRIAL_REST = 5
+    TRIAL_ASSESSMENT = 6
+    INTER_TRIAL_REST = 7
+    PROTOCOL_PAUSE = 8
+    PROTOCOL_STOP = 9
 
 
 class PlutoPropAssessmentStateMachine():
-    def __init__(self, plutodev, smtimer):
+    def __init__(self, plutodev, protocol, smtimer):
         self._state = PlutoPropAssessStates.WAIT_FOR_START
         self._instruction = "Press the Start Button to start assessment."
+        self._protocol = protocol
         self._timer = smtimer
+        self._timer.stop()
         # Indicates if both AROM and PROM have been done for this
         # particular instance of the statemachine.
         self._pluto = plutodev
         self._stateactions = {
             PlutoPropAssessStates.WAIT_FOR_START: self._wait_for_start,
             PlutoPropAssessStates.WAIT_FOR_HAPTIC_DISPAY_START: self._wait_for_haptic_display_start,
+            PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY_MOVING: self._trial_haptic_display_moving,
             PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY: self._trial_haptic_display,
             PlutoPropAssessStates.INTRA_TRIAL_REST: self._intra_trial_rest,
             PlutoPropAssessStates.TRIAL_ASSESSMENT: self._trial_assessment,
@@ -236,6 +246,7 @@ class PlutoPropAssessmentStateMachine():
     def _wait_for_start(self, event, timeval):
         """Waits till the start button is pressed.
         """
+        self._timer.stop()
         if event == PlutoPropAssessEvents.STARTSTOP_CLICKED:
             # Check to make sure the angle is close to zero.
             if self._pluto.hocdisp < 0.25:
@@ -244,15 +255,24 @@ class PlutoPropAssessmentStateMachine():
             else:
                 self._instruction = "Hand must be closed before we start."
 
-
     def _wait_for_haptic_display_start(self, event, timeval):
+        self._timer.stop()
         if event == PlutoButtonEvents.RELEASED:
-            self._state = PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY
+            self._state = PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY_MOVING
             self._instruction = "Running Haptic Display"
+
+    def _trial_haptic_display_moving(self, event, timeval):
+        # Check if the target has been reached.
+        if event == PlutoPropAssessEvents.HAPTIC_DEMO_TARGET_REACHED_TIMEOUT:
+            self._state = PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY
+            # Wait for the demo duration at the target.
             self._timer.start(1000)
 
+
     def _trial_haptic_display(self, event, timeval):
-        pass
+        # Check if the target has been reached.
+        if event == PlutoPropAssessEvents.HAPTIC_DEMO_ON_TARGET_TIMEOUT:
+            self._state = PlutoPropAssessStates.INTRA_TRIAL_REST
 
     def _intra_trial_rest(self, event, timeval):
         pass

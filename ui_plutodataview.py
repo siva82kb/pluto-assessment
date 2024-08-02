@@ -24,15 +24,15 @@ class Ui_DevDataWindow(object):
         self.textDevData.setEnabled(False)
         self.textDevData.setGeometry(QtCore.QRect(10, 10, 411, 311))
         font = QtGui.QFont()
-        font.setFamily("Space Mono")
+        font.setFamily("Cascadia Mono")
         font.setPointSize(10)
         font.setBold(False)
         font.setItalic(False)
         font.setWeight(50)
         self.textDevData.setFont(font)
         self.textDevData.setStyleSheet("background-color: rgb(0, 0, 0);\n"
-"font: 10pt \"Space Mono\";\n"
-"color: rgb(0, 255, 60);")
+"color: rgb(0, 255, 60);\n"
+"font: 10pt \"Cascadia Mono\";")
         self.textDevData.setMarkdown("")
         self.textDevData.setObjectName("textDevData")
         DevDataWindow.setCentralWidget(self.centralwidget)
@@ -46,5 +46,5 @@ class Ui_DevDataWindow(object):
         self.textDevData.setHtml(_translate("DevDataWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'Space Mono\'; font-size:10pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
+"</style></head><body style=\" font-family:\'Cascadia Mono\'; font-size:10pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:\'Space Mono\';\"><br /></p></body></html>"))

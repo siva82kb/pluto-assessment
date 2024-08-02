@@ -43,6 +43,7 @@ from ui_plutopropassessctrl import Ui_ProprioceptionAssessWindow
 # Module level constants.
 DATA_DIR = "propassessment"
 PROTOCOL_FILE = f"{DATA_DIR}/propassess_protocol.json"
+PROPASS_CTRL_TIMER_DELTA = 0.01
 
 class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     """Main window of the PLUTO proprioception assessment program.
@@ -52,6 +53,9 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         """View initializer."""
         super(PlutoPropAssesor, self).__init__(*args, **kwargs)
         self.setupUi(self)
+
+        # Move close to top left corner
+        self.move(50, 100)
 
         # PLUTO COM
         self.pluto = QtPluto(port)
@@ -73,18 +77,20 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         #     "PROM": 0.0
         # }
         self._propassdata = None
+        self._protocol = None
         self._set_subjectid("test")
         
         # Initialize timers.
-        self.sbtimer = QTimer()
-        self.sbtimer.timeout.connect(self._callback_sb_timer)
-        self.sbtimer.start(1000)
-        self.propass_dur_timer = QTimer()
-        self.propass_dur_timer.timeout.connect(self._callback_propassess_dur_timer)
-        self.propass_dur_timer.stop()
+        self.apptimer = QTimer()
+        self.apptimer.timeout.connect(self._callback_app_timer)
+        self.apptimer.start(1000)
+        self.apptime = 0
+        # self.propass_dur_timer = QTimer()
+        # self.propass_dur_timer.timeout.connect(self._callback_propassess_dur_timer)
+        # self.propass_dur_timer.stop()
         self.propass_sm_timer = QTimer()
         self.propass_sm_timer.timeout.connect(self._callback_propassess_sm_timer)
-        self.propass_sm_time = 0
+        self.propass_sm_time = -1
         # Anothe timer for controlling the target position command to the robot.
         # We probably can get all this done with a single timer, but for the lack 
         # of time for an elegant solution, we will use an additional timer.
@@ -95,7 +101,9 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             "init": 0,
             "final": 0,
             "dur": 0,
-            "curr": 0
+            "curr": 0,
+            "on_timer": 0,
+            "off_timer": 0
         }
 
         # Attach callback to the buttons
@@ -225,17 +233,18 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._update_romwnd_ui()
 
     def _callback_assess_prop(self):
+        # Read the protocol file.
+        self._initialize_protocol()
+        
         # Create a new timer and share it with the state machine.
         # Create the proprioception assessment statemachine
         self.propass_sm_timer.stop()
         self.propass_sm_time = 0
         self._smachines["prop"] = psm.PlutoPropAssessmentStateMachine(
             self.pluto,
+            self._protocol,
             self.propass_sm_timer
         )
-
-        # Read the protocol file.
-        self._initialize_protocol()
         
         # Create the window
         self._propwnd = QtWidgets.QMainWindow()
@@ -255,37 +264,72 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     # 
     # Timer callbacks
     #
-    def _callback_sb_timer(self):
+    def _callback_app_timer(self):
+        self.apptime += 1
         _con = self.pluto.is_connected()
         self.statusBar().showMessage(
             ' | '.join((
+                f"{self.apptime:5d}s",
                 _con if _con != "" else "Disconnected",
-                f"FR: {self.pluto.framerate():3.1f}Hz"
+                f"FR: {self.pluto.framerate():4.1f}Hz",
+                f"{self._subjid}",
             ))
         )
     
-    def _callback_propassess_dur_timer(self):
-        self._propassdata["assessdur"] += 1
+    # def _callback_propassess_dur_timer(self):
+    #     self._propassdata["assessdur"] += 1
 
     def _callback_propassess_sm_timer(self):
-        self._propassdata["trialdur"] += 1
+        # Update trial duration
+        _checkstate = not (
+            self._smachines["prop"].state == psm.PlutoPropAssessStates.WAIT_FOR_START
+            or self._smachines["prop"].state == psm.PlutoPropAssessStates.WAIT_FOR_HAPTIC_DISPAY_START
+            or self._smachines["prop"].state == psm.PlutoPropAssessStates.INTER_TRIAL_REST
+            or self._smachines["prop"].state == psm.PlutoPropAssessStates.PROTOCOL_STOP
+            or self._smachines["prop"].state == psm.PlutoPropAssessStates.PROP_DONE
+        )
+        # Act according to the state.
+        if self._smachines["prop"] == psm.PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY:
+            # Check if the demo duration has been reached.
+            pass
+
 
     def _callback_propassess_ctrl_timer(self):
         # Check state and act accordingly.
-        self.propass_tgtctrl['time'] += 0.1 if self.propass_tgtctrl['time'] >= 0 else -1
-        if self._smachines["prop"].state == psm.PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY:
+        self.propass_tgtctrl['time'] = (self.propass_tgtctrl['time']+ PROPASS_CTRL_TIMER_DELTA
+                                        if self.propass_tgtctrl['time'] >= 0
+                                        else -1)
+        self.propass_sm_time = (self.propass_sm_time + PROPASS_CTRL_TIMER_DELTA
+                                if self.propass_sm_time >= 0
+                                else -1)
+        if self._smachines["prop"].state == psm.PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY_MOVING:
             # Update target position.
-            _t, _init, _tgt, _dur = (self.propass_tgtctrl["time"],
-                                     self.propass_tgtctrl["init"],
-                                     self.propass_tgtctrl["final"],
-                                     self.propass_tgtctrl["dur"])
-            self.propass_tgtctrl["curr"] = max(
-                min(_init + (_tgt - _init) * (_t / _dur), _tgt), _init
-            )
-            # Send command to the robot.
-            self.pluto.set_control("POSITION", -self.propass_tgtctrl["curr"] / pdef.HOCScale)
+            self._update_target_position()
+
+            # Check if the target has been reached.
+            _tgterr = self.propass_tgtctrl["final"] - self.pluto.hocdisp
+            if abs(_tgterr) < self._protocol['target_error_th']:
+                # Target reached. Wait to see if target position is maintained.
+                self.propass_tgtctrl["on_timer"] += PROPASS_CTRL_TIMER_DELTA
+                # Check if the target has been maintained for the required duration.
+                if self.propass_tgtctrl["on_timer"] >= self._protocol['on_off_target_duration']:
+                    # Target maintained. Move to next state.
+                    self._smachines["prop"].run_statemachine(
+                        psm.PlutoPropAssessEvents.HAPTIC_DEMO_TARGET_REACHED_TIMEOUT,
+                        0
+                    )
+        elif self._smachines["prop"].state == psm.PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY:
+            # Check if the statemachine timer has reached the required duration.
+            if self.propass_sm_time >= self._protocol['demo_duration']:
+                # Demo duration reached. Move to next state.
+                self._smachines["prop"].run_statemachine(
+                    psm.PlutoPropAssessEvents.HAPTIC_DEMO_ON_TARGET_TIMEOUT,
+                    0
+                )
         else:
             self.pluto.set_control("NONE", 0)
+        
+        self._handle_propass_state()
 
     #
     # Signal callbacks
@@ -427,7 +471,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         
         # Update ROM values on button text.
         if self._romdata["AROM"] > 0 and self._romdata["PROM"] > 0:
-            self.pbRomAssess.setText(f"Assess ROM [AROM: {self._romdata['AROM']:5.2f}cm | AROM: {self._romdata['PROM']:5.2f}cm]")
+            self.pbRomAssess.setText(f"Assess ROM [AROM: {self._romdata['AROM']:5.2f}cm | PROM: {self._romdata['PROM']:5.2f}cm]")
         else:
             self.pbRomAssess.setText("Assess ROM")
 
@@ -439,7 +483,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._currsess = dt.now().strftime("%Y-%m-%d-%H-%M-%S")
         # set data dirr and create if needed.        
         self._datadir = pathlib.Path(DATA_DIR, self._subjid, self._currsess)
-        self._datadir.mkdir(exist_ok=True)
+        self._datadir.mkdir(exist_ok=True, parents=True)
     
     #
     # Calibration Window Functions
@@ -546,10 +590,28 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             [-self.pluto.hocdisp, -self.pluto.hocdisp],
             [-30, 30]
         )
-        # Update hand displacement display
-        self._wndui.label.setText(f"PLUTO Proprioception Assessment [{self.pluto.hocdisp:5.2f}cm]")
+        # Update target position when needed.
+        _checkstate = not (
+            self._smachines["prop"].state == psm.PlutoPropAssessStates.WAIT_FOR_START
+            or self._smachines["prop"].state == psm.PlutoPropAssessStates.WAIT_FOR_HAPTIC_DISPAY_START
+            or self._smachines["prop"].state == psm.PlutoPropAssessStates.INTER_TRIAL_REST
+            or self._smachines["prop"].state == psm.PlutoPropAssessStates.PROTOCOL_STOP
+            or self._smachines["prop"].state == psm.PlutoPropAssessStates.PROP_DONE
+        )
+        _tgt = (self._propassdata['targets'][self._propassdata['trialno']]
+                if _checkstate else 0)
+        # Update target line        
+        self._wndui.tgtLine1.setData(
+            [_tgt, _tgt],
+            [-30, 30]
+        )
+        self._wndui.tgtLine2.setData(
+            [-_tgt, -_tgt],
+            [-30, 30]
+        )
 
         # Update based on state
+        _assesssdurstr = f"{self.apptime - self._propassdata['assessstarttime']:5d}sec"
         if self._smachines["prop"].state == psm.PlutoPropAssessStates.WAIT_FOR_START:
             self._wndui.pbStartStopProtocol.setText("Start Protocol")
             self._wndui.textInformation.setText("\n".join((
@@ -560,21 +622,28 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         elif self._smachines["prop"].state == psm.PlutoPropAssessStates.WAIT_FOR_HAPTIC_DISPAY_START:
             self._wndui.pbStartStopProtocol.setText("Stop Protocol")
             self._wndui.textInformation.setText("\n".join((
-                f"[{self._propassdata['assessdur']:5d}sec]",
+                _assesssdurstr,
                 self._smachines['prop'].instruction
             )))
             self._wndui.checkBoxPauseProtocol.setEnabled(False)
             self._wndui.textInformation.setText("\n".join((
-                f"[{self._propassdata['assessdur']:5d}sec]",
+                _assesssdurstr,
                 self._get_trial_details_line("Waiting for Haptic Demo"),
                 self._smachines['prop'].instruction
             )))
+        elif self._smachines["prop"].state == psm.PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY_MOVING:
+            self._wndui.textInformation.setText("\n".join((
+                _assesssdurstr,
+                self._get_trial_details_line("Haptic Demo"),
+                "Moving to target position."
+            )))
         elif self._smachines["prop"].state == psm.PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY:
             self._wndui.textInformation.setText("\n".join((
+                _assesssdurstr,
                 self._get_trial_details_line("Haptic Demo"),
-                "Running Haptic Demo."
+                "Demonstraing Haptic Position."
             )))
-        
+    
     def _romassess_add_graph(self):
         """Function to add graph and other objects for displaying HOC movements.
         """
@@ -706,6 +775,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._devdatawnd = QtWidgets.QMainWindow()
         self._devdatawndui = Ui_DevDataWindow()
         self._devdatawndui.setupUi(self._devdatawnd)
+        self._devdatawnd.move(50, 300)
         self._devdatawnd.show()
         self._disp_update_counter = 0
         self._update_devdatawnd_ui()
@@ -813,8 +883,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         # Check if this is a start or stop event.
         if self._smachines["prop"].state == psm.PlutoPropAssessStates.WAIT_FOR_START:
             # Start start time
-            self._propassdata["assessdur"] = 0
-            self.propass_dur_timer.start(1000)
+            self._propassdata["assessstarttime"] = self.apptime
             # Start event
             self._smachines["prop"].run_statemachine(
                 psm.PlutoPropAssessEvents.STARTSTOP_CLICKED,
@@ -832,55 +901,78 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     def _initialize_protocol(self):
         # Read the protocol file.
         with open(PROTOCOL_FILE, "r") as fh:
-            self._propassdata = {
-                "protocol": json.load(fh)
-            }
+            self._protocol = json.load(fh)
         
-        # Start time.
-        self._propassdata['assessdur'] = 0
-        self._propassdata['trialdur'] = 0
+        # Start time and Trial related varaibles.
+        self._propassdata = {
+            'assessstarttime': 0,
+            'trialstarttime': 0,
+            'trialno': 0,
+            'trialfile': 0,
+        }
         
         # Set sutiable targets.
         self._generate_propassess_targets()
-        
-        # Trial related variables
-        self._propassdata['protocol']['trialno'] = 0
-        self._propassdata['protocol']['trialfile'] = 0
 
     def _generate_propassess_targets(self):
-        _tgtsep = self._propassdata['protocol']['targets'][0] * self._romdata['PROM']
-        _tgts = (self._propassdata['protocol']['targets']
-                 if _tgtsep >= self._propassdata['protocol']['min_target_sep']
-                 else self._propassdata['protocol']['targets'][1:2])
+        _tgtsep = self._protocol['targets'][0] * self._romdata['PROM']
+        _tgts = (self._protocol['targets']
+                 if _tgtsep >= self._protocol['min_target_sep']
+                 else self._protocol['targets'][1:2])
         # Generate the randomly order targets
         _tgt2 = 2 * _tgts
-        _tgt3 = (self._propassdata['protocol']['N'] - 2) * _tgts
+        _tgt3 = (self._protocol['N'] - 2) * _tgts
         random.shuffle(_tgt2)
         random.shuffle(_tgt3)
         self._propassdata['targets'] = self._romdata['PROM'] * np.array(_tgt2 + _tgt3)
 
     def _get_trial_details_line(self, state="Haptic Demo"):
-        _nt = self._propassdata['protocol']['trialno']
+        _nt = self._propassdata['trialno']
         _tgt = self._propassdata['targets'][_nt]
-        _tdur = self._propassdata['trialdur']
-        return f"Trial: {_nt:3d} | Target: {_tgt:5.1f}cm | {state:<25s} | Trial Dur: {_tdur:02d}sec"
+        _tdur = self.apptime - self._propassdata['trialstarttime']
+        _strs = [f"Trial: {_nt:3d}", 
+                 f"Target: {_tgt:5.1f}cm", 
+                 f"{state:<25s}", 
+                 f"Trial Dur: {_tdur:02d}sec"]
+        # Add on target time when needed.
+        if self.propass_sm_time >= 0:
+            _strs.append(f"On Target Dur: {int(self.propass_sm_time):02d}sec")
+        return " | ".join(_strs)
     
     def _handle_propass_state(self):
         # Check the state and respond accordingly.
-        if self._smachines["prop"].state == psm.PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY:
-            # print(self._smachines["prop"].state)
-            # print(self.propass_tgtctrl["time"])
+        if self._smachines["prop"].state == psm.PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY_MOVING:
             # Check if timer has been started already.
             if self.propass_tgtctrl["time"] < 0:
                 self.propass_tgtctrl["time"] = 0
                 self.propass_tgtctrl["init"] = self.pluto.hocdisp
-                self.propass_tgtctrl["final"] = self._propassdata['targets'][self._propassdata['protocol']['trialno']]
+                self.propass_tgtctrl["final"] = self._propassdata['targets'][self._propassdata['trialno']]
                 self.propass_tgtctrl["curr"] = self.pluto.hocdisp
-                self.propass_tgtctrl["dur"] = (self.propass_tgtctrl["final"] - self.propass_tgtctrl["init"]) / self._propassdata['protocol']['move_speed']
-                self.propass_ctrl_timer.start(100)
-                # print("asdgdsg")
+                self.propass_tgtctrl["dur"] = (self.propass_tgtctrl["final"] - self.propass_tgtctrl["init"]) / self._protocol['move_speed']
+                self.propass_ctrl_timer.start(int(PROPASS_CTRL_TIMER_DELTA * 1000))
+                # Initialize the propass state machine time
+                self.propass_sm_time = -1
+        elif self._smachines["prop"].state == psm.PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY:
+            # Initialize the statemachine timer if needed.
+            if self.propass_sm_time == -1:
+                self.propass_sm_time = 0.
+        elif self._smachines["prop"].state == psm.PlutoPropAssessStates.INTRA_TRIAL_REST:
+            # Initialize the statemachine timer if needed.
+            if self.propass_sm_time == -1:
+                self.propass_sm_time = 0.
         else:
-            self.propass_tgtctrl.stop()
+            self.propass_ctrl_timer.stop()
+    
+    def _update_target_position(self):
+        _t, _init, _tgt, _dur = (self.propass_tgtctrl["time"],
+                                     self.propass_tgtctrl["init"],
+                                     self.propass_tgtctrl["final"],
+                                     self.propass_tgtctrl["dur"])
+        self.propass_tgtctrl["curr"] = max(
+                min(_init + (_tgt - _init) * (_t / _dur), _tgt), _init
+            )
+            # Send command to the robot.
+        self.pluto.set_control("POSITION", -self.propass_tgtctrl["curr"] / pdef.HOCScale)
 
     #
     # Main window close event
@@ -901,6 +993,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             "SubjectID": self._subjid,
             "Session": self._currsess,
             "ROM": self._romdata,
+            "Protocol": self._protocol,
             "PropAssessment": self._propassdata
         }
         with open(self._datadir / "session_details.json", "w") as _f:

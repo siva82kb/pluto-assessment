@@ -66,6 +66,10 @@ class Ui_PlutoPropAssessor(object):
         self.verticalLayout.addWidget(self.pbPropAssessment)
         PlutoPropAssessor.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(PlutoPropAssessor)
+        font = QtGui.QFont()
+        font.setFamily("Cascadia Mono")
+        font.setPointSize(9)
+        self.statusbar.setFont(font)
         self.statusbar.setObjectName("statusbar")
         PlutoPropAssessor.setStatusBar(self.statusbar)
 
