@@ -33,9 +33,13 @@ import pyqtgraph as pg
 
 import plutodefs as pdef
 import plutostatemachines as psm
+
+from plutodataviewwindow import PlutoDataViewWindow
+from plutocalibwindow import PlutoCalibrationWindow
+
 from ui_plutopropass import Ui_PlutoPropAssessor
 from ui_plutocalib import Ui_CalibrationWindow
-from ui_plutodataview import Ui_DevDataWindow
+# from ui_plutodataview import Ui_DevDataWindow
 from ui_plutotestcontrol import Ui_PlutoTestControlWindow
 from ui_plutoromassess import Ui_RomAssessWindow
 from ui_plutopropassessctrl import Ui_ProprioceptionAssessWindow
@@ -176,23 +180,13 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self.update_ui()
     
     def _callback_calibrate(self):
-        # Create the calibration statemachine
-        self._smachines["calib"] = psm.PlutoCalibrationStateMachine(self.pluto)
-        
-        # First reset calibration.
-        self.pluto.calibrate("NOMECH")
-        self.pluto.calibrate("NOMECH")
-        self.pluto.calibrate("NOMECH")
-        
-        # Create an instance of the calibration window and open it as a modal 
-        # window.
-        self._calibwnd = QtWidgets.QMainWindow()
+        # Calibration window and open it as a modal window.
+        self._calibwnd = PlutoCalibrationWindow(plutodev=self.pluto,
+                                                mechanism="HOC",
+                                                modal=True)
         self._wndui = Ui_CalibrationWindow()
-        self._calibwnd.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
-        self._wndui.setupUi(self._calibwnd)
         self._calibwnd.closeEvent = self._calibwnd_close_event
         self._calibwnd.show()
-        self._update_calibwnd_ui()
     
     def _callback_test_device(self):
         self._testdevwnd = QtWidgets.QMainWindow()
@@ -338,23 +332,12 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         """Update the UI of the appropriate window.
         """
         # Update data viewer window.
-        self._disp_update_counter += 1
-        self._disp_update_counter %= 10
-        if self._disp_update_counter == 0:
-            self._update_devdatawnd_ui()
-            self.update_ui()
+        self.update_ui()
+
         # Update calibration status
         self._calib = (self.pluto.calibration == 1)
         
-        # Update other windows
-        if self._calibwnd is not None:
-            self._smachines["calib"].run_statemachine(
-                None,
-                "HOC"
-            )
-            # Update UI
-            self._update_calibwnd_ui()
-        
+        # Update other windows        
         if self._romwnd is not None:
             self._smachines["rom"].run_statemachine(
                 None
@@ -375,17 +358,6 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         """
         Handle this depnding on what window is currently open.
         """
-        # Calibration Window
-        if self._calibwnd is not None:
-            self._smachines["calib"].run_statemachine(
-                psm.PlutoButtonEvents.RELEASED,
-                "HOC"
-            )
-
-            # Update UI
-            self._update_calibwnd_ui()
-            return
-        
         # ROM Assessment Window
         if self._romwnd is not None:
             self._smachines["rom"].run_statemachine(
@@ -772,40 +744,41 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     # Device Data Viewer Functions 
     #
     def _open_devdata_viewer(self):
-        self._devdatawnd = QtWidgets.QMainWindow()
-        self._devdatawndui = Ui_DevDataWindow()
-        self._devdatawndui.setupUi(self._devdatawnd)
-        self._devdatawnd.move(50, 300)
+        self._devdatawnd = PlutoDataViewWindow(plutodev=self.pluto)
         self._devdatawnd.show()
-        self._disp_update_counter = 0
-        self._update_devdatawnd_ui()
+        # self._devdatawndui = Ui_DevDataWindow()
+        # self._devdatawndui.setupUi(self._devdatawnd)
+        # self._devdatawnd.move(50, 300)
+        # self._devdatawnd.show()
+        # self._disp_update_counter = 0
+        # self._update_devdatawnd_ui()
     
-    def _update_devdatawnd_ui(self):
-        # Check if new data is available
-        if len(self.pluto.currdata) == 0:
-            self._devdatawndui.textDevData.setText("No data available.")
-            return
-        # New data available. Format and display
-        _dispdata = [
-            "PLUTO Data",
-            "----------",
-            f"Time    : {self.pluto.currdata[0]}",
-            f"Status  : {pdef.OutDataType[self.pluto.datatype]} | {pdef.ControlType[self.pluto.controltype]} | {pdef.CalibrationStatus[self.pluto.calibration]}",
-            f"Error   : {pdef.ErrorTypes[self.pluto.error]}",
-            f"Mech    : {pdef.Mehcanisms[self.pluto.mechanism]:<5s} | Calib   : {pdef.CalibrationStatus[self.pluto.calibration]}",
-            f"Actd    : {self.pluto.actuated}",
-        ]
-        _dispdata += [
-            f"Angle   : {self.pluto.angle:-07.2f}deg"
-            + f" [{self.pluto.hocdisp:05.2f}cm]" if self._calib else ""
-        ]
-        _dispdata += [
-            f"Torque  : {self.pluto.torque:3.1f}Nm",
-            f"Control : {self.pluto.control:3.1f}",
-            f"Target  : {self.pluto.desired:3.1f}",
-            f"Button  : {self.pluto.button}",
-        ]
-        self._devdatawndui.textDevData.setText('\n'.join(_dispdata))
+    # def _update_devdatawnd_ui(self):
+    #     # Check if new data is available
+    #     if len(self.pluto.currdata) == 0:
+    #         self._devdatawndui.textDevData.setText("No data available.")
+    #         return
+    #     # New data available. Format and display
+    #     _dispdata = [
+    #         "PLUTO Data",
+    #         "----------",
+    #         f"Time    : {self.pluto.currdata[0]}",
+    #         f"Status  : {pdef.OutDataType[self.pluto.datatype]} | {pdef.ControlType[self.pluto.controltype]} | {pdef.CalibrationStatus[self.pluto.calibration]}",
+    #         f"Error   : {pdef.ErrorTypes[self.pluto.error]}",
+    #         f"Mech    : {pdef.Mehcanisms[self.pluto.mechanism]:<5s} | Calib   : {pdef.CalibrationStatus[self.pluto.calibration]}",
+    #         f"Actd    : {self.pluto.actuated}",
+    #     ]
+    #     _dispdata += [
+    #         f"Angle   : {self.pluto.angle:-07.2f}deg"
+    #         + f" [{self.pluto.hocdisp:05.2f}cm]" if self._calib else ""
+    #     ]
+    #     _dispdata += [
+    #         f"Torque  : {self.pluto.torque:3.1f}Nm",
+    #         f"Control : {self.pluto.control:3.1f}",
+    #         f"Target  : {self.pluto.desired:3.1f}",
+    #         f"Button  : {self.pluto.button}",
+    #     ]
+    #     self._devdatawndui.textDevData.setText('\n'.join(_dispdata))
 
     #
     # Test window controls

@@ -8,35 +8,17 @@ Email: siva82kb@gmail.com
 
 
 import sys
-# import re
-# import pathlib
-# import json
-# import random
 import numpy as np
 
 from qtpluto import QtPluto
-# from datetime import datetime as dt
 
 from PyQt5 import (
-    # QtCore,
+    QtCore,
     QtWidgets,)
-# from PyQt5.QtCore import (
-#     pyqtSignal,
-#     QTimer,)
-# from PyQt5.QtWidgets import (
-#     QApplication,
-#     QMainWindow,
-#     QWidget,
-#     QMessageBox,
-#     QInputDialog
-# )
-# import pyqtgraph as pg
 from enum import Enum
 
 import plutodefs as pdef
-# import plutostatemachines as psm
 from ui_plutocalib import Ui_CalibrationWindow
-
 
 
 class PlutoCalibStates(Enum):
@@ -116,13 +98,15 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO calibration window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None, mechanism: str=None):
+    def __init__(self, parent=None, plutodev: QtPluto=None, mechanism: str=None, modal=False):
         """
         Constructor for the PlutoCalibrationWindow class.
         """
         super(PlutoCalibrationWindow, self).__init__(parent)
         self.ui = Ui_CalibrationWindow()
         self.ui.setupUi(self)
+        if modal:
+            self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         
         # PLUTO device
         self._pluto = plutodev
