@@ -2,7 +2,7 @@
 Module for handling the operation of the PLUTO data viewer window.
 
 Author: Sivakumar Balasubramanian
-Date: 02 August 2024
+Date: 04 August 2024
 Email: siva82kb@gmail.com
 """
 
@@ -24,13 +24,15 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO data viewer window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None):
+    def __init__(self, parent=None, plutodev: QtPluto=None, pos: tuple[int]=None):
         """
         Constructor for the PlutoDataViewWindow class.
         """
         super(PlutoDataViewWindow, self).__init__(parent)
         self.ui = Ui_DevDataWindow()
         self.ui.setupUi(self)
+        if pos is not None:
+            self.move(*pos)
         
         # PLUTO device
         self._pluto = plutodev
