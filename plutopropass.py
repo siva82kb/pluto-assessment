@@ -37,6 +37,7 @@ import plutostatemachines as psm
 from plutodataviewwindow import PlutoDataViewWindow
 from plutocalibwindow import PlutoCalibrationWindow
 from plutotestwindow import PlutoTestControlWindow
+from plutoromwindow import PlutoRomAssessWindow
 
 from ui_plutopropass import Ui_PlutoPropAssessor
 from ui_plutocalib import Ui_CalibrationWindow
@@ -49,6 +50,7 @@ from ui_plutopropassessctrl import Ui_ProprioceptionAssessWindow
 DATA_DIR = "propassessment"
 PROTOCOL_FILE = f"{DATA_DIR}/propassess_protocol.json"
 PROPASS_CTRL_TIMER_DELTA = 0.01
+
 
 class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     """Main window of the PLUTO proprioception assessment program.
@@ -195,28 +197,14 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._testdevwnd.show()
 
     def _callback_assess_rom(self):
-        # Create the ROM statemachine
-        self._smachines["rom"] = psm.PlutoRomAssessmentStateMachine(
-            self.pluto,
-            self._romdata["AROM"],
-            self._romdata["PROM"]
-        )
-        
-        # Create the window
-        self._romwnd = QtWidgets.QMainWindow()
-        self._wndui = Ui_RomAssessWindow()
-        self._romwnd.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
-        self._wndui.setupUi(self._romwnd)
-        
-        # Add graph to the window
-        self._romassess_add_graph()
-
-        # Attach events to the controls.
-        self._romwnd.closeEvent = self._romwnd_close_event
-        self._wndui.pbArom.clicked.connect(self._callback_arom_clicked)
-        self._wndui.pbProm.clicked.connect(self._callback_prom_clicked)
+        self._romwnd = PlutoRomAssessWindow(plutodev=self.pluto,
+                                            mechanism="HOC",
+                                            modal=True)
+        # Attach to the aromset and promset events.
+        self._romwnd.aromset.connect(self._callback_aromset)
+        self._romwnd.promset.connect(self._callback_promset)
+        self._romwnd.closeEvent = self._calibwnd_close_event
         self._romwnd.show()
-        self._update_romwnd_ui()
 
     def _callback_assess_prop(self):
         # Read the protocol file.
@@ -329,13 +317,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         # Update calibration status
         self._calib = (self.pluto.calibration == 1)
         
-        # Update other windows        
-        if self._romwnd is not None:
-            self._smachines["rom"].run_statemachine(
-                None
-            )
-            self._update_romwnd_ui()
-
+        # Update other windows
         if self._propwnd is not None:
             self._smachines["prop"].run_statemachine(
                 None,
@@ -350,19 +332,6 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         """
         Handle this depnding on what window is currently open.
         """
-        # ROM Assessment Window
-        if self._romwnd is not None:
-            self._smachines["rom"].run_statemachine(
-                psm.PlutoButtonEvents.RELEASED
-            )
-            # Update ROM data
-            self._romdata["AROM"] = self._smachines["rom"].arom
-            self._romdata["PROM"] = self._smachines["rom"].prom
-            
-            # Update IO
-            self._update_romwnd_ui()
-            return
-
         # Prop Assessment Window
         if self._propwnd is not None:
             self._smachines["prop"].run_statemachine(
@@ -370,13 +339,20 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
                 self.propass_sm_time
             )
             
-            
             # Check state and respond.
             self._handle_propass_state() 
 
             # Update UI
             self._update_propwnd_ui()
             return
+    
+    def _callback_aromset(self):
+        """Set AROM."""
+        self._romdata["AROM"] = self._romwnd.arom
+    
+    def _callback_promset(self):
+        """Set PROM."""
+        self._romdata["PROM"] = self._romwnd.prom
 
     #
     # Other callbacks
@@ -607,62 +583,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
                 self._get_trial_details_line("Haptic Demo"),
                 "Demonstraing Haptic Position."
             )))
-    
-    def _romassess_add_graph(self):
-        """Function to add graph and other objects for displaying HOC movements.
-        """
-        _pgobj = pg.PlotWidget()
-        _templayout = QtWidgets.QGridLayout()
-        _templayout.addWidget(_pgobj)
-        _pen = pg.mkPen(color=(255, 0, 0))
-        self._wndui.hocGraph.setLayout(_templayout)
-        _pgobj.setYRange(-20, 20)
-        _pgobj.setXRange(-10, 10)
-        _pgobj.getAxis('bottom').setStyle(showValues=False)
-        _pgobj.getAxis('left').setStyle(showValues=False)
-        
-        # Current position lines
-        self._wndui.currPosLine1 = pg.PlotDataItem(
-            [0, 0],
-            [-30, 30],
-            pen=pg.mkPen(color = '#FFFFFF',width=2)
-        )
-        self._wndui.currPosLine2 = pg.PlotDataItem(
-            [0, 0],
-            [-30, 30],
-            pen=pg.mkPen(color = '#FFFFFF',width=2)
-        )
-        _pgobj.addItem(self._wndui.currPosLine1)
-        _pgobj.addItem(self._wndui.currPosLine2)
-        
-        # AROM Lines
-        self._wndui.aromLine1 = pg.PlotDataItem(
-            [0, 0],
-            [-30, 30],
-            pen=pg.mkPen(color = '#FF8888',width=2)
-        )
-        self._wndui.aromLine2 = pg.PlotDataItem(
-            [0, 0],
-            [-30, 30],
-            pen=pg.mkPen(color = '#FF8888',width=2)
-        )
-        _pgobj.addItem(self._wndui.aromLine1)
-        _pgobj.addItem(self._wndui.aromLine2)
-        
-        # PROM Lines
-        self._wndui.promLine1 = pg.PlotDataItem(
-            [0, 0],
-            [-30, 30],
-            pen=pg.mkPen(color = '#8888FF',width=2)
-        )
-        self._wndui.promLine2 = pg.PlotDataItem(
-            [0, 0],
-            [-30, 30],
-            pen=pg.mkPen(color = '#8888FF',width=2)
-        )
-        _pgobj.addItem(self._wndui.promLine1)
-        _pgobj.addItem(self._wndui.promLine2)
-    
+      
     def _propassess_add_graph(self):
         """Function to add graph and other objects for displaying HOC movements.
         """
@@ -739,75 +660,6 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._devdatawnd = PlutoDataViewWindow(plutodev=self.pluto,
                                                pos=(50, 300))
         self._devdatawnd.show()
-
-    #
-    # Test window controls
-    #
-    def _callback_test_device_control_selected(self, event):
-        # Check what has been selected.
-        if self._wndui.radioNone.isChecked():
-            self.pluto.set_control("NONE", 0)
-        elif self._wndui.radioTorque.isChecked():
-            self.pluto.set_control("TORQUE", 0)
-            # Reset the target value
-            self._wndui.hSliderTgtValue.setValue(self._tgt2pos(0))
-            # Now send the target value.
-            self.pluto.set_control("TORQUE", 0)
-        elif self._wndui.radioPosition.isChecked():
-            self.pluto.set_control("POSITION", 0)
-            # Reset the target value
-            self._wndui.hSliderTgtValue.setValue(self._tgt2pos(self.pluto.angle))
-            # Now send the target value.
-            self.pluto.set_control("POSITION", self.pluto.angle)
-        self._update_testwnd_ui()
-    
-    def _callback_test_device_target_changed(self, event):
-        # Get the current target position and send it to the device.
-        _tgt = self._pos2tgt(self._wndui.hSliderTgtValue.value())
-        _ctrl = "TORQUE" if self._wndui.radioTorque.isChecked() else "POSITION"
-        self.pluto.set_control(_ctrl, _tgt)
-        self._update_testwnd_ui()
-    
-    def _tgt2pos(self, value):
-        # Make sure this is not called by mistake for no control selection.
-        if not (self._wndui.radioTorque.isChecked()
-                or self._wndui.radioPosition.isChecked()):
-            return 0
-        # Make the convesion
-        _mins, _maxs = (self._wndui.hSliderTgtValue.minimum(),
-                        self._wndui.hSliderTgtValue.maximum())
-        _ctrl = 'POSITION' if self._wndui.radioPosition.isChecked() else 'TORQUE'
-        _minv, _maxv = (pdef.PlutoTargetRanges[_ctrl][0],
-                        pdef.PlutoTargetRanges[_ctrl][1])
-        return int(_mins + (_maxs - _mins) * (value - _minv) / (_maxv - _minv))
-
-    def _pos2tgt(self, value):
-        # Make sure this is not called by mistake for no control selection.
-        if not (self._wndui.radioTorque.isChecked()
-                or self._wndui.radioPosition.isChecked()):
-            return 0
-        # Make the convesion
-        _mins, _maxs = (self._wndui.hSliderTgtValue.minimum(),
-                        self._wndui.hSliderTgtValue.maximum())
-        _ctrl = 'POSITION' if self._wndui.radioPosition.isChecked() else 'TORQUE'
-        _minv, _maxv = (pdef.PlutoTargetRanges[_ctrl][0],
-                        pdef.PlutoTargetRanges[_ctrl][1])
-        return _minv + (_maxv - _minv) * (value - _mins) / (_maxs - _mins)
-
-    #
-    # ROM Window Controls
-    #
-    def _callback_arom_clicked(self, event):
-        self._smachines["rom"].run_statemachine(
-            psm.PlutoRomAssessEvent.AROM_SELECTED
-        )
-        self._update_romwnd_ui()
-    
-    def _callback_prom_clicked(self, event):
-        self._smachines["rom"].run_statemachine(
-            psm.PlutoRomAssessEvent.PROM_SELECTED
-        )
-        self._update_romwnd_ui()
 
     #
     # Proprioception Assessment Window Controls
@@ -935,7 +787,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    mywin = PlutoPropAssesor("COM5")
+    mywin = PlutoPropAssesor("COM4")
     # ImageUpdate()
     mywin.show()
     sys.exit(app.exec_())

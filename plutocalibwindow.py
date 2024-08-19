@@ -183,7 +183,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM5")
+    plutodev = QtPluto("COM4")
     pcalib = PlutoCalibrationWindow(plutodev=plutodev, mechanism="HOC")
     pcalib.show()
     sys.exit(app.exec_())
