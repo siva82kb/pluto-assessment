@@ -1,0 +1,31 @@
+name: pa
+channels:
+  - defaults
+dependencies:
+  - ca-certificates=2024.7.2=haa95532_0
+  - openssl=3.0.14=h827c3e9_0
+  - pip=24.0=py39haa95532_0
+  - python=3.9.19=h1aa4202_1
+  - setuptools=69.5.1=py39haa95532_0
+  - sqlite=3.45.3=h2bbff1b_0
+  - tzdata=2024a=h04d1e81_0
+  - vc=14.2=h2eaa2aa_4
+  - vs2015_runtime=14.29.30133=h43f2093_4
+  - wheel=0.43.0=py39haa95532_0
+  - pip:
+      - click==8.1.7
+      - colorama==0.4.6
+      - numpy==2.0.1
+      - polars==1.2.1
+      - pyqt5==5.15.9
+      - pyqt5-plugins==5.15.9.2.3
+      - pyqt5-qt5==5.15.2
+      - pyqt5-sip==12.15.0
+      - pyqt5-tools==5.15.9.3.3
+      - pyqtgraph==0.13.7
+      - pyserial==3.5
+      - pyside2==5.15.2.1
+      - python-dotenv==1.0.1
+      - qt5-applications==5.15.2.2.3
+      - qt5-tools==5.15.2.1.3
+      - shiboken2==5.15.2.1
