@@ -98,7 +98,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self.propass_sm_timer = QTimer()
         self.propass_sm_timer.timeout.connect(self._callback_propassess_sm_timer)
         self.propass_sm_time = -1
-        # Anothe timer for controlling the target position command to the robot.
+        # Another timer for controlling the target position command to the robot.
         # We probably can get all this done with a single timer, but for the lack 
         # of time for an elegant solution, we will use an additional timer.
         self.propass_ctrl_timer = QTimer()

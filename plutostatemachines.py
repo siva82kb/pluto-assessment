@@ -17,8 +17,6 @@ class PlutoButtonEvents(Enum):
     RELEASED = 1
 
 
-
-
 class PlutoPropAssessEvents(Enum):
     STARTSTOP_CLICKED = 0
     PAUSE_CLICKED = 1
