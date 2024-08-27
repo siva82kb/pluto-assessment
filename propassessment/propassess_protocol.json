@@ -7,9 +7,11 @@
     ],
     "min_target_sep": 1,
     "move_speed": 0.5,
-    "on_off_target_duration": 1,
+    "on_off_target_dur": 1,
     "target_error_th": 0.25,
-    "demo_duration": 5,
-    "intrat_rest_duration": 3,
-    "intert_rest_duration": 5
+    "demo_dur": 5,
+    "intrat_rest_dur": 5,
+    "intert_rest_dur": 5,
+    "trial_no_response_dur": 3,
+    "trial_assess_hold_dur": 3
 }
