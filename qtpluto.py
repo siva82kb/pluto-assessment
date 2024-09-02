@@ -93,9 +93,9 @@ class QtPluto(QObject):
     def torque(self):
         return self.currdata[5] if len(self.currdata) > 0 else None
     
-    @property
-    def torque(self):
-        return self.currdata[6] if len(self.currdata) > 0 else None
+    # @property
+    # def torque(self):
+    #     return self.currdata[6] if len(self.currdata) > 0 else None
     
     @property
     def control(self):
