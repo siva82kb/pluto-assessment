@@ -23,6 +23,7 @@ ControlType = {
     0x04: "RESIST",
     0x02: "ACTIVE",
     0x07: "SPEED",
+    0x08: "POSITIONFEEDFWD",
 }
 
 Mehcanisms = {

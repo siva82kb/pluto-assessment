@@ -1,15 +1,16 @@
 {
-    "N": 1,
+    "N": 3,
+    "Ndummy": 2,
     "targets": [
-        0.25
+        0.5
     ],
     "min_target_sep": 1,
-    "move_speed": 0.5,
-    "on_off_target_dur": 1,
+    "move_speed": 0.75,
+    "on_off_target_dur": 2,
     "target_error_th": 0.25,
-    "demo_dur": 1,
-    "intrat_rest_dur": 1,
-    "intert_rest_dur": 1,
-    "trial_no_response_dur": 1,
-    "trial_assess_hold_dur": 1
+    "demo_dur": 5,
+    "intrat_rest_dur": 3,
+    "intert_rest_dur": 3,
+    "trial_no_response_dur": 2,
+    "trial_assess_hold_dur": 2
 }

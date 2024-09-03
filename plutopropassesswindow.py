@@ -39,6 +39,7 @@ import plutoassessdef as passdef
 del_time = lambda x: dt.now() - (dt.now() if x is None else x) 
 increment_time = lambda x : x + passdef.PROPASS_CTRL_TIMER_DELTA if x  >= 0 else -1
 clip = lambda x: min(max(0, x), 1)
+mjt = lambda x: np.polyval([6, -15, 10, 0, 0, 0], clip(x))
 
 
 class PlutoPropAssessEvents(Enum):
@@ -609,7 +610,7 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
                 )
         elif self._smachine.state == PlutoPropAssessStates.INTRA_TRIAL_REST:
             # Update target position.
-            self._update_target_position()
+            self._update_target_position_mjt()
             # Check if hand has been clopsed, and target intra-trial duration 
             # has lapsed.
             _strans = self._check_intratrial_timeout()
@@ -626,12 +627,12 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             _strans = self._check_trial_hold_timeout()
         elif self._smachine.state == PlutoPropAssessStates.INTER_TRIAL_REST:
             # Update target position.
-            self._update_target_position()
+            self._update_target_position_mjt()
             # Check if the target has been reached, and target demo time has lapsed.
             _strans = self._check_inter_trial_timeout()
         elif self._smachine.state == PlutoPropAssessStates.PROTOCOL_STOP:
             # Update target position.
-            self._update_target_position()
+            self._update_target_position_mjt()
             # Check if the target has been reached, and target demo time has lapsed.
             _strans = self._check_protocol_stop_timeout()
 
@@ -814,7 +815,7 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
                  if _tgtsep >= self._protocol['min_target_sep']
                  else self._protocol['targets'][1:2])
         # Generate the randomly order targets
-        _tgt2 = 1 * _tgts
+        _tgt2 = self._protocol['Ndummy'] * _tgts
         _tgt3 = self._protocol['N'] * _tgts
         random.shuffle(_tgt2)
         random.shuffle(_tgt3)
@@ -852,6 +853,16 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
                                  self._tgtctrl["dur"])
         # Limit time to be between 0 and 1.
         self._tgtctrl["curr"] = _init + (_tgt - _init) * clip(_t / _dur)
+        # Send command to the robot.
+        self.pluto.set_control("POSITION", -self._tgtctrl["curr"] / pdef.HOCScale)
+    
+    def _update_target_position_mjt(self):
+        _t, _init, _tgt, _dur = (self._tgtctrl["time"],
+                                 self._tgtctrl["init"],
+                                 self._tgtctrl["final"],
+                                 self._tgtctrl["dur"])
+        # Limit time to be between 0 and 1.
+        self._tgtctrl["curr"] = _init + (_tgt - _init) * mjt(clip(_t / _dur))
         # Send command to the robot.
         self.pluto.set_control("POSITION", -self._tgtctrl["curr"] / pdef.HOCScale)
     
@@ -1014,7 +1025,7 @@ if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM4")
     pcalib = PlutoPropAssessWindow(plutodev=plutodev, arom=5.0, prom=7.5, 
-                                   outdir=f"{passdef.DATA_DIR}/test/2024-09-02-17-59-16",
+                                   outdir=f"{passdef.DATA_DIR}/test/2024-09-03-15-24-13",
                                    dataviewer=True)
     pcalib.show()
     sys.exit(app.exec_())

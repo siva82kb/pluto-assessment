@@ -163,7 +163,7 @@ class QtPluto(QObject):
             pdef.get_code(pdef.Mehcanisms, mech)
         ])
     
-    def set_control(self, control, target):
+    def set_control(self, control, target, fftorq=0.0):
         """Function to set the encoder calibration.
         """
         if not self.is_connected():
@@ -171,4 +171,6 @@ class QtPluto(QObject):
         _payload = [pdef.get_code(pdef.InDataType, "SET_CONTROL_PARAM"),
                     pdef.get_code(pdef.ControlType, control) | 0x08]
         _payload += list(struct.pack('f', target))
+        if control == "POSITIONFEEDFWD":
+            _payload += list(struct.pack('f', fftorq))
         self.dev.send_message(_payload)
