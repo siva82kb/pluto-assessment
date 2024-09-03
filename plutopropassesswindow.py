@@ -130,12 +130,18 @@ class PlutoPropAssessmentStateMachine():
             self._state = PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY_MOVING
             self._instruction = "Running Haptic Display"
             return True
+        if event == PlutoPropAssessEvents.STARTSTOP_CLICKED:
+            self._state = PlutoPropAssessStates.PROTOCOL_STOP
+            return True
         return False
 
     def _trial_haptic_display_moving(self, event, timeval) -> bool:
         # Check if the target has been reached.
         if event == PlutoPropAssessEvents.HAPTIC_DEMO_TARGET_REACHED_TIMEOUT:
             self._state = PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY
+            return True
+        if event == PlutoPropAssessEvents.STARTSTOP_CLICKED:
+            self._state = PlutoPropAssessStates.PROTOCOL_STOP
             return True
         return False
 
@@ -145,12 +151,18 @@ class PlutoPropAssessmentStateMachine():
         if event == PlutoPropAssessEvents.HAPTIC_DEMO_ON_TARGET_TIMEOUT:
             self._state = PlutoPropAssessStates.INTRA_TRIAL_REST
             return True
+        if event == PlutoPropAssessEvents.STARTSTOP_CLICKED:
+            self._state = PlutoPropAssessStates.PROTOCOL_STOP
+            return True
         return False
 
     def _intra_trial_rest(self, event, timeval) -> bool:
         # Check if the intra-trial rest duration is complete
         if event == PlutoPropAssessEvents.INTER_TRIAL_REST_TIMEOUT:
             self._state = PlutoPropAssessStates.TRIAL_ASSESSMENT_MOVING
+            return True
+        if event == PlutoPropAssessEvents.STARTSTOP_CLICKED:
+            self._state = PlutoPropAssessStates.PROTOCOL_STOP
             return True
         return False
 
@@ -160,9 +172,12 @@ class PlutoPropAssessmentStateMachine():
             self._addn_info = False
             self._state = PlutoPropAssessStates.TRIAL_ASSESSMENT_HOLD
             return True
-        elif event == pdef.PlutoEvents.RELEASED:
+        if event == pdef.PlutoEvents.RELEASED:
             self._addn_info = True
             self._state = PlutoPropAssessStates.TRIAL_ASSESSMENT_HOLD
+            return True
+        if event == PlutoPropAssessEvents.STARTSTOP_CLICKED:
+            self._state = PlutoPropAssessStates.PROTOCOL_STOP
             return True
         return False
 
@@ -172,6 +187,9 @@ class PlutoPropAssessmentStateMachine():
             self._addn_info = False
             self._state = PlutoPropAssessStates.INTER_TRIAL_REST
             return True
+        if event == PlutoPropAssessEvents.STARTSTOP_CLICKED:
+            self._state = PlutoPropAssessStates.PROTOCOL_STOP
+            return True
         return False
 
     def _inter_trial_rest(self, event, timeval) -> bool:
@@ -180,9 +198,12 @@ class PlutoPropAssessmentStateMachine():
             self._addn_info = False
             self._state = PlutoPropAssessStates.WAIT_FOR_HAPTIC_DISPAY_START
             return True
-        elif event == PlutoPropAssessEvents.ALL_TARGETS_DONE:
+        if event == PlutoPropAssessEvents.ALL_TARGETS_DONE:
             self._addn_info = False
             self._state = PlutoPropAssessStates.PROP_DONE
+            return True
+        if event == PlutoPropAssessEvents.STARTSTOP_CLICKED:
+            self._state = PlutoPropAssessStates.PROTOCOL_STOP
             return True
         return False
 
@@ -190,6 +211,10 @@ class PlutoPropAssessmentStateMachine():
         return False
 
     def _protocol_stop(self, event, timeval) -> bool:
+        if event == PlutoPropAssessEvents.ALL_TARGETS_DONE:
+            self._addn_info = False
+            self._state = PlutoPropAssessStates.PROP_DONE
+            return True
         return False
 
     def _protocol_done(self, event, timeval) -> bool:
@@ -344,100 +369,49 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         )
 
         # Update based on state
-        _adurstr = f"{del_time(self._data['assess_strt_t']).total_seconds():8.2f} sec"
-        _dispstr = [_adurstr]
+        _dispstr = [f"Hand Aperture: {self._pluto.hocdisp:5.2f}cm"]
         if self._smachine.state == PlutoPropAssessStates.WAIT_FOR_START:
             self.ui.pbStartStopProtocol.setText("Start Protocol")
             _dispstr = ["", self._smachine.instruction,
-                        str(self._smachine.state)]
+                        "", str(self._smachine.state)]
             self.ui.checkBoxPauseProtocol.setEnabled(False)
         elif self._smachine.state == PlutoPropAssessStates.WAIT_FOR_HAPTIC_DISPAY_START:
             self.ui.pbStartStopProtocol.setText("Stop Protocol")
-            _dispstr += [self._get_trial_details_line("Waiting for Haptic Demo"),
-                         self._smachine.instruction,
-                         str(self._smachine.state)]
+            _trlines = self._get_trial_details_line("Waiting for Haptic Demo")
+            _dispstr += _trlines + [self._smachine.instruction,
+                                    "", str(self._smachine.state)]
             self.ui.checkBoxPauseProtocol.setEnabled(False)
         elif self._smachine.state == PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY_MOVING:
-            _dispstr += [self._get_trial_details_line("Haptic Demo"),
-                         "Moving to target position.",
-                         str(self._smachine.state)]
+            _trlines = self._get_trial_details_line("Haptic Demo")
+            _dispstr += _trlines + ["Moving to target position.", 
+                                    "", str(self._smachine.state)]
         elif self._smachine.state == PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY:
-            _dispstr += [self._get_trial_details_line("Haptic Demo"),
-                         "Demonstraing Haptic Position.",
-                         str(self._smachine.state)]
+            _trlines = self._get_trial_details_line("Haptic Demo")
+            _dispstr += _trlines + ["Demonstraing Haptic Position.",
+                                    "", str(self._smachine.state)]
         elif self._smachine.state == PlutoPropAssessStates.INTRA_TRIAL_REST:
-            _dispstr += [self._get_trial_details_line("Waiting for hand to be closed."),
-                         str(self._smachine.state)]
+            _trlines = self._get_trial_details_line("Waiting for hand to be closed.")
+            _dispstr += _trlines + ["", str(self._smachine.state)]
         elif self._smachine.state == PlutoPropAssessStates.TRIAL_ASSESSMENT_MOVING:
-            _dispstr += [self._get_trial_details_line("Assessing proprioception."),
-                         str(self._smachine.state)]
+            _trlines = self._get_trial_details_line("Assessing proprioception.")
+            _dispstr += _trlines + ["", str(self._smachine.state)]
         elif self._smachine.state == PlutoPropAssessStates.TRIAL_ASSESSMENT_HOLD:
-            _dispstr += [self._get_trial_details_line("Holding Sensed Position."),
-                         str(self._smachine.state)]
+            _trlines = self._get_trial_details_line("Holding Sensed Position.")
+            _dispstr += _trlines + ["", str(self._smachine.state)]
         elif self._smachine.state == PlutoPropAssessStates.INTER_TRIAL_REST:
-            _dispstr += [self._get_trial_details_line("Waiting for the hand to be closed."),
-                         str(self._smachine.state)]
+            _trlines = self._get_trial_details_line("Waiting for the hand to be closed.")
+            _dispstr += _trlines + ["", str(self._smachine.state)]
+        elif self._smachine.state == PlutoPropAssessStates.PROP_DONE:
+             _trlines = self._get_trial_details_line(f"All {len(self._data['targets'])} trials completed! You can close the window.")
+             _dispstr += ["", _trlines[1]] + ["", str(self._smachine.state)]
+             self.ui.pbStartStopProtocol.setEnabled(False)
+        elif self._smachine.state == PlutoPropAssessStates.PROTOCOL_STOP:
+             _trlines = self._get_trial_details_line(f"Stopping protocol.")
+             _dispstr += _trlines + ["", str(self._smachine.state)]
+             self.ui.pbStartStopProtocol.setEnabled(False)
 
         # Update text.
         self.ui.textInformation.setText("\n".join(_dispstr))
-        
-        # Current position
-        # if self._smachine.state == PlutoRomAssessStates.FREE_RUNNING:
-        #     if self.pluto.hocdisp is None:
-        #         return
-        #     # Plot when there is data to be shown
-        #     self.ui.currPosLine1.setData(
-        #         [self.pluto.hocdisp, self.pluto.hocdisp],
-        #         [-30, 30]
-        #     )
-        #     self.ui.currPosLine2.setData(
-        #         [-self.pluto.hocdisp, -self.pluto.hocdisp],
-        #         [-30, 30]
-        #     )
-        # elif self._smachine.state == PlutoRomAssessStates.AROM_ASSESS:
-        #     self.ui.currPosLine1.setData([0, 0], [-30, 30])
-        #     self.ui.currPosLine2.setData([0, 0], [-30, 30])
-        #     # AROM position
-        #     self.ui.aromLine1.setData(
-        #         [self.pluto.hocdisp, self.pluto.hocdisp],
-        #         [-30, 30]
-        #     )
-        #     self.ui.aromLine2.setData(
-        #         [-self.pluto.hocdisp, -self.pluto.hocdisp],
-        #         [-30, 30]
-        #     )
-        # elif self._smachine.state == PlutoRomAssessStates.PROM_ASSESS:
-        #     self.ui.currPosLine1.setData([0, 0], [-30, 30])
-        #     self.ui.currPosLine2.setData([0, 0], [-30, 30])
-        #     # PROM position
-        #     self.ui.promLine1.setData(
-        #         [self.pluto.hocdisp, self.pluto.hocdisp],
-        #         [-30, 30]
-        #     )
-        #     self.ui.promLine2.setData(
-        #         [-self.pluto.hocdisp, -self.pluto.hocdisp],
-        #         [-30, 30]
-        #     )
-
-        # # Update main text
-        # self.ui.label.setText(f"PLUTO ROM Assessment [{self.pluto.hocdisp:5.2f}cm]")
-
-        # # Update instruction
-        # self.ui.textInstruction.setText(self._smachine.instruction)
-
-        # # Update buttons
-        # self.ui.pbArom.setText(f"Assess AROM [{self.arom:5.2f}cm]")
-        # self.ui.pbProm.setText(f"Assess PROM [{self.prom:5.2f}cm]")
-        # self.ui.pbArom.setEnabled(
-        #     self._smachine.state == PlutoRomAssessStates.FREE_RUNNING
-        # )
-        # self.ui.pbProm.setEnabled(
-        #     self._smachine.state == PlutoRomAssessStates.FREE_RUNNING
-        # )
-
-        # # Close if needed
-        # if self._smachine.state == PlutoRomAssessStates.ROM_DONE:
-        #     self.close()
 
     #
     # Graph plot initialization
@@ -574,31 +548,16 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
                     0
                 )
         else:
+            self.ui.pbStartStopProtocol.setEnabled(False)
             # Stop event
-            self.propass_dur_timer.stop()
             _strans = self._smachine.run_statemachine(
                 PlutoPropAssessEvents.STARTSTOP_CLICKED,
                 self._time
             )
+        # Handle the current proprioceptuive assessment state
+        self._state_handlers[self._smachine.state](_strans)
+
         self.update_ui()
-    
-    #
-    # Timer callbacks
-    #
-    # def _callback_timer(self):
-    #     # Update trial duration
-    #     _checkstate = not (
-    #         self._smachine.state == PlutoPropAssessStates.WAIT_FOR_START
-    #         or self._smachine.state == PlutoPropAssessStates.WAIT_FOR_HAPTIC_DISPAY_START
-    #         or self._smachine.state == PlutoPropAssessStates.INTER_TRIAL_REST
-    #         or self._smachine.state == PlutoPropAssessStates.PROTOCOL_STOP
-    #         or self._smachine.state == PlutoPropAssessStates.PROP_DONE
-    #     )
-    #     # Act according to the state.
-    #     if self._smachine == PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY:
-    #         # Check if the demo duration has been reached.
-            
-    #         pass
     
     def _callback_ctrl_timer(self):
         # Check state and act accordingly.
@@ -622,14 +581,12 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         elif self._smachine.state == PlutoPropAssessStates.INTRA_TRIAL_REST:
             # Update target position.
             self._update_target_position()
-
             # Check if hand has been clopsed, and target intra-trial duration 
             # has lapsed.
             _strans = self._check_intratrial_timeout()
         elif self._smachine.state == PlutoPropAssessStates.TRIAL_ASSESSMENT_MOVING:
             # Update target position.
             self._update_target_position()
-
             # Check if PROM is reached, and if time has run out.
             _strans = self._check_trial_no_respose_timeout()
         elif self._smachine.state == PlutoPropAssessStates.TRIAL_ASSESSMENT_HOLD:
@@ -638,14 +595,19 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         elif self._smachine.state == PlutoPropAssessStates.INTER_TRIAL_REST:
             # Update target position.
             self._update_target_position()
-
             # Check if the target has been reached, and target demo time has lapsed.
             _strans = self._check_inter_trial_timeout()
-        else:
-            self.pluto.set_control("NONE", 0)
-        
+        elif self._smachine.state == PlutoPropAssessStates.PROTOCOL_STOP:
+            # Update target position.
+            self._update_target_position()
+            # Check if the target has been reached, and target demo time has lapsed.
+            _strans = self._check_protocol_stop_timeout()
+
         # Handle the current proprioceptuive assessment state
         self._state_handlers[self._smachine.state](_strans)
+
+        # Update UI
+        self.update_ui()
 
     def _check_target_display_timeout(self) -> bool:
         _tgterr = self._tgtctrl["final"] - self.pluto.hocdisp
@@ -721,6 +683,8 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             # Close trial data file.
             self._data['trialfhandle'].flush()
             self._data['trialfhandle'].close()
+            self._data['trialfile'] = ""
+            self._data['trialfhandle'] = None
 
             # Go to the next trial.
             _next = self._got_to_next_trial()
@@ -738,6 +702,32 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
                     PlutoPropAssessEvents.ALL_TARGETS_DONE,
                     0
                 )
+        return False
+    
+    def _check_protocol_stop_timeout(self) -> bool:
+        _tgterr = self._tgtctrl["final"] - self.pluto.hocdisp
+        
+        # Target not reached
+        if abs(_tgterr) > self._protocol['target_error_th']:
+            self._time = 0
+            return False
+        
+        # Target reached
+        # Check if the target has been maintained for the required duration.
+        if self._time >= self._protocol['intert_rest_dur']:
+            # Close trial data file.
+            if self._data['trialfhandle'] is not None:
+                self._data['trialfhandle'].flush()
+                self._data['trialfhandle'].close()
+                self._data['trialfile'] = ""
+                self._data['trialfhandle'] = None
+
+            # Go to the next trial.
+            # All done.
+            return self._smachine.run_statemachine(
+                PlutoPropAssessEvents.ALL_TARGETS_DONE,
+                0
+            )
         return False
 
     #
@@ -766,24 +756,25 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
                  if _tgtsep >= self._protocol['min_target_sep']
                  else self._protocol['targets'][1:2])
         # Generate the randomly order targets
-        _tgt2 = 2 * _tgts
-        _tgt3 = (self._protocol['N'] - 2) * _tgts
+        _tgt2 = 1 * _tgts
+        _tgt3 = self._protocol['N'] * _tgts
         random.shuffle(_tgt2)
         random.shuffle(_tgt3)
         self._data['targets'] = self._prom * np.array(_tgt2 + _tgt3)
 
     def _get_trial_details_line(self, state="Haptic Demo"):
+        # Check if trials are not done.
         _nt = self._data['trialno']
-        _tgt = self._data['targets'][_nt]
         _tdur = del_time(self._data['trial_strt_t']).total_seconds()
-        _strs = [f"Trial: {_nt:3d}", 
-                 f"Target: {_tgt:5.1f}cm", 
-                 f"{state:<25s}", 
-                 f"Trial Dur: {_tdur:02.0f}sec"]
+        _tgt = self._data['targets'][_nt] if _nt < len(self._data['targets']) else 0.0
+        _strs = [f"Trial: {_nt+1:3d} / {len(self._data['targets']):3d}", 
+                f"Target: {_tgt:5.1f}cm", 
+                f"{state:<25s}"]
+        _tstrs = [f"Trial Dur: {_tdur:02.0f}sec"]
         # Add on target time when needed.
         if self._time > 0:
-            _strs.append(f"On Target Dur: {self._time:4.1f}sec")
-        return " | ".join(_strs)
+            _tstrs.append(f"On Target Dur: {self._time:4.1f}sec")
+        return [" | ".join(_tstrs), " | ".join(_strs)]
 
     def _got_to_next_trial(self):
         # Increment trial number and create new file
@@ -795,30 +786,6 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             return True
         else:
             return False
-    
-    # def _handle_propass_state(self):
-    #     # Check the state and respond accordingly.
-    #     if self._smachine.state == PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY_MOVING:
-    #         # Check if timer has been started already.
-    #         if self._tgtctrl["time"] < 0:
-    #             self._tgtctrl["time"] = 0
-    #             self._tgtctrl["init"] = self.pluto.hocdisp
-    #             self._tgtctrl["final"] = self._data['targets'][self._data['trialno']]
-    #             self._tgtctrl["curr"] = self.pluto.hocdisp
-    #             self._tgtctrl["dur"] = (self._tgtctrl["final"] - self._tgtctrl["init"]) / self._protocol['move_speed']
-    #             self._ctrl_timer.start(int(passdef.PROPASS_CTRL_TIMER_DELTA * 1000))
-    #             # Initialize the propass state machine time
-    #             self._time = -1
-    #     elif self._smachine.state == PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY:
-    #         # Initialize the statemachine timer if needed.
-    #         if self._time == -1:
-    #             self._time = 0.
-    #     elif self._smachine.state == PlutoPropAssessStates.INTRA_TRIAL_REST:
-    #         # Initialize the statemachine timer if needed.
-    #         if self._time == -1:
-    #             self._time = 0.
-    #     else:
-    #         self._ctrl_timer.stop()
     
     def _update_target_position(self):
         _t, _init, _tgt, _dur = (self._tgtctrl["time"],
@@ -941,9 +908,23 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         self._ctrl_timer.stop()
     
     def _handle_protocol_stop(self, statetrans):
-        self._ctrl_timer.stop()
+        if statetrans:
+            # Flush data to disk
+            self._data['trialfhandle'].flush()
+
+            # Reset target position details.
+            self._tgtctrl["time"] = 0
+            self._tgtctrl["init"] = self.pluto.hocdisp
+            self._tgtctrl["final"] = 0.0
+            self._tgtctrl["curr"] = self.pluto.hocdisp
+            self._tgtctrl["dur"] = abs(self._tgtctrl["final"] - self._tgtctrl["init"]) / self._protocol['move_speed']
+            self._ctrl_timer.start(int(passdef.PROPASS_CTRL_TIMER_DELTA * 1000))
+            # Initialize the propass state machine time
+            self._time = -1
     
     def _handle_protocol_done(self, statetrans):
+        # Stop control.
+        self._pluto.set_control("NONE", 0)
         self._ctrl_timer.stop()
 
 
