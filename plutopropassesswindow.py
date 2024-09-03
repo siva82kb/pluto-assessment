@@ -345,8 +345,19 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
     
     @property
     def outdir(self):
-        return f"{passdef.DATA_DIR}/{self._outdir}"
+        return self._outdir
     
+    #
+    # Window close event
+    # 
+    def closeEvent(self, event):
+        # Set device to no control.
+        self.pluto.set_control("NONE", 0)
+        # Close file if open
+        if self._data['trialfhandle'] is not None:
+            self._data['trialfhandle'].flush()
+            self._data['trialfhandle'].close()
+
     #
     # Update UI
     #
@@ -518,13 +529,13 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
                 f"{self._pluto.status}",
                 f"{self._pluto.error}",
                 f"{self._pluto.mechanism}",
-                f"{self._pluto.angle}",
-                f"{self._pluto.hocdisp}",
-                f"{self._pluto.torque}",
-                f"{self._pluto.control}",
-                f"{self._pluto.desired}",
+                f"{self._pluto.angle:0.3f}",
+                f"{self._pluto.hocdisp:0.3f}",
+                f"{self._pluto.torque:0.3f}",
+                f"{self._pluto.control:0.3f}",
+                f"{self._pluto.desired:0.3f}",
                 f"{self._pluto.button}",
-                f"{self._pluto.framerate()}",
+                f"{self._pluto.framerate():0.3f}",
                 f"{self._smachine.state}".split('.')[-1]
             )))
             self._data['trialfhandle'].write("\n")
@@ -716,6 +727,9 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
                     f"{np.mean(self._summary['sensedpos']) if len(self._summary['sensedpos']) >0 else -1:0.3f}",
                 )))
                 fh.write("\n")
+            # Reset summary position data
+            self._summary['shownpos'] = []
+            self._summary['sensedpos'] = []
 
             # Go to the next trial.
             _next = self._got_to_next_trial()
@@ -811,9 +825,9 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         _nt = self._data['trialno']
         _tdur = del_time(self._data['trial_strt_t']).total_seconds()
         _tgt = self._data['targets'][_nt] if _nt < len(self._data['targets']) else 0.0
-        _strs = [f"Trial: {_nt+1:3d} / {len(self._data['targets']):3d}", 
-                f"Target: {_tgt:5.1f}cm", 
-                f"{state:<25s}"]
+        _strs = [f"Trial: {min(len(self._data['targets']), _nt+1):3d} / {len(self._data['targets']):3d}", 
+                 f"Target: {_tgt:5.1f}cm", 
+                 f"{state:<25s}"]
         _tstrs = [f"Trial Dur: {_tdur:02.0f}sec"]
         # Add on target time when needed.
         if self._time > 0:
@@ -1000,7 +1014,7 @@ if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM4")
     pcalib = PlutoPropAssessWindow(plutodev=plutodev, arom=5.0, prom=7.5, 
-                                   outdir="test/2024-09-02-17-59-16",
+                                   outdir=f"{passdef.DATA_DIR}/test/2024-09-02-17-59-16",
                                    dataviewer=True)
     pcalib.show()
     sys.exit(app.exec_())
