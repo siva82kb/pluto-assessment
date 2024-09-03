@@ -7,6 +7,13 @@ Email: siva82kb@gmail.com
 """
 
 import numpy as np
+from enum import Enum
+
+
+class PlutoEvents(Enum):
+    PRESSED = 0
+    RELEASED = 1
+    NEWDATA = 2
 
 ControlType = {
     0x00: "NONE",
@@ -16,6 +23,7 @@ ControlType = {
     0x04: "RESIST",
     0x02: "ACTIVE",
     0x07: "SPEED",
+    0x08: "POSITIONFEEDFWD",
 }
 
 Mehcanisms = {

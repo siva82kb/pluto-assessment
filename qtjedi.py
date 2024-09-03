@@ -63,10 +63,10 @@ class JediComm(QThread):
         _outpayload = [0xAA, 0xAA, len(outbytes)+1, *outbytes]
         _outpayload.append(sum(_outpayload) % 256)
         # Send payload.
-        if True:
-            sys.stdout.write("\n Out data: ")
-            for _elem in _outpayload:
-                sys.stdout.write(f"{_elem} ")
+        # if True:
+        #     sys.stdout.write("\n Out data: ")
+        #     for _elem in _outpayload:
+        #         sys.stdout.write(f"{_elem} ")
         self._ser.write(bytearray(_outpayload))
 
     def run(self):

@@ -17,10 +17,6 @@ class PlutoButtonEvents(Enum):
     RELEASED = 1
 
 
-class PlutoRomAssessEvent(Enum):
-    AROM_SELECTED = 0
-    PROM_SELECTED = 1
-
 class PlutoPropAssessEvents(Enum):
     STARTSTOP_CLICKED = 0
     PAUSE_CLICKED = 1
