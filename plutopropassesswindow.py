@@ -610,6 +610,9 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         elif self._smachine.state == PlutoPropAssessStates.TRIAL_ASSESSMENT_RESPONSE_HOLD:
             # Check if the statemachine timer has reached the required duration.
             _strans = self._check_trial_hold_timeout()
+        elif self._smachine.state == PlutoPropAssessStates.TRIAL_ASSESSMENT_NO_RESPONSE_HOLD:
+            # Check if the statemachine timer has reached the required duration.
+            _strans = self._check_trial_hold_timeout()
         elif self._smachine.state == PlutoPropAssessStates.INTER_TRIAL_REST:
             # Update target position.
             self._update_target_position()
@@ -709,7 +712,8 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
                 fh.write(",".join((
                     f"{self._data['trialno']+1}",
                     f"{self._data['targets'][self._data['trialno']]}",
-                    f"{np.mean(self._summary['pos']) if len(self._summary['pos']) >0 else -1}",
+                    f"{np.mean(self._summary['shownpos']):0.3f}",
+                    f"{np.mean(self._summary['sensedpos']) if len(self._summary['sensedpos']) >0 else -1:0.3f}",
                 )))
                 fh.write("\n")
 
@@ -780,14 +784,15 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         # Assessment summary
         self._summary = {
             'file': f"{self.outdir}/propass_summary.csv",
-            'pos': []
+            'shownpos': [],
+            'sensedpos': []
         }
         # Create the summary file.
         with open(self._summary['file'], "w") as fh:
             fh.write(f"arom: {self.arom}cm\n")
             fh.write(f"prom: {self.prom}cm\n")
             fh.write(f"targets: {self._data['targets']}cm\n")
-            fh.write("trial,target,pos\n")
+            fh.write("trial,target,showpos,sensedpos\n")
     
     def _generate_propassess_targets(self):
         _tgtsep = self._protocol['targets'][0] * self._prom
@@ -883,6 +888,11 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         # Initialize the statemachine timer if needed.
         if statetrans:
             self._time = 0.
+            # Reset the shown position
+            self._summary['shownpos'] = []
+        # Log data only if the function is called from the new data callback.
+        if inspect.stack()[1].function == '_callback_pluto_newdata':
+            self._summary['shownpos'].append(self._pluto.hocdisp)
     
     def _handle_intra_trial_rest(self, statetrans):
         # Check if there has been a state transitions. This indicates that we
@@ -927,11 +937,11 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             self._ctrl_timer.start(int(passdef.PROPASS_CTRL_TIMER_DELTA * 1000))
             # Initialize the propass state machine time
             self._time = 0
-            # Reset position information in the summary data
-            self._summary['pos'] = []
+            # Reset sensed position information in the summary data
+            self._summary['sensedpos'] = []
         # Log data only if the function is called from the new data callback.
         if inspect.stack()[1].function == '_callback_pluto_newdata':
-            self._summary['pos'].append(self._pluto.hocdisp)
+            self._summary['sensedpos'].append(self._pluto.hocdisp)
     
     def _handle_trial_assessment_no_response_hold(self, statetrans):
         if statetrans:
