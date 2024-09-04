@@ -47,7 +47,9 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
         self.ui.radioNone.clicked.connect(self._callback_test_device_control_selected)
         self.ui.radioPosition.clicked.connect(self._callback_test_device_control_selected)
         self.ui.radioTorque.clicked.connect(self._callback_test_device_control_selected)
-        self.ui.hSliderTgtValue.valueChanged.connect(self._callback_test_device_target_changed)
+        self.ui.radioTorque.clicked.connect(self._callback_test_device_control_selected)
+        self.ui.hSliderTorqTgtValue.valueChanged.connect(self._callback_test_torque_target_changed)
+        self.ui.hSliderPosTgtValue.valueChanged.connect(self._callback_test_position_target_changed)
 
         # Update UI.
         self.update_ui()
@@ -62,17 +64,30 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
     def update_ui(self):
         _nocontrol = not (self.ui.radioTorque.isChecked()
                           or self.ui.radioPosition.isChecked())
-        self.ui.hSliderTgtValue.setEnabled(not _nocontrol)
+        # Enable/disable sliders
+        self.ui.hSliderPosTgtValue.setEnabled(self.ui.radioPosition.isChecked())
+        self.ui.hSliderTorqTgtValue.setEnabled(not _nocontrol)
+        
         # Check the status of the radio buttons.
         if _nocontrol:
-            self.ui.lblTargetValue.setText(f"No Control Selected")
+            self.ui.lblFeedforwardTorqueValue.setText("Feedforward Torque Value (Nm):")
+            self.ui.lblPositionTargetValue.setText("Target Position Value (deg):")
         else:
+            # Desired torque
+            _str = "Feedforward Torque Value (Nm) "
+            _str += f"[{pdef.PlutoTargetRanges['TORQUE'][0]:3.0f}, {pdef.PlutoTargetRanges['TORQUE'][1]:3.0f}]:"
+            slrrange, valrange = self.get_torque_slider_value_ranges()
+            _val = self._pos2tgt(slrrange, valrange, self.ui.hSliderTorqTgtValue.value())
+            _str += f" {_val:-3.1f}Nm"
+            self.ui.lblFeedforwardTorqueValue.setText(_str)
+            # Desired position
             # Set the text based on the control selected.
-            _str = "Target Value: "
-            _ctrl = "TORQUE" if self.ui.radioTorque.isChecked() else "POSITION"
-            _str += f"[{pdef.PlutoTargetRanges[_ctrl][0]:3.0f}, {pdef.PlutoTargetRanges[_ctrl][1]:3.0f}]"
-            _str += f" {self._pos2tgt(self.ui.hSliderTgtValue.value()):-3.1f}Nm"
-            self.ui.lblTargetValue.setText(_str)
+            _str = "Target Position Value (deg):"
+            _str += f"[{pdef.PlutoTargetRanges['POSITION'][0]:3.0f}, {pdef.PlutoTargetRanges['POSITION'][1]:3.0f}]:"
+            slrrange, valrange = self.get_position_slider_value_ranges()
+            _val = self._pos2tgt(slrrange, valrange, self.ui.hSliderPosTgtValue.value())
+            _str += f" {_val:-3.1f}deg"
+            self.ui.lblPositionTargetValue.setText(_str)
     
     #
     # Signal Callbacks
@@ -84,26 +99,30 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
     # Control Callbacks
     #
     def _callback_test_device_control_selected(self, event):
+        # Reset the torque & position slider values
+        self._set_torque_slider_value(0)
+        self._set_position_slider_value(self.pluto.angle)
         # Check what has been selected.
         if self.ui.radioNone.isChecked():
             self.pluto.set_control("NONE", 0)
         elif self.ui.radioTorque.isChecked():
             self.pluto.set_control("TORQUE", 0)
-            # Reset the target value
-            self.ui.hSliderTgtValue.setValue(self._tgt2pos(0))
-            # Now send the target value.
-            self.pluto.set_control("TORQUE", 0)
         elif self.ui.radioPosition.isChecked():
-            self.pluto.set_control("POSITION", 0)
-            # Reset the target value
-            self.ui.hSliderTgtValue.setValue(self._tgt2pos(self.pluto.angle))
-            # Now send the target value.
             self.pluto.set_control("POSITION", self.pluto.angle)
         self.update_ui()
-
-    def _callback_test_device_target_changed(self, event):
+    
+    def _callback_test_position_target_changed(self, event):
         # Get the current target position and send it to the device.
-        _tgt = self._pos2tgt(self.ui.hSliderTgtValue.value())
+        slrrange, valrange = self.get_position_slider_value_ranges()
+        _tgt = self._pos2tgt(slrrange, valrange, self.ui.hSliderPosTgtValue.value())
+        _ctrl = "TORQUE" if self.ui.radioTorque.isChecked() else "POSITION"
+        self.pluto.set_control(_ctrl, _tgt)
+        self.update_ui()
+    
+    def _callback_test_torque_target_changed(self, event):
+        # Get the current target position and send it to the device.
+        slrrange, valrange = self.get_torque_slider_value_ranges()
+        _tgt = self._pos2tgt(slrrange, valrange, self.ui.hSliderTorqTgtValue.value())
         _ctrl = "TORQUE" if self.ui.radioTorque.isChecked() else "POSITION"
         self.pluto.set_control(_ctrl, _tgt)
         self.update_ui()
@@ -111,32 +130,57 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
     #
     # Supporting functions
     #
-    def _tgt2pos(self, value):
+    def get_torque_slider_value_ranges(self):
+        return (
+            (self.ui.hSliderTorqTgtValue.minimum(),
+             self.ui.hSliderTorqTgtValue.maximum()),
+            (pdef.PlutoTargetRanges["TORQUE"][0],
+             pdef.PlutoTargetRanges["TORQUE"][1])
+        )
+
+    def get_position_slider_value_ranges(self):
+        return (
+            (self.ui.hSliderPosTgtValue.minimum(),
+             self.ui.hSliderPosTgtValue.maximum()),
+            (pdef.PlutoTargetRanges["POSITION"][0],
+             pdef.PlutoTargetRanges["POSITION"][1])
+        )
+    
+    def _tgt2pos(self, sldrrange, valrange, value):
         # Make sure this is not called by mistake for no control selection.
         if not (self.ui.radioTorque.isChecked()
                 or self.ui.radioPosition.isChecked()):
             return 0
         # Make the convesion
-        _mins, _maxs = (self.ui.hSliderTgtValue.minimum(),
-                        self.ui.hSliderTgtValue.maximum())
-        _ctrl = 'POSITION' if self.ui.radioPosition.isChecked() else 'TORQUE'
-        _minv, _maxv = (pdef.PlutoTargetRanges[_ctrl][0],
-                        pdef.PlutoTargetRanges[_ctrl][1])
+        _mins, _maxs = sldrrange
+        _minv, _maxv = valrange
         return int(_mins + (_maxs - _mins) * (value - _minv) / (_maxv - _minv))
 
-    def _pos2tgt(self, value):
+    def _pos2tgt(self, sldrrange, valrange, value):
         # Make sure this is not called by mistake for no control selection.
         if not (self.ui.radioTorque.isChecked()
                 or self.ui.radioPosition.isChecked()):
             return 0
         # Make the convesion
-        _mins, _maxs = (self.ui.hSliderTgtValue.minimum(),
-                        self.ui.hSliderTgtValue.maximum())
-        _ctrl = 'POSITION' if self.ui.radioPosition.isChecked() else 'TORQUE'
-        _minv, _maxv = (pdef.PlutoTargetRanges[_ctrl][0],
-                        pdef.PlutoTargetRanges[_ctrl][1])
+        _mins, _maxs = sldrrange
+        _minv, _maxv = valrange
         return _minv + (_maxv - _minv) * (value - _mins) / (_maxs - _mins)
 
+    def _get_torque_slider_value(self):
+        slrrange, valrange = self.get_torque_slider_value_ranges()
+        return self._pos2tgt(slrrange, valrange, self.ui.hSliderPosTgtValue.value())
+    
+    def _set_torque_slider_value(self, value):
+        slrrange, valrange = self.get_torque_slider_value_ranges()
+        self.ui.hSliderTorqTgtValue.setValue(self._tgt2pos(slrrange, valrange, value))
+
+    def _get_position_slider_value(self):
+        slrrange, valrange = self.get_position_slider_value_ranges()
+        return self._pos2tgt(slrrange, valrange, self.ui.hSliderPosTgtValue.value())
+    
+    def _set_position_slider_value(self, value):
+        slrrange, valrange = self.get_position_slider_value_ranges()
+        self.ui.hSliderPosTgtValue.setValue(self._tgt2pos(slrrange, valrange, value))
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)

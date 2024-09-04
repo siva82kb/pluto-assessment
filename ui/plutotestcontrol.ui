@@ -7,19 +7,19 @@
     <x>0</x>
     <y>0</y>
     <width>395</width>
-    <height>171</height>
+    <height>228</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>395</width>
-    <height>171</height>
+    <height>228</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
     <width>395</width>
-    <height>171</height>
+    <height>228</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -32,7 +32,7 @@
       <x>10</x>
       <y>10</y>
       <width>371</width>
-      <height>151</height>
+      <height>211</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
@@ -83,7 +83,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="lblTargetValue">
+      <widget class="QLabel" name="lblFeedforwardTorqueValue">
        <property name="font">
         <font>
          <family>Bahnschrift Light</family>
@@ -94,12 +94,38 @@
         <string notr="true">color: rgb(170, 0, 0);</string>
        </property>
        <property name="text">
-        <string>Target Value:</string>
+        <string>Feedforward Torque Value (Nm):</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QSlider" name="hSliderTgtValue">
+      <widget class="QSlider" name="hSliderTorqTgtValue">
+       <property name="maximum">
+        <number>1000</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblPositionTargetValue">
+       <property name="font">
+        <font>
+         <family>Bahnschrift Light</family>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: rgb(170, 0, 0);</string>
+       </property>
+       <property name="text">
+        <string>Target Position Value (deg):</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSlider" name="hSliderPosTgtValue">
        <property name="maximum">
         <number>1000</number>
        </property>

@@ -60,7 +60,7 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
             return
         # New data available. Format and display
         _dispdata = [
-            "PLUTO Data",
+            f"PLUTO Data [fr: {self.pluto.framerate():4.1f}Hz]",
             "----------",
             f"Time    : {self.pluto.currdata[0]}",
             f"Status  : {pdef.OutDataType[self.pluto.datatype]} | {pdef.ControlType[self.pluto.controltype]} | {pdef.CalibrationStatus[self.pluto.calibration]}",
@@ -74,8 +74,10 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
         ]
         _dispdata += [
             f"Torque  : {self.pluto.torque:3.1f}Nm",
-            f"Control : {self.pluto.control:3.1f}",
-            f"Target  : {self.pluto.desired:3.1f}",
+            f"fb Ctrl : {self.pluto.feedbackcontrol:3.1f}",
+            f"ff Ctrl : {self.pluto.feedforwardcontrol:3.1f}",
+            f"Tgt Pos : {self.pluto.desiredposition:3.1f}",
+            f"Tgt Torq: {self.pluto.desiredtorque:3.1f}",
             f"Button  : {self.pluto.button}",
         ]
         self.ui.textDevData.setText('\n'.join(_dispdata))

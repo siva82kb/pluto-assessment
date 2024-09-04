@@ -93,21 +93,25 @@ class QtPluto(QObject):
     def torque(self):
         return self.currdata[5] if len(self.currdata) > 0 else None
     
-    # @property
-    # def torque(self):
-    #     return self.currdata[6] if len(self.currdata) > 0 else None
-    
     @property
-    def control(self):
+    def feedbackcontrol(self):
         return self.currdata[6] if len(self.currdata) > 0 else None
     
     @property
-    def desired(self):
+    def feedforwardcontrol(self):
         return self.currdata[7] if len(self.currdata) > 0 else None
     
     @property
-    def button(self):
+    def desiredposition(self):
         return self.currdata[8] if len(self.currdata) > 0 else None
+    
+    @property
+    def desiredtorque(self):
+        return self.currdata[9] if len(self.currdata) > 0 else None
+    
+    @property
+    def button(self):
+        return self.currdata[10] if len(self.currdata) > 0 else None
 
     def framerate(self):
         return FR_WINDOW_N / sum(self._deltimes) if sum(self._deltimes) != 0 else 0.0
@@ -131,10 +135,12 @@ class QtPluto(QObject):
         # actuated
         self.currdata.append(newdata[3])
         # Robot sensor data
-        for i in range(4, 20, 4):
+        for i in range(4, 28, 4):
             self.currdata.append(struct.unpack('f', bytes(newdata[i:i+4]))[0])
         # pluto button
-        self.currdata.append(newdata[20])
+        self.currdata.append(newdata[28])
+        # print(len(newdata), newdata)
+        # print(len(self.currdata), self.currdata)
         # Update frame rate related data.
         if self._prevt is not None:
             _delt = (self._currt - self._prevt).microseconds * 1e-6
@@ -148,9 +154,9 @@ class QtPluto(QObject):
 
         # Check and verify button events.
         if len(self.currdata) > 0 and len(self.prevdata) > 0:    
-            if self.prevdata[8] == 1.0 and self.currdata[8] == 0.0:
+            if self.prevdata[10] == 1.0 and self.currdata[10] == 0.0:
                 self.btnpressed.emit()
-            if self.prevdata[8] == 0.0 and self.currdata[8] == 1.0:
+            if self.prevdata[10] == 0.0 and self.currdata[10] == 1.0:
                 self.btnreleased.emit()
 
     def calibrate(self, mech):
