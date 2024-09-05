@@ -167,14 +167,13 @@ class QtPluto(QObject):
             pdef.Mehcanisms[mech]
         ])
     
-    def set_control(self, control, target):
-        """Function to set the control target.
+    def set_control_type(self, control):
+        """Function to set the control type.
         """
         if not self.is_connected():
             return
-        _payload = [pdef.get_code(pdef.InDataType, "SET_CONTROL_PARAM"),
-                    pdef.get_code(pdef.ControlType, control) | 0x08]
-        _payload += list(struct.pack('f', target))
+        _payload = [pdef.InDataType["SET_CONTROL_TYPE"],
+                    pdef.ControlType[control]]
         self.dev.send_message(_payload)
     
     def set_position_target(self, target):
@@ -182,9 +181,7 @@ class QtPluto(QObject):
         """
         if not self.is_connected():
             return
-        _payload = [pdef.get_code(pdef.InDataType, "SET_CONTROL_PARAM"),
-                    pdef.get_code(pdef.ControlType, "POSITION") | 
-                    pdef.get_code(pdef.ControlDetails, "POSITIONTGT")]
+        _payload = [pdef.InDataType["SET_POSITION_TGT"]]
         _payload += list(struct.pack('f', target))
         self.dev.send_message(_payload)
     
@@ -193,7 +190,6 @@ class QtPluto(QObject):
         """
         if not self.is_connected():
             return
-        _payload = [pdef.get_code(pdef.InDataType, "SET_CONTROL_PARAM"),
-                    pdef.get_code(pdef.ControlType, "TORQUE") | 0x08]
+        _payload = [pdef.InDataType["SET_TORQUE_TGT"]]
         _payload += list(struct.pack('f', target))
         self.dev.send_message(_payload)

@@ -119,27 +119,27 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
         self._set_position_slider_value(self.pluto.angle)
         # Check what has been selected.
         if self.ui.radioNone.isChecked():
-            self.pluto.set_control("NONE", 0)
+            self.pluto.set_control_type("NONE")
         elif self.ui.radioTorque.isChecked():
-            self.pluto.set_control("TORQUE", 0)
+            self.pluto.set_control_type("TORQUE")
         elif self.ui.radioPosition.isChecked():
-            self.pluto.set_control("POSITION", self.pluto.angle)
+            self.pluto.set_control_type("POSITION")
         self.update_ui()
     
     def _callback_test_position_target_changed(self, event):
         # Get the current target position and send it to the device.
         slrrange, valrange = self.get_position_slider_value_ranges()
         _tgt = self._pos2tgt(slrrange, valrange, self.ui.hSliderPosTgtValue.value())
-        _ctrl = "TORQUE" if self.ui.radioTorque.isChecked() else "POSITION"
-        self.pluto.set_control(_ctrl, _tgt)
+        # _ctrl = "TORQUE" if self.ui.radioTorque.isChecked() else "POSITION"
+        self.pluto.set_position_target(_tgt)
         self.update_ui()
     
     def _callback_test_torque_target_changed(self, event):
         # Get the current target position and send it to the device.
         slrrange, valrange = self.get_torque_slider_value_ranges()
         _tgt = self._pos2tgt(slrrange, valrange, self.ui.hSliderTorqTgtValue.value())
-        _ctrl = "TORQUE" if self.ui.radioTorque.isChecked() else "POSITION"
-        self.pluto.set_control(_ctrl, _tgt)
+        # _ctrl = "TORQUE" if self.ui.radioTorque.isChecked() else "POSITION"
+        self.pluto.set_feedforward_torque(_tgt)
         self.update_ui()
 
     #
