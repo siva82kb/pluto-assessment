@@ -73,7 +73,7 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
                           or self.ui.radioPosition.isChecked())
         # Enable/disable sliders
         self.ui.hSliderPosTgtValue.setEnabled(self.ui.radioPosition.isChecked())
-        self.ui.hSliderTorqTgtValue.setEnabled(not _nocontrol)
+        self.ui.hSliderTorqTgtValue.setEnabled(self.ui.radioTorque.isChecked())
         
         # Check the status of the radio buttons.
         if _nocontrol:
@@ -130,16 +130,14 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
         # Get the current target position and send it to the device.
         slrrange, valrange = self.get_position_slider_value_ranges()
         _tgt = self._pos2tgt(slrrange, valrange, self.ui.hSliderPosTgtValue.value())
-        # _ctrl = "TORQUE" if self.ui.radioTorque.isChecked() else "POSITION"
-        self.pluto.set_position_target(_tgt)
+        self.pluto.set_control_target(_tgt)
         self.update_ui()
     
     def _callback_test_torque_target_changed(self, event):
         # Get the current target position and send it to the device.
         slrrange, valrange = self.get_torque_slider_value_ranges()
         _tgt = self._pos2tgt(slrrange, valrange, self.ui.hSliderTorqTgtValue.value())
-        # _ctrl = "TORQUE" if self.ui.radioTorque.isChecked() else "POSITION"
-        self.pluto.set_feedforward_torque(_tgt)
+        self.pluto.set_control_target(_tgt)
         self.update_ui()
 
     #

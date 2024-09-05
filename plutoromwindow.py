@@ -142,6 +142,9 @@ class PlutoRomAssessWindow(QtWidgets.QMainWindow):
         self._pluto = plutodev
         self._mechanism = mechanism
 
+        # Set control to NONE
+        self._pluto.set_control_type("NONE")
+
         # Initialize the state machine.
         self._smachine = PlutoRomAssessmentStateMachine(self._pluto)
 

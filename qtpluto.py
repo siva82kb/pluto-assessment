@@ -94,24 +94,24 @@ class QtPluto(QObject):
         return self.currdata[5] if len(self.currdata) > 0 else None
     
     @property
-    def feedbackcontrol(self):
+    def control(self):
         return self.currdata[6] if len(self.currdata) > 0 else None
     
+    # @property
+    # def feedforwardcontrol(self):
+    #     return self.currdata[7] if len(self.currdata) > 0 else None
+    
     @property
-    def feedforwardcontrol(self):
+    def target(self):
         return self.currdata[7] if len(self.currdata) > 0 else None
     
-    @property
-    def desiredposition(self):
-        return self.currdata[8] if len(self.currdata) > 0 else None
-    
-    @property
-    def desiredtorque(self):
-        return self.currdata[9] if len(self.currdata) > 0 else None
+    # @property
+    # def desiredtorque(self):
+    #     return self.currdata[9] if len(self.currdata) > 0 else None
     
     @property
     def button(self):
-        return self.currdata[10] if len(self.currdata) > 0 else None
+        return self.currdata[8] if len(self.currdata) > 0 else None
 
     def framerate(self):
         return FR_WINDOW_N / sum(self._deltimes) if sum(self._deltimes) != 0 else 0.0
@@ -135,10 +135,10 @@ class QtPluto(QObject):
         # actuated
         self.currdata.append(newdata[3])
         # Robot sensor data
-        for i in range(4, 28, 4):
+        for i in range(4, 20, 4):
             self.currdata.append(struct.unpack('f', bytes(newdata[i:i+4]))[0])
         # pluto button
-        self.currdata.append(newdata[28])
+        self.currdata.append(newdata[20])
         # Update frame rate related data.
         if self._prevt is not None:
             _delt = (self._currt - self._prevt).microseconds * 1e-6
@@ -149,12 +149,12 @@ class QtPluto(QObject):
         
         # Emit newdata signal for other listeners
         self.newdata.emit()
-
+        
         # Check and verify button events.
         if len(self.currdata) > 0 and len(self.prevdata) > 0:    
-            if self.prevdata[10] == 1.0 and self.currdata[10] == 0.0:
+            if self.prevdata[8] == 1.0 and self.currdata[8] == 0.0:
                 self.btnpressed.emit()
-            if self.prevdata[10] == 0.0 and self.currdata[10] == 1.0:
+            if self.prevdata[8] == 0.0 and self.currdata[8] == 1.0:
                 self.btnreleased.emit()
 
     def calibrate(self, mech):
@@ -176,20 +176,11 @@ class QtPluto(QObject):
                     pdef.ControlType[control]]
         self.dev.send_message(_payload)
     
-    def set_position_target(self, target):
-        """Function to set the position controller's target position.
+    def set_control_target(self, target):
+        """Function to set the contoller target position.
         """
         if not self.is_connected():
             return
-        _payload = [pdef.InDataType["SET_POSITION_TGT"]]
-        _payload += list(struct.pack('f', target))
-        self.dev.send_message(_payload)
-    
-    def set_feedforward_torque(self, target):
-        """Function to set the feedforward torque.
-        """
-        if not self.is_connected():
-            return
-        _payload = [pdef.InDataType["SET_TORQUE_TGT"]]
+        _payload = [pdef.InDataType["SET_CONTROL_TARGET"]]
         _payload += list(struct.pack('f', target))
         self.dev.send_message(_payload)

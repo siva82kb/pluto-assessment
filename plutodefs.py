@@ -10,6 +10,11 @@ import numpy as np
 from enum import Enum
 
 
+
+# Hand Openiong and Closing Mechanism Conversion Factor
+HOCScale = 3.97 * np.pi / 180
+PLUTOMaxTorque = 1.0 #Nm
+
 class PlutoEvents(Enum):
     PRESSED = 0
     RELEASED = 1
@@ -36,13 +41,12 @@ OutDataType = {
 }
 
 InDataType = {
-    "GET_VERSION":      0x00,
-    "CALIBRATE":        0x01,
-    "START_STREAM":     0x02,
-    "STOP_STREAM":      0x03,
-    "SET_CONTROL_TYPE": 0x04,
-    "SET_POSITION_TGT": 0x05,
-    "SET_TORQUE_TGT":   0x06,
+    "GET_VERSION":        0x00,
+    "CALIBRATE":          0x01,
+    "START_STREAM":       0x02,
+    "STOP_STREAM":        0x03,
+    "SET_CONTROL_TYPE":   0x04,
+    "SET_CONTROL_TARGET": 0x05
 }
 
 ControlDetails = {
@@ -75,12 +79,9 @@ PlutoAngleRanges = {
 }
 
 PlutoTargetRanges = {
-    "TORQUE":   [-1, 1],
+    "TORQUE":   [-PLUTOMaxTorque, PLUTOMaxTorque],
     "POSITION": [-135, 0],
 }
-
-# Hand Openiong and Closing Mechanism Conversion Factor
-HOCScale = 3.97 * np.pi / 180
 
 
 def get_name(def_dict, code):

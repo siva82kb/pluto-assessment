@@ -79,10 +79,8 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
         ]
         _dispdata += [
             f"Torque  : {self.pluto.torque:3.1f}Nm",
-            f"fb Ctrl : {self.pluto.feedbackcontrol:3.1f}",
-            f"ff Ctrl : {self.pluto.feedforwardcontrol:3.1f}",
-            f"Tgt Pos : {self.pluto.desiredposition:3.1f}",
-            f"Tgt Torq: {self.pluto.desiredtorque:3.1f}",
+            f"Control : {self.pluto.control:3.1f}",
+            f"Target  : {self.pluto.target:3.1f}",
             f"Button  : {self.pluto.button}",
         ]
         self.ui.textDevData.setText('\n'.join(_dispdata))
