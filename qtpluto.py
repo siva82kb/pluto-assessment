@@ -139,8 +139,6 @@ class QtPluto(QObject):
             self.currdata.append(struct.unpack('f', bytes(newdata[i:i+4]))[0])
         # pluto button
         self.currdata.append(newdata[28])
-        # print(len(newdata), newdata)
-        # print(len(self.currdata), self.currdata)
         # Update frame rate related data.
         if self._prevt is not None:
             _delt = (self._currt - self._prevt).microseconds * 1e-6
@@ -165,18 +163,37 @@ class QtPluto(QObject):
         if not self.is_connected():
             return
         self.dev.send_message([
-            pdef.get_code(pdef.InDataType, "CALIBRATE"),
-            pdef.get_code(pdef.Mehcanisms, mech)
+            pdef.InDataType["CALIBRATE"],
+            pdef.Mehcanisms[mech]
         ])
     
-    def set_control(self, control, target, fftorq=0.0):
-        """Function to set the encoder calibration.
+    def set_control(self, control, target):
+        """Function to set the control target.
         """
         if not self.is_connected():
             return
         _payload = [pdef.get_code(pdef.InDataType, "SET_CONTROL_PARAM"),
                     pdef.get_code(pdef.ControlType, control) | 0x08]
         _payload += list(struct.pack('f', target))
-        if control == "POSITIONFEEDFWD":
-            _payload += list(struct.pack('f', fftorq))
+        self.dev.send_message(_payload)
+    
+    def set_position_target(self, target):
+        """Function to set the position controller's target position.
+        """
+        if not self.is_connected():
+            return
+        _payload = [pdef.get_code(pdef.InDataType, "SET_CONTROL_PARAM"),
+                    pdef.get_code(pdef.ControlType, "POSITION") | 
+                    pdef.get_code(pdef.ControlDetails, "POSITIONTGT")]
+        _payload += list(struct.pack('f', target))
+        self.dev.send_message(_payload)
+    
+    def set_feedforward_torque(self, target):
+        """Function to set the feedforward torque.
+        """
+        if not self.is_connected():
+            return
+        _payload = [pdef.get_code(pdef.InDataType, "SET_CONTROL_PARAM"),
+                    pdef.get_code(pdef.ControlType, "TORQUE") | 0x08]
+        _payload += list(struct.pack('f', target))
         self.dev.send_message(_payload)

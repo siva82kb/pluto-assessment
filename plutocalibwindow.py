@@ -18,6 +18,7 @@ from PyQt5 import (
 from enum import Enum
 
 import plutodefs as pdef
+from plutodataviewwindow import PlutoDataViewWindow
 from ui_plutocalib import Ui_CalibrationWindow
 
 
@@ -58,12 +59,12 @@ class PlutoCalibrationStateMachine():
             return
         # Check of the calibration is done.
         if (event == pdef.PlutoEvents.NEWDATA
-            and self._pluto.calibration == pdef.get_code(pdef.CalibrationStatus, "YESCALIB")):
+            and self._pluto.calibration == pdef.CalibrationStatus["YESCALIB"]):
             self._state = PlutoCalibStates.WAIT_FOR_ROM_SET
     
     def _rom_set(self, event, mech):
         # Check of the calibration is done.
-        if self._pluto.calibration == pdef.get_code(pdef.CalibrationStatus, "NOCALIB"):
+        if self._pluto.calibration == pdef.CalibrationStatus["NOCALIB"]:
             self._state = PlutoCalibStates.WAIT_FOR_ZERO_SET
             return
         # Check if the button release event has happened.
@@ -98,7 +99,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO calibration window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None, mechanism: str=None, modal=False):
+    def __init__(self, parent=None, plutodev: QtPluto=None, mechanism: str=None, modal=False, dataviewer=False):
         """
         Constructor for the PlutoCalibrationWindow class.
         """
@@ -117,8 +118,8 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 
         # Set to NOMECH to start with
         self._pluto.calibrate("NOMECH")
-        self._pluto.calibrate("NOMECH")
-        self._pluto.calibrate("NOMECH")
+        # self._pluto.reset_calibration("NOMECH")
+        # self._pluto.reset_calibration("NOMECH")
 
         # Attach callbacks
         self.pluto.newdata.connect(self._callback_pluto_newdata)
@@ -126,6 +127,12 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 
         # Update UI.
         self.update_ui()
+
+        # Open the PLUTO data viewer window for sanity
+        if dataviewer:
+            # Open the device data viewer by default.
+            self._open_devdata_viewer()
+
 
     @property
     def pluto(self):
@@ -160,7 +167,19 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
             self.ui.lblCalibStatus.setText("Error!")
             self.ui.lblInstruction2.setText("Press the PLUTO button to close window.")
         else:
+            try:
+                self._devdatawnd.close()
+            except:
+                pass
             self.close()
+    
+    #
+    # Device Data Viewer Functions 
+    #
+    def _open_devdata_viewer(self):
+        self._devdatawnd = PlutoDataViewWindow(plutodev=self.pluto,
+                                               pos=(50, 300))
+        self._devdatawnd.show()
     
     #
     # Signal Callbacks
@@ -184,7 +203,8 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM4")
-    pcalib = PlutoCalibrationWindow(plutodev=plutodev, mechanism="HOC")
+    pcalib = PlutoCalibrationWindow(plutodev=plutodev, mechanism="HOC",
+                                    dataviewer=True)
     pcalib.show()
     sys.exit(app.exec_())
 

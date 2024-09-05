@@ -62,10 +62,15 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
         _dispdata = [
             f"PLUTO Data [fr: {self.pluto.framerate():4.1f}Hz]",
             "----------",
-            f"Time    : {self.pluto.currdata[0]}",
-            f"Status  : {pdef.OutDataType[self.pluto.datatype]} | {pdef.ControlType[self.pluto.controltype]} | {pdef.CalibrationStatus[self.pluto.calibration]}",
-            f"Error   : {pdef.ErrorTypes[self.pluto.error]}",
-            f"Mech    : {pdef.Mehcanisms[self.pluto.mechanism]:<5s} | Calib   : {pdef.CalibrationStatus[self.pluto.calibration]}",
+            f"Time    : {self.pluto.currdata[0]}"
+        ]
+        _statusstr = ' | '.join((pdef.get_name(pdef.OutDataType, self.pluto.datatype),
+                                 pdef.get_name(pdef.ControlType, self.pluto.controltype),
+                                 pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)))
+        _dispdata += [
+            f"Status  : {_statusstr}",
+            f"Error   : {pdef.get_name(pdef.ErrorTypes, self.pluto.error)}",
+            f"Mech    : {pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<5s} | Calib   : {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
             f"Actd    : {self.pluto.actuated}",
         ]
         _dispdata += [

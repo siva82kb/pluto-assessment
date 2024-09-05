@@ -17,6 +17,7 @@ from PyQt5 import (
     QtWidgets,)
 
 import plutodefs as pdef
+from plutodataviewwindow import PlutoDataViewWindow
 from ui_plutotestcontrol import Ui_PlutoTestControlWindow
 
 
@@ -24,7 +25,8 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO test control window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None, modal=False):
+    def __init__(self, parent=None, plutodev: QtPluto=None, modal=False, 
+                 dataviewer=False):
         """
         Constructor for the PTestControlViewWindow class.
         """
@@ -53,6 +55,11 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
 
         # Update UI.
         self.update_ui()
+
+        # Open the PLUTO data viewer window for sanity
+        if dataviewer:
+            # Open the device data viewer by default.
+            self._open_devdata_viewer()
 
     @property
     def pluto(self):
@@ -89,6 +96,14 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
             _str += f" {_val:-3.1f}deg"
             self.ui.lblPositionTargetValue.setText(_str)
     
+    #
+    # Device Data Viewer Functions 
+    #
+    def _open_devdata_viewer(self):
+        self._devdatawnd = PlutoDataViewWindow(plutodev=self.pluto,
+                                               pos=(50, 300))
+        self._devdatawnd.show()
+
     #
     # Signal Callbacks
     # 
@@ -185,6 +200,7 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM4")
-    pdataview = PlutoTestControlWindow(plutodev=plutodev)
+    pdataview = PlutoTestControlWindow(plutodev=plutodev,
+                                       dataviewer=True)
     pdataview.show()
     sys.exit(app.exec_())

@@ -16,60 +16,55 @@ class PlutoEvents(Enum):
     NEWDATA = 2
 
 ControlType = {
-    0x00: "NONE",
-    0x01: "POSITION",
-    0x06: "TORQUE",
-    0x03: "ACTIVEASSIST",
-    0x04: "RESIST",
-    0x02: "ACTIVE",
-    0x07: "SPEED",
-    0x08: "POSITIONFEEDFWD",
+    "NONE":     0x00,
+    "POSITION": 0x01,
+    "RESIST":   0x02,
+    "TORQUE":   0x03,
 }
 
 Mehcanisms = {
-    0x00: "WFE",
-    0x01: "WUD",
-    0x02: "WPS",
-    0x03: "HOC",
-    0x04: "NOMECH",
+    "WFE":    0x00,
+    "WUD":    0x01,
+    "WPS":    0x02,
+    "HOC":    0x03,
+    "NOMECH": 0x04,
 }
 
 OutDataType = {
-    0x05: "SENSORSTREAM",
-    0x01: "SENSORPARAM",
-    0x02: "DEVICEERROR",
-    0x03: "CONTROLPARAM",
-    0x04: "DIAGNOSTICS",
+    "SENSORSTREAM": 0x00,
+    "CONTROLPARAM": 0x01,
 }
 
 InDataType = {
-    0x00: "SET_ERROR",
-    0x01: "START_STREAM",
-    0x02: "STOP_STREAM",
-    0x03: "SET_SENSOR_PARAM",
-    0x04: "GET_SENSOR_PARAM",
-    0x05: "SET_CONTROL_PARAM",
-    0x06: "GET_CONTROL_PARAM",
-    0x07: "CALIBRATE",
-    0x10: "GET_VERSION",
+    "GET_VERSION":      0x00,
+    "CALIBRATE":        0x01,
+    "START_STREAM":     0x02,
+    "STOP_STREAM":      0x03,
+    "SET_CONTROL_TYPE": 0x04,
+    "SET_POSITION_TGT": 0x05,
+    "SET_TORQUE_TGT":   0x06,
+}
+
+ControlDetails = {
+    "POSITIONTGT":    0x08,
+    "FEEDFORWARDTGT": 0x20
 }
 
 ErrorTypes = {
-    0x0000: "NOERR",
-    0x0001: "ANGSENSERR",
-    0x0002: "VELSENSERR",
-    0x0004: "TORQSENSERR",
-    0x0008: "MCURRSENSERR",
+    "ANGSENSERR":   0x0001,
+    "VELSENSERR":   0x0002,
+    "TORQSENSERR":  0x0004,
+    "MCURRSENSERR": 0x0008,
 }
 
 OperationStatus = {
-    0x00: "NOERR",
-    0x01: "YESERR",
+    "NOERR":  0x00,
+    "YESERR": 0x01,
 }
 
 CalibrationStatus = {
-    0x00: "NOCALIB",
-    0x01: "YESCALIB",
+    "NOCALIB":  0x00,
+    "YESCALIB": 0x01,
 }
 
 PlutoAngleRanges = {
@@ -80,18 +75,18 @@ PlutoAngleRanges = {
 }
 
 PlutoTargetRanges = {
-    "TORQUE": [-1, 1],
+    "TORQUE":   [-1, 1],
     "POSITION": [-135, 0],
 }
 
 # Hand Openiong and Closing Mechanism Conversion Factor
 HOCScale = 3.97 * np.pi / 180
 
-def get_code(def_dict, name):
-    """Gets the code corresponding to the given name from the definition 
-    dictionary.
+
+def get_name(def_dict, code):
+    """Gets the name corresponding to the given code from the definition  dictionary.
     """
-    for code, value in def_dict.items():
-        if value == name:
-            return code
+    for name, value in def_dict.items():
+        if value == code:
+            return name
     return None
