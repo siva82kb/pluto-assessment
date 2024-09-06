@@ -101,6 +101,7 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
     #
     def _open_devdata_viewer(self):
         self._devdatawnd = PlutoDataViewWindow(plutodev=self.pluto,
+                                               mode="DIAGNOSTICS",
                                                pos=(50, 300))
         self._devdatawnd.show()
 

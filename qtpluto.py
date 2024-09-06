@@ -40,8 +40,9 @@ class QtPluto(QObject):
         super().__init__()
         self.dev = JediComm(port, baudrate)
         # Upacked data from PLUTO with time stamp.
-        self.currdata = []
-        self.prevdata = []
+        self.currstatedata = []
+        self.prevstatedata = []
+        self.currsensordata = []
         # framerate related stuff
         self._currt = None
         self._prevt = None
@@ -54,91 +55,108 @@ class QtPluto(QObject):
         self.dev.start()
 
     @property
+    def time(self):
+        return self.currstatedata[0] if len(self.currstatedata) > 0 else None
+    
+    @property
     def status(self):
-        return self.currdata[1] if len(self.currdata) > 0 else None
+        return self.currstatedata[1] if len(self.currstatedata) > 0 else None
     
     @property
     def datatype(self):
-        return self.status >> 4 if len(self.currdata) > 0 else None
+        return self.status >> 4 if len(self.currstatedata) > 0 else None
     
     @property
     def controltype(self):
-        return (self.status & 0x0E) >> 1 if len(self.currdata) > 0 else None
+        return (self.status & 0x0E) >> 1 if len(self.currstatedata) > 0 else None
     
     @property
     def calibration(self):
-        return self.status & 0x01 if len(self.currdata) > 0 else None
+        return self.status & 0x01 if len(self.currstatedata) > 0 else None
 
     @property
     def error(self):
-        return self.currdata[2] if len(self.currdata) > 0 else None
+        return self.currstatedata[2] if len(self.currstatedata) > 0 else None
     
     @property
     def mechanism(self):
-        return self.currdata[3] >> 4 if len(self.currdata) > 0 else None
+        return self.currstatedata[3] >> 4 if len(self.currstatedata) > 0 else None
     
     @property
     def actuated(self):
-        return self.currdata[3] & 0x01 if len(self.currdata) > 0 else None
-    
-    @property
-    def angle(self):
-        return self.currdata[4] if len(self.currdata) > 0 else None
-    
-    @property
-    def hocdisp(self):
-        return pdef.HOCScale * abs(self.currdata[4]) if len(self.currdata) > 0 else None
-    
-    @property
-    def torque(self):
-        return self.currdata[5] if len(self.currdata) > 0 else None
-    
-    @property
-    def control(self):
-        return self.currdata[6] if len(self.currdata) > 0 else None
-    
-    # @property
-    # def feedforwardcontrol(self):
-    #     return self.currdata[7] if len(self.currdata) > 0 else None
-    
-    @property
-    def target(self):
-        return self.currdata[7] if len(self.currdata) > 0 else None
-    
-    # @property
-    # def desiredtorque(self):
-    #     return self.currdata[9] if len(self.currdata) > 0 else None
+        return self.currstatedata[3] & 0x01 if len(self.currstatedata) > 0 else None
     
     @property
     def button(self):
-        return self.currdata[8] if len(self.currdata) > 0 else None
-
+        return self.currstatedata[4] if len(self.currstatedata) > 0 else None
+    
+    @property
+    def angle(self):
+        return self.currsensordata[0] if len(self.currsensordata) > 0 else None
+    
+    @property
+    def hocdisp(self):
+        return pdef.HOCScale * abs(self.currsensordata[0]) if len(self.currsensordata) > 0 else None
+    
+    @property
+    def torque(self):
+        return self.currsensordata[1] if len(self.currsensordata) > 0 else None
+    
+    @property
+    def control(self):
+        return self.currsensordata[2] if len(self.currsensordata) > 0 else None
+    
+    @property
+    def target(self):
+        return self.currsensordata[3] if len(self.currsensordata) > 0 else None
+    
+    @property
+    def error(self):
+        return self.currsensordata[4] if len(self.currsensordata) > 4 else None
+    
+    @property
+    def errordiff(self):
+        return self.currsensordata[5] if len(self.currsensordata) > 5 else None
+    
+    @property
+    def errorsum(self):
+        return self.currsensordata[6] if len(self.currsensordata) > 6 else None
+    
     def framerate(self):
         return FR_WINDOW_N / sum(self._deltimes) if sum(self._deltimes) != 0 else 0.0
  
     def is_connected(self):
         return self.dev.is_open()
+    
+    def is_data_available(self):
+        return len(self.currstatedata) != 0
 
     def _callback_newdata(self, newdata):
         """
         Handles newdata packect recevied through the COM port.
         """
         # Store previous data
-        self.prevdata = self.currdata
+        self.prevstatedata = self.currstatedata
         # Unpack and update current data
         self._currt = datetime.now()
-        self.currdata = [self._currt.strftime('%Y-%m-%d %H:%M:%S.%f')]
+        self.currstatedata = [self._currt.strftime('%Y-%m-%d %H:%M:%S.%f')]
         # status
-        self.currdata.append(newdata[0])
+        self.currstatedata.append(newdata[0])
         # error
-        self.currdata.append(255 * newdata[2] + newdata[1])
+        self.currstatedata.append(255 * newdata[2] + newdata[1])
         # actuated
-        self.currdata.append(newdata[3])
-        # Robot sensor data
-        for i in range(4, 20, 4):
-            self.currdata.append(struct.unpack('f', bytes(newdata[i:i+4]))[0])
+        self.currstatedata.append(newdata[3])
+        # Robot sensor data. This depends on the datatype.
+        N = pdef.PlutoSensorDataNumber[pdef.get_name(pdef.OutDataType, self.datatype)]
         # pluto button
-        self.currdata.append(newdata[20])
+        self.currstatedata.append(newdata[(N + 1) * 4])
+
+        # pluto sensor data
+        self.currsensordata = [
+            struct.unpack('f', bytes(newdata[i:i+4]))[0]
+            for i in range(4, (N + 1) * 4, 4)
+        ]
+
         # Update frame rate related data.
         if self._prevt is not None:
             _delt = (self._currt - self._prevt).microseconds * 1e-6
@@ -151,10 +169,10 @@ class QtPluto(QObject):
         self.newdata.emit()
         
         # Check and verify button events.
-        if len(self.currdata) > 0 and len(self.prevdata) > 0:    
-            if self.prevdata[8] == 1.0 and self.currdata[8] == 0.0:
+        if len(self.currstatedata) > 0 and len(self.prevstatedata) > 0:    
+            if self.prevstatedata[4] == 1.0 and self.currstatedata[4] == 0.0:
                 self.btnpressed.emit()
-            if self.prevdata[8] == 0.0 and self.currdata[8] == 1.0:
+            if self.prevstatedata[4] == 0.0 and self.currstatedata[4] == 1.0:
                 self.btnreleased.emit()
 
     def calibrate(self, mech):
@@ -183,4 +201,22 @@ class QtPluto(QObject):
             return
         _payload = [pdef.InDataType["SET_CONTROL_TARGET"]]
         _payload += list(struct.pack('f', target))
+        self.dev.send_message(_payload)
+
+    def start_sensorstream(self):
+        """Starts sensor stream.
+        """
+        _payload = [pdef.InDataType["START_STREAM"]]
+        self.dev.send_message(_payload)
+    
+    def stop_sensorstream(self):
+        """Stop sensor stream.
+        """
+        _payload = [pdef.InDataType["STOP_STREAM"]]
+        self.dev.send_message(_payload)
+    
+    def set_diagnostic_mode(self):
+        """Sets the device in the diagnostics mode.
+        """
+        _payload = [pdef.InDataType["SET_DIAGNOSTICS"]]
         self.dev.send_message(_payload)

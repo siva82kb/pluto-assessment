@@ -335,7 +335,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    mywin = PlutoPropAssesor("COM4")
+    mywin = PlutoPropAssesor("COM3")
     # ImageUpdate()
     mywin.show()
     sys.exit(app.exec_())

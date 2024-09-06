@@ -38,6 +38,7 @@ Mehcanisms = {
 OutDataType = {
     "SENSORSTREAM": 0x00,
     "CONTROLPARAM": 0x01,
+    "DIAGNOSTICS":  0x02,
 }
 
 InDataType = {
@@ -46,7 +47,8 @@ InDataType = {
     "START_STREAM":       0x02,
     "STOP_STREAM":        0x03,
     "SET_CONTROL_TYPE":   0x04,
-    "SET_CONTROL_TARGET": 0x05
+    "SET_CONTROL_TARGET": 0x05,
+    "SET_DIAGNOSTICS":    0x06,
 }
 
 ControlDetails = {
@@ -83,6 +85,10 @@ PlutoTargetRanges = {
     "POSITION": [-135, 0],
 }
 
+PlutoSensorDataNumber = {
+    "SENSORSTREAM": 4,
+    "DIAGNOSTICS": 7,
+}
 
 def get_name(def_dict, code):
     """Gets the name corresponding to the given code from the definition  dictionary.

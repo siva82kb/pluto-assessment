@@ -8,14 +8,13 @@
 
 import serial
 import enum
-import threading
 import sys
 import time
 from serial.tools.list_ports import comports
 from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QThread)
 
 _INDEBUG = False
-_OUTDEBUG = True
+_OUTDEBUG = False
 
 class JediParsingStates(enum.Enum):
     LookingForHeader = 0
