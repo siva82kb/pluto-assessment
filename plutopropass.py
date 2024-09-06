@@ -63,7 +63,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         }
         self._propassdata = None
         self._protocol = None
-        self._set_subjectid("test")
+        # self._set_subjectid("test")
         
         # Initialize timers.
         self.apptimer = QTimer()
@@ -296,7 +296,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     # 
     def closeEvent(self, event):
         # Set device to no control.
-        self.pluto.set_control("NONE", 0)
+        self.pluto.set_control_type("NONE")
 
         # Close the data viewer window
         if self._devdatawnd is not None:

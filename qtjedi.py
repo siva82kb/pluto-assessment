@@ -8,13 +8,13 @@
 
 import serial
 import enum
-import threading
 import sys
 import time
 from serial.tools.list_ports import comports
 from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QThread)
 
-_DEBUG = False
+_INDEBUG = False
+_OUTDEBUG = False
 
 class JediParsingStates(enum.Enum):
     LookingForHeader = 0
@@ -63,10 +63,10 @@ class JediComm(QThread):
         _outpayload = [0xAA, 0xAA, len(outbytes)+1, *outbytes]
         _outpayload.append(sum(_outpayload) % 256)
         # Send payload.
-        # if True:
-        #     sys.stdout.write("\n Out data: ")
-        #     for _elem in _outpayload:
-        #         sys.stdout.write(f"{_elem} ")
+        if _OUTDEBUG:
+            sys.stdout.write("\n Out data: ")
+            for _elem in _outpayload:
+                sys.stdout.write(f"{_elem} ")
         self._ser.write(bytearray(_outpayload))
 
     def run(self):
@@ -113,12 +113,12 @@ class JediComm(QThread):
         Reads and handles the received data by calling the inform function.
         """
         # Read full packets.
-        if self._ser.inWaiting() and _DEBUG:
+        if self._ser.inWaiting() and _INDEBUG:
             sys.stdout.write("\n New data: ")
         try:
             while self._ser.inWaiting():
                 _byte = self._ser.read()
-                if  _DEBUG:
+                if  _INDEBUG:
                     sys.stdout.write(f"{ord(_byte)} ")
                 if self._state == JediParsingStates.LookingForHeader:
                     if ord(_byte) == 0xff:

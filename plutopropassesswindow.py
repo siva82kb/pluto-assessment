@@ -242,7 +242,8 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
     """
 
     def __init__(self, parent=None, plutodev: QtPluto=None, arom: float=0.0,
-                 prom: float=0.0, outdir="", modal=False, dataviewer=False):
+                 prom: float=0.0, promtorq: float=0.0, outdir="", modal=False,
+                 dataviewer=False):
         """
         Constructor for the PlutoPropAssessWindow class.
         """
@@ -256,6 +257,7 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         self._pluto = plutodev
         self._arom = arom
         self._prom = prom
+        self._promtorq = promtorq
         self._outdir = outdir
 
         # Assessment time
@@ -272,8 +274,8 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             "time": -1,
             "init": 0,
             "final": 0,
-            "dur": 0,
             "curr": 0,
+            "dur": 0,
             "on_timer": 0,
             "off_timer": 0
         }
@@ -317,13 +319,13 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         self.update_ui()
 
         # Initialize PLUTO control to NONE.
-        self.pluto.set_control("NONE", 0)
+        self.pluto.set_control_type("NONE")
 
         # Open the PLUTO data viewer window for sanity
         if dataviewer:
             # Open the device data viewer by default.
             self._open_devdata_viewer()
-
+        
     @property
     def pluto(self):
         return self._pluto
@@ -353,7 +355,7 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
     # 
     def closeEvent(self, event):
         # Set device to no control.
-        self.pluto.set_control("NONE", 0)
+        self.pluto.set_control_type("NONE")
         # Close file if open
         if self._data['trialfhandle'] is not None:
             self._data['trialfhandle'].flush()
@@ -525,21 +527,25 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         )
         # Write data row to the file.
         if self._data['trialfhandle'] is not None:
-            self._data['trialfhandle'].write(",".join((
-                dt.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
-                f"{self._pluto.status}",
-                f"{self._pluto.error}",
-                f"{self._pluto.mechanism}",
-                f"{self._pluto.angle:0.3f}",
-                f"{self._pluto.hocdisp:0.3f}",
-                f"{self._pluto.torque:0.3f}",
-                f"{self._pluto.control:0.3f}",
-                f"{self._pluto.desired:0.3f}",
-                f"{self._pluto.button}",
-                f"{self._pluto.framerate():0.3f}",
-                f"{self._smachine.state}".split('.')[-1]
-            )))
-            self._data['trialfhandle'].write("\n")
+            try:
+                # time,status,error,mechanism,angle,hocdisp,torque,control,target,button,framerate,state
+                self._data['trialfhandle'].write(",".join((
+                    dt.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+                    f"{self._pluto.status}",
+                    f"{self._pluto.error}",
+                    f"{self._pluto.mechanism}",
+                    f"{self._pluto.angle:0.3f}",
+                    f"{self._pluto.hocdisp:0.3f}",
+                    f"{self._pluto.torque:0.3f}",
+                    f"{self._pluto.control:0.3f}",
+                    f"{self._pluto.target:0.3f}",
+                    f"{self._pluto.button}",
+                    f"{self._pluto.framerate():0.3f}",
+                    f"{self._smachine.state}".split('.')[-1]
+                )))
+                self._data['trialfhandle'].write("\n")
+            except ValueError:
+                self._data['trialfhandle'] = None
         self._state_handlers[self._smachine.state](_strans)
         self.update_ui()
 
@@ -597,7 +603,7 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         if self._smachine.state == PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY_MOVING:
             # Update target position.
             self._update_target_position()
-            
+
             # Check if the target has been reached, and target demo time has lapsed.
             _strans = self._check_target_display_timeout()
         elif self._smachine.state == PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY:
@@ -854,7 +860,7 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         # Limit time to be between 0 and 1.
         self._tgtctrl["curr"] = _init + (_tgt - _init) * clip(_t / _dur)
         # Send command to the robot.
-        self.pluto.set_control("POSITION", -self._tgtctrl["curr"] / pdef.HOCScale)
+        self.pluto.set_control_target(-self._tgtctrl["curr"] / pdef.HOCScale)
     
     def _update_target_position_mjt(self):
         _t, _init, _tgt, _dur = (self._tgtctrl["time"],
@@ -864,7 +870,32 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         # Limit time to be between 0 and 1.
         self._tgtctrl["curr"] = _init + (_tgt - _init) * mjt(clip(_t / _dur))
         # Send command to the robot.
-        self.pluto.set_control("POSITION", -self._tgtctrl["curr"] / pdef.HOCScale)
+        self.pluto.set_control_target(-self._tgtctrl["curr"] / pdef.HOCScale)
+
+    
+    def _set_position_torque_target_information(self, initpos, finalpos):
+        self._tgtctrl["time"] = 0
+        # Position
+        self._tgtctrl["init"] = initpos
+        self._tgtctrl["final"] = finalpos
+        self._tgtctrl["curr"] = initpos
+        # Duration/Speed
+        self._tgtctrl["dur"] = abs(self._tgtctrl["final"] - self._tgtctrl["init"]) / self._protocol['move_speed']
+        self._tgtctrl["dur"] = self._tgtctrl["dur"] if self._tgtctrl["dur"] != 0 else 1.0
+        self._ctrl_timer.start(int(passdef.PROPASS_CTRL_TIMER_DELTA * 1000))
+        # Initialize the propass state machine time
+        self._time = -1
+
+    def _create_trial_file(self):
+        self._data['trialfhandle'] = open(self._data["trialfile"], "w")
+            # Write the header and trial details
+        self._data['trialfhandle'].writelines([
+                f"trial: {self._data['trialno']+1}\n",
+                f"target: {self._data['targets'][self._data['trialno']]}cm\n",
+                f"start time: {self._data['trial_strt_t'].strftime('%Y-%m-%d %H:%M:%S.%f')}\n",
+                "time,status,error,mechanism,angle,hocdisp,torque,control,target,button,framerate,state\n"
+            ])
+        self._data['trialfhandle'].flush()
     
     #
     # Device Data Viewer Functions 
@@ -889,26 +920,18 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         # Check if timer has been started already.
         if statetrans:
             # Create and open next trial file for data logging.
-            self._data['trialfhandle'] = open(self._data["trialfile"], "w")
-            # Write the header and trial details
-            self._data['trialfhandle'].writelines([
-                f"trial: {self._data['trialno']+1}\n",
-                f"target: {self._data['targets'][self._data['trialno']]}cm\n",
-                f"start time: {self._data['trial_strt_t'].strftime('%Y-%m-%d %H:%M:%S.%f')}\n",
-                "time,status,error,mechanism,angle,hocdisp,torque,control,desired,button,framerate,state\n"
-            ])
-            self._data['trialfhandle'].flush()
+            self._create_trial_file()
 
             # Set target information.
-            self._tgtctrl["time"] = 0
-            self._tgtctrl["init"] = self.pluto.hocdisp
-            self._tgtctrl["final"] = self._data['targets'][self._data['trialno']]
-            self._tgtctrl["curr"] = self.pluto.hocdisp
-            self._tgtctrl["dur"] = (self._tgtctrl["final"] - self._tgtctrl["init"]) / self._protocol['move_speed']
-            self._ctrl_timer.start(int(passdef.PROPASS_CTRL_TIMER_DELTA * 1000))
-            # Initialize the propass state machine time
-            self._time = -1
-    
+            self._set_position_torque_target_information(
+                initpos=self._pluto.hocdisp,
+                finalpos=self._data['targets'][self._data['trialno']]
+            )
+
+            # Set control type and target
+            self._pluto.set_control_type("POSITION")
+            self._pluto.set_control_target(self._pluto.angle)
+
     def _handle_trial_haptic_display(self, statetrans):
         # Initialize the statemachine timer if needed.
         if statetrans:
@@ -926,41 +949,27 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             # Flush data to disk
             self._data['trialfhandle'].flush()
 
-            # Reset target position details.
-            self._tgtctrl["time"] = 0
-            self._tgtctrl["init"] = self.pluto.hocdisp
-            self._tgtctrl["final"] = 0.0
-            self._tgtctrl["curr"] = self.pluto.hocdisp
-            self._tgtctrl["dur"] = abs(self._tgtctrl["final"] - self._tgtctrl["init"]) / self._protocol['move_speed']
-            self._ctrl_timer.start(int(passdef.PROPASS_CTRL_TIMER_DELTA * 1000))
-            # Initialize the propass state machine time
-            self._time = -1
-
-        # # Check if the hand has been closed to the required position.
-        # self._time = 0 if self.pluto.hocdisp < 0.25 else -1
+            # Set target information.
+            self._set_position_torque_target_information(
+                initpos=self._pluto.hocdisp,
+                finalpos=0
+            )
     
     def _handle_trial_assessment_moving(self, statetrans):
         if statetrans:
-            # Reset target position details.
-            self._tgtctrl["time"] = 0
-            self._tgtctrl["init"] = self.pluto.hocdisp
-            self._tgtctrl["final"] = self.prom
-            self._tgtctrl["curr"] = self.pluto.hocdisp
-            self._tgtctrl["dur"] = abs(self._tgtctrl["final"] - self._tgtctrl["init"]) / self._protocol['move_speed']
-            self._ctrl_timer.start(int(passdef.PROPASS_CTRL_TIMER_DELTA * 1000))
-            # Initialize the propass state machine time
-            self._time = -1
+            # Set target information.
+            self._set_position_torque_target_information(
+                initpos=self._pluto.hocdisp,
+                finalpos=self.prom
+            )
     
     def _handle_trial_assessment_response_hold(self, statetrans):
         if statetrans:
-            # Reset target position details.
-            self._tgtctrl["time"] = 0
-            self._tgtctrl["init"] = self.pluto.hocdisp
-            self._tgtctrl["final"] = self.pluto.hocdisp
-            self._tgtctrl["curr"] = self.pluto.hocdisp
-            self._tgtctrl["dur"] = 1.0
-            self._ctrl_timer.start(int(passdef.PROPASS_CTRL_TIMER_DELTA * 1000))
-            # Initialize the propass state machine time
+            # Set target information.
+            self._set_position_torque_target_information(
+                initpos=self._pluto.hocdisp,
+                finalpos=self._pluto.hocdisp
+            )
             self._time = 0
             # Reset sensed position information in the summary data
             self._summary['sensedpos'] = []
@@ -970,14 +979,11 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
     
     def _handle_trial_assessment_no_response_hold(self, statetrans):
         if statetrans:
-            # Reset target position details.
-            self._tgtctrl["time"] = 0
-            self._tgtctrl["init"] = self.pluto.hocdisp
-            self._tgtctrl["final"] = self.pluto.hocdisp
-            self._tgtctrl["curr"] = self.pluto.hocdisp
-            self._tgtctrl["dur"] = 1.0
-            self._ctrl_timer.start(int(passdef.PROPASS_CTRL_TIMER_DELTA * 1000))
-            # Initialize the propass state machine time
+            # Set target information.
+            self._set_position_torque_target_information(
+                initpos=self._pluto.hocdisp,
+                finalpos=self._pluto.hocdisp
+            )
             self._time = 0
             # Reset position information in the summary data
             self._summary['pos'] = []
@@ -987,15 +993,11 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             # Flush data to disk
             self._data['trialfhandle'].flush()
 
-            # Reset target position details.
-            self._tgtctrl["time"] = 0
-            self._tgtctrl["init"] = self.pluto.hocdisp
-            self._tgtctrl["final"] = 0.0
-            self._tgtctrl["curr"] = self.pluto.hocdisp
-            self._tgtctrl["dur"] = abs(self._tgtctrl["final"] - self._tgtctrl["init"]) / self._protocol['move_speed']
-            self._ctrl_timer.start(int(passdef.PROPASS_CTRL_TIMER_DELTA * 1000))
-            # Initialize the propass state machine time
-            self._time = -1
+            # Set target information.
+            self._set_position_torque_target_information(
+                initpos=self._pluto.hocdisp,
+                finalpos=0
+            )
     
     def _handle_protocol_pause(self, statetrans):
         self._ctrl_timer.stop()
@@ -1003,28 +1005,27 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
     def _handle_protocol_stop(self, statetrans):
         if statetrans:
             # Flush data to disk
-            self._data['trialfhandle'].flush()
+            try:
+                self._data['trialfhandle'].flush()
+            except AttributeError:
+                pass
 
-            # Reset target position details.
-            self._tgtctrl["time"] = 0
-            self._tgtctrl["init"] = self.pluto.hocdisp
-            self._tgtctrl["final"] = 0.0
-            self._tgtctrl["curr"] = self.pluto.hocdisp
-            self._tgtctrl["dur"] = abs(self._tgtctrl["final"] - self._tgtctrl["init"]) / self._protocol['move_speed']
-            self._ctrl_timer.start(int(passdef.PROPASS_CTRL_TIMER_DELTA * 1000))
-            # Initialize the propass state machine time
-            self._time = -1
+            # Set target information.
+            self._set_position_torque_target_information(
+                initpos=self._pluto.hocdisp,
+                finalpos=0
+            )
     
     def _handle_protocol_done(self, statetrans):
         # Stop control.
-        self._pluto.set_control("NONE", 0)
+        self._pluto.set_control_type("NONE")
         self._ctrl_timer.stop()
 
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM4")
-    pcalib = PlutoPropAssessWindow(plutodev=plutodev, arom=5.0, prom=7.5, 
+    pcalib = PlutoPropAssessWindow(plutodev=plutodev, arom=5.0, prom=7.5, promtorq=0.0,
                                    outdir=f"{passdef.DATA_DIR}/test/2024-09-03-15-24-13",
                                    dataviewer=True)
     pcalib.show()
