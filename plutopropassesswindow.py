@@ -931,7 +931,6 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             # Set control type and target
             self._pluto.set_control_type("POSITION")
             self._pluto.set_control_target(self._pluto.angle)
-            self._pluto.set_feedforward_torque(0.0)
 
     def _handle_trial_haptic_display(self, statetrans):
         # Initialize the statemachine timer if needed.
@@ -951,7 +950,6 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             self._data['trialfhandle'].flush()
 
             # Set target information.
-            print("asdgadsgasd")
             self._set_position_torque_target_information(
                 initpos=self._pluto.hocdisp,
                 finalpos=0
@@ -1026,7 +1024,7 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM3")
+    plutodev = QtPluto("COM4")
     pcalib = PlutoPropAssessWindow(plutodev=plutodev, arom=5.0, prom=7.5, promtorq=0.0,
                                    outdir=f"{passdef.DATA_DIR}/test/2024-09-03-15-24-13",
                                    dataviewer=True)
