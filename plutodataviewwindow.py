@@ -123,7 +123,7 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM3")
+    plutodev = QtPluto("COM4")
     pdataview = PlutoDataViewWindow(plutodev=plutodev,
                                     mode="DIAGNOSTICS")
     pdataview.show()
