@@ -236,7 +236,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
 
     def _propwnd_close_event(self, event):
         # Set device to no control.
-        self.pluto.set_control("NONE", 0)
+        self.pluto.set_control_type("NONE")
         # Reset variables
         self._propwnd = None
 
