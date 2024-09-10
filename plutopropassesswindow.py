@@ -28,11 +28,17 @@ from datetime import datetime as dt
 
 import json
 import random
+import winsound
 
 import plutodefs as pdef
 from ui_plutopropassessctrl import Ui_ProprioceptionAssessWindow
 from plutodataviewwindow import PlutoDataViewWindow
 import plutoassessdef as passdef
+
+
+# Module level constants
+BEEP_FREQ = 2500  # Set Frequency To 2500 Hertz
+BEEP_DUR = 1000  # Set Duration To 1000 ms == 1 second
 
 
 # Some useful lambda functions
@@ -957,6 +963,9 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
     
     def _handle_trial_assessment_moving(self, statetrans):
         if statetrans:
+            # Beep Beep
+            winsound.Beep(BEEP_FREQ, BEEP_DUR)
+
             # Set target information.
             self._set_position_torque_target_information(
                 initpos=self._pluto.hocdisp,
