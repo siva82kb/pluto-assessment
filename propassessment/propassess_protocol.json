@@ -8,7 +8,7 @@
     ],
     "min_target_sep": 1,
     "move_speed": 0.5,
-    "on_off_target_dur": 2,
+    "on_off_target_dur": 1,
     "target_error_th": 0.25,
     "demo_dur": 3,
     "intrat_rest_dur": 3,

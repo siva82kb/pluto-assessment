@@ -39,9 +39,6 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
         # PLUTO device
         self._pluto = plutodev
 
-        # Display counter
-        self._dispcount = 0
-
         # Attach callbacks
         self.pluto.newdata.connect(self._callback_pluto_newdata)
 
@@ -65,6 +62,18 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
     def pluto(self):
         return self._pluto
     
+    # Overriding the closeEvent method
+    def closeEvent(self, event):
+        # Close the data viewer window if it is open.
+        if hasattr(self, "_devdatawnd"):
+            self._devdatawnd.close()
+        
+        # Detach the signal callbacks
+        self.pluto.newdata.disconnect(self._callback_pluto_newdata)
+
+        # You can accept or ignore the close event here
+        event.accept()  # Accept the event and close the window
+
     #
     # Update UI
     #
@@ -198,7 +207,7 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM3")
+    plutodev = QtPluto("COM4")
     pdataview = PlutoTestControlWindow(plutodev=plutodev,
                                        dataviewer=True)
     pdataview.show()
