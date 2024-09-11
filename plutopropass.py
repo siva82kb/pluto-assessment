@@ -59,8 +59,8 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._calib = False
         self._datadir = None
         self._romdata = {
-            "AROM": 5.0,
-            "PROM": 7.0
+            "AROM": 10,
+            "PROM": 10
         }
         self._propassdata = None
         self._protocol = None
@@ -101,6 +101,8 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._open_devdata_viewer() 
 
         # Update UI
+        # A flag to disable the main window when another window is open.
+        self._maindisable = False
         self.update_ui()
     
     #
@@ -135,13 +137,12 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
             # Set subject ID, and create the folder if needed.
             self._set_subjectid(_subjid.lower())
         
-        # Write the subject details JSON file.
-        self._write_subject_json()
-
         # update UI
         self.update_ui()
     
     def _callback_calibrate(self):
+        # Disable main controls
+        self._maindisable = True
         # Calibration window and open it as a modal window.
         self._calibwnd = PlutoCalibrationWindow(plutodev=self.pluto,
                                                 mechanism="HOC",
@@ -150,22 +151,31 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._calibwnd.show()
     
     def _callback_test_device(self):
+        # Disable main controls
+        self._maindisable = True
         self._testdevwnd = PlutoTestControlWindow(plutodev=self.pluto,
                                                   modal=True)
-        self._testdevwnd.closeEvent = self._calibwnd_close_event
+        self._testdevwnd.closeEvent = self._testwnd_close_event
         self._testdevwnd.show()
 
     def _callback_assess_rom(self):
+        # Disable main controls
+        self._maindisable = True
         self._romwnd = PlutoRomAssessWindow(plutodev=self.pluto,
                                             mechanism="HOC",
                                             modal=True)
         # Attach to the aromset and promset events.
         self._romwnd.aromset.connect(self._callback_aromset)
         self._romwnd.promset.connect(self._callback_promset)
-        self._romwnd.closeEvent = self._calibwnd_close_event
+        self._romwnd.closeEvent = self._romwnd_close_event
         self._romwnd.show()
 
     def _callback_assess_prop(self):
+        # Disable main controls
+        self._maindisable = True
+        # Now create the folder for saving all the data.
+        self._create_session_folder()
+        # Open the proprioception assessment window.
         self._propwnd = PlutoPropAssessWindow(
             plutodev=self.pluto,
             subjtype=self._subjdetails["type"],
@@ -181,22 +191,33 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._propwnd.show()
 
     def _callback_subjtype_select(self):
+        # Reset AROM and PROM values if the current selection is different.
+        if (self._subjdetails["type"] != self.cbSubjectType.currentText()):
+            self._romdata["AROM"] = 0
+            self._romdata["PROM"] = 0
         self._subjdetails["type"] = self.cbSubjectType.currentText()
+        # Reset the limb and grip type.
+        self._subjdetails["limb"] = ""
+        self.cbLimb.setCurrentIndex(0)
+        self._subjdetails["grip"] = ""
+        self.cbGripType.setCurrentIndex(0)
         self.update_ui()
 
     def _callback_limb_select(self):
+        if (self._subjdetails["limb"] != self.cbLimb.currentText()):
+            self._romdata["AROM"] = 0
+            self._romdata["PROM"] = 0
         self._subjdetails["limb"] = self.cbLimb.currentText()
+        # Reset the grip type.
+        self._subjdetails["grip"] = ""
+        self.cbGripType.setCurrentIndex(0)
         self.update_ui()
 
     def _callback_griptype_select(self):
+        if (self._subjdetails["grip"] != self.cbGripType.currentText()):
+            self._romdata["AROM"] = 0
+            self._romdata["PROM"] = 0
         self._subjdetails["grip"] = self.cbGripType.currentText()
-        # Create the data directory now.
-        # set data dirr and create if needed.
-        self._currsess = self._get_curr_sess()
-        self._datadir = pathlib.Path(passdef.DATA_DIR,
-                                     self._subjid,
-                                     self._currsess)
-        self._datadir.mkdir(exist_ok=True, parents=True)
         self.update_ui()
 
     # 
@@ -244,39 +265,46 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     # Other callbacks
     #
     def _calibwnd_close_event(self, event):
+        self._calibwnd.close()
         self._calibwnd = None
-        self._wndui = None
-        self._smachines["calib"] = None
+        # Reenable main controls
+        self._maindisable = False
     
     def _testwnd_close_event(self, event):
-        self._testwnd = None
-        self._wndui = None
+        self._testdevwnd = None
+        # Reenable main controls
+        self._maindisable = False
 
     def _romwnd_close_event(self, event):
-        # Write the subject details JSON file.
-        self._write_subject_json()
-        # Reset variables
+        self._romwnd.close()
         self._romwnd = None
         self._wndui = None
-        self._smachines["rom"] = None
+        # Reenable main controls
+        self._maindisable = False
 
     def _propwnd_close_event(self, event):
+        print("Proprioception assessment window closed.")
         # Set device to no control.
         self.pluto.set_control_type("NONE")
         # Reset variables
+        self._propwnd.close()
+        self._propwnd.deleteLater()
         self._propwnd = None
+        # Reenable main controls
+        self._maindisable = False
 
     #
     # UI Update function
     #
     def update_ui(self):
-        enbflag = self._subjid is not None and self._calib is True
+        enbflag = self._maindisable is False and self._subjid is not None and self._calib is True
         # Disable buttons if needed.
-        self.pbSubject.setEnabled(self._subjid is None)
-        self.pbTestDevice.setEnabled(enbflag)
+        self.pbCalibration.setEnabled(self._maindisable is False)
+        self.pbSubject.setEnabled(self._maindisable is False and self._subjid is None)
+        self.pbTestDevice.setEnabled(False)
         self.cbSubjectType.setEnabled(enbflag)
-        self.cbLimb.setEnabled(self.cbSubjectType.currentText() != "")
-        self.cbGripType.setEnabled(self.cbLimb.currentText() != "")
+        self.cbLimb.setEnabled(enbflag and self.cbSubjectType.currentText() != "")
+        self.cbGripType.setEnabled(enbflag and self.cbLimb.currentText() != "")
         self.pbRomAssess.setEnabled(enbflag and self.cbGripType.currentText() != "")
         self.pbPropAssessment.setEnabled(
             enbflag
@@ -312,7 +340,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     def _set_subjectid(self, subjid):
         self._subjid = subjid
         self._datadir = None
-        self._subjdetails = {}
+        self._subjdetails = {"type": "", "limb": "", "grip": ""}
         self._currsess = None
     
     def _get_curr_sess(self):
@@ -321,6 +349,17 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
                 + self._subjdetails["grip"][0].lower()
                 + "_"
                 + dt.now().strftime("%Y-%m-%d-%H-%M-%S"))
+    
+    def _create_session_folder(self):
+        # Create the data directory now.
+        # set data dirr and create if needed.
+        self._currsess = self._get_curr_sess()
+        self._datadir = pathlib.Path(passdef.DATA_DIR,
+                                     self._subjid,
+                                     self._currsess)
+        self._datadir.mkdir(exist_ok=True, parents=True)
+        # Write the subject details JSON file.
+        self._write_subject_json()
 
     #
     # Device Data Viewer Functions 
@@ -364,10 +403,14 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         _subjdata = {
             "SubjectID": self._subjid,
             "Session": self._currsess,
+            "SubjectType": self._subjdetails["type"],
+            "Limb": self._subjdetails["limb"],
+            "GripType": self._subjdetails["grip"],
             "ROM": self._romdata,
             "Protocol": self._protocol,
             "PropAssessment": self._propassdata
         }
+        # Session file name
         with open(self._datadir / "session_details.json", "w") as _f:
             json.dump(_subjdata, _f, indent=4)
 

@@ -155,7 +155,6 @@ class PlutoPropAssessmentStateMachine():
             return True
         return False
 
-
     def _trial_haptic_display(self, event, timeval) -> bool:
         # Check if the target has been reached.
         if event == PlutoPropAssessEvents.HAPTIC_DEMO_ON_TARGET_TIMEOUT:
@@ -362,12 +361,24 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
     # Window close event
     # 
     def closeEvent(self, event):
+        # Close the dataviewer window if open.
+        if hasattr(self, "_devdatawnd"):
+            self._devdatawnd.close()
+        
+        # Stop all timers.
+        self._ctrl_timer.stop()
         # Set device to no control.
         self.pluto.set_control_type("NONE")
         # Close file if open
         if self._data['trialfhandle'] is not None:
             self._data['trialfhandle'].flush()
             self._data['trialfhandle'].close()
+        
+        # Dettach signal callbacks
+        self.pluto.newdata.disconnect(self._callback_pluto_newdata)
+        self.pluto.btnreleased.disconnect(self._callback_pluto_btn_released)
+        self.deleteLater()  # Explicitly delete the window
+        event.accept()
 
     #
     # Update UI
@@ -575,21 +586,19 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             # Start start time
             self._data["assess_strt_t"] = dt.now()
             self._data["trial_strt_t"] = dt.now()
-            # Go to the next trial.
-            _next = self._got_to_next_trial()
-
+            
             # Check if there is a valid next target
-            if _next: 
-                # Start event
-                _strans = self._smachine.run_statemachine(
-                    PlutoPropAssessEvents.STARTSTOP_CLICKED,
-                    self._time
-                )
-            else:
+            if self._are_all_trials_done(): 
                 # All done.
                 return self._smachine.run_statemachine(
                     PlutoPropAssessEvents.ALL_TARGETS_DONE,
                     0
+                )
+            else:
+                # Start event
+                _strans = self._smachine.run_statemachine(
+                    PlutoPropAssessEvents.STARTSTOP_CLICKED,
+                    self._time
                 )
         else:
             self.ui.pbStartStopProtocol.setEnabled(False)
@@ -667,7 +676,7 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         # Target reached
         # Check if the target has been maintained for the required duration.
         if self._time >= self._protocol['on_off_target_dur']:
-                # Target maintained. Move to next state.
+            # Target maintained. Move to next state.
             return self._smachine.run_statemachine(
                 PlutoPropAssessEvents.HAPTIC_DEMO_TARGET_REACHED_TIMEOUT,
                 0
@@ -746,20 +755,17 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             self._summary['shownpos'] = []
             self._summary['sensedpos'] = []
 
-            # Go to the next trial.
-            _next = self._got_to_next_trial()
-
             # Check if there is a valid next target
-            if _next: 
-                # Target maintained. Move to next state.
-                return self._smachine.run_statemachine(
-                    PlutoPropAssessEvents.INTER_TRIAL_REST_TIMEOUT,
-                    0
-                )
-            else:
+            if self._are_all_trials_done(): 
                 # All done.
                 return self._smachine.run_statemachine(
                     PlutoPropAssessEvents.ALL_TARGETS_DONE,
+                    0
+                )
+            else:
+                # Target maintained. Move to next state.
+                return self._smachine.run_statemachine(
+                    PlutoPropAssessEvents.INTER_TRIAL_REST_TIMEOUT,
                     0
                 )
         return False
@@ -852,7 +858,10 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             _tstrs.append(f"On Target Dur: {self._time:4.1f}sec")
         return [" | ".join(_tstrs), " | ".join(_strs)]
 
-    def _got_to_next_trial(self):
+    def _are_all_trials_done(self):
+        return self._data['trialno'] + 1 == len(self._data['targets'])
+
+    def _goto_next_trial(self):
         # Increment trial number and create new file
         self._data['trialno'] += 1
         # Check if all trials are completed.
@@ -928,6 +937,9 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         self._ctrl_timer.stop()
     
     def _handle_wait_for_haptic_display_start(self, statetrans):
+        # Go to the next trial if there is a state transition.
+        if statetrans:
+            _ = self._goto_next_trial()
         self._tgtctrl['time'] = -1
         self._time = -1
         self._ctrl_timer.stop()
