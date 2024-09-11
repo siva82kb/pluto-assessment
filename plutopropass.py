@@ -54,6 +54,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         
         # Subject details
         self._subjid = None
+        self._subjdetails = None
         self._currsess = None
         self._calib = False
         self._datadir = None
@@ -77,6 +78,9 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self.pbTestDevice.clicked.connect(self._callback_test_device)
         self.pbRomAssess.clicked.connect(self._callback_assess_rom)
         self.pbPropAssessment.clicked.connect(self._callback_assess_prop)
+        self.cbSubjectType.currentIndexChanged.connect(self._callback_subjtype_select)
+        self.cbLimb.currentIndexChanged.connect(self._callback_limb_select)
+        self.cbGripType.currentIndexChanged.connect(self._callback_griptype_select)
 
         # Other windows
         self._devdatawnd = None
@@ -164,6 +168,9 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     def _callback_assess_prop(self):
         self._propwnd = PlutoPropAssessWindow(
             plutodev=self.pluto,
+            subjtype=self._subjdetails["type"],
+            limb=self._subjdetails["limb"],
+            griptype=self._subjdetails["grip"],
             arom=self._romdata['AROM'],
             prom=self._romdata['PROM'], 
             outdir=self._datadir.as_posix(),
@@ -172,6 +179,25 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         # Attach events
         self._propwnd.closeEvent = self._propwnd_close_event
         self._propwnd.show()
+
+    def _callback_subjtype_select(self):
+        self._subjdetails["type"] = self.cbSubjectType.currentText()
+        self.update_ui()
+
+    def _callback_limb_select(self):
+        self._subjdetails["limb"] = self.cbLimb.currentText()
+        self.update_ui()
+
+    def _callback_griptype_select(self):
+        self._subjdetails["grip"] = self.cbGripType.currentText()
+        # Create the data directory now.
+        # set data dirr and create if needed.
+        self._currsess = self._get_curr_sess()
+        self._datadir = pathlib.Path(passdef.DATA_DIR,
+                                     self._subjid,
+                                     self._currsess)
+        self._datadir.mkdir(exist_ok=True, parents=True)
+        self.update_ui()
 
     # 
     # Timer callbacks
@@ -244,13 +270,17 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     # UI Update function
     #
     def update_ui(self):
+        enbflag = self._subjid is not None and self._calib is True
         # Disable buttons if needed.
         self.pbSubject.setEnabled(self._subjid is None)
-        self.pbTestDevice.setEnabled(self._subjid is not None and self._calib is True)
-        self.pbRomAssess.setEnabled(self._subjid is not None and self._calib is True)
+        self.pbTestDevice.setEnabled(enbflag)
+        self.cbSubjectType.setEnabled(enbflag)
+        self.cbLimb.setEnabled(self.cbSubjectType.currentText() != "")
+        self.cbGripType.setEnabled(self.cbLimb.currentText() != "")
+        self.pbRomAssess.setEnabled(enbflag and self.cbGripType.currentText() != "")
         self.pbPropAssessment.setEnabled(
-            self._subjid is not None 
-            and self._calib is True
+            enbflag
+            and self.cbGripType.currentText() != ""
             and self._romdata["AROM"] > 0
             and self._romdata["PROM"] > 0
         )
@@ -263,7 +293,10 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         
         # Subject ID button
         if self._subjid is not None:
-            self.pbSubject.setText(f"Subject: {self._subjid} [{self._currsess}]")
+            if self._datadir is not None:
+                self.pbSubject.setText(f"Subject: {self._subjid} [{self._datadir.as_posix().split('/')[-1]}]")
+            else:
+                self.pbSubject.setText(f"Subject: {self._subjid} []")
         else:
             self.pbSubject.setText("Select Subject")
         
@@ -278,17 +311,23 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     #
     def _set_subjectid(self, subjid):
         self._subjid = subjid
-        self._currsess = dt.now().strftime("%Y-%m-%d-%H-%M-%S")
-        # set data dirr and create if needed.        
-        self._datadir = pathlib.Path(passdef.DATA_DIR, self._subjid, self._currsess)
-        self._datadir.mkdir(exist_ok=True, parents=True)
+        self._datadir = None
+        self._subjdetails = {}
+        self._currsess = None
     
+    def _get_curr_sess(self):
+        return (self._subjdetails["type"][0].lower()
+                + self._subjdetails["limb"][0].lower()
+                + self._subjdetails["grip"][0].lower()
+                + "_"
+                + dt.now().strftime("%Y-%m-%d-%H-%M-%S"))
+
     #
     # Device Data Viewer Functions 
     #
     def _open_devdata_viewer(self):
         self._devdatawnd = PlutoDataViewWindow(plutodev=self.pluto,
-                                               pos=(50, 300))
+                                               pos=(50, 400))
         self._devdatawnd.show()
 
     #

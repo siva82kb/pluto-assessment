@@ -247,7 +247,8 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
     Class for handling the operation of the PLUTO proprioceptive assessment window.
     """
 
-    def __init__(self, parent=None, plutodev: QtPluto=None, arom: float=0.0,
+    def __init__(self, parent=None, plutodev: QtPluto=None, subjtype: str="",
+                 limb: str="", griptype: str="", arom: float=0.0,
                  prom: float=0.0, promtorq: float=0.0, outdir="", modal=False,
                  dataviewer=False):
         """
@@ -261,14 +262,15 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         
         # PLUTO device
         self._pluto = plutodev
+        self._subjtype = subjtype
+        self._limb = limb
+        self._griptype = griptype
         self._arom = arom
         self._prom = prom
         self._promtorq = promtorq
         self._outdir = outdir
 
         # Assessment time
-        # self._timer = QTimer()
-        # self._timer.timeout.connect(self._callback_timer)
         self._time = -1
 
         # Another timer for controlling the target position command to the robot.
@@ -816,6 +818,9 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         }
         # Create the summary file.
         with open(self._summary['file'], "w") as fh:
+            fh.write(f"subject type: {self._subjtype}\n")
+            fh.write(f"limb: {self._limb}\n")
+            fh.write(f"grip type: {self._griptype}\n")
             fh.write(f"arom: {self.arom}cm\n")
             fh.write(f"prom: {self.prom}cm\n")
             fh.write(f"targets: {self._data['targets']}cm\n")
@@ -896,6 +901,11 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         self._data['trialfhandle'] = open(self._data["trialfile"], "w")
             # Write the header and trial details
         self._data['trialfhandle'].writelines([
+                f"subject type: {self._subjtype}\n",
+                f"limb: {self._limb}\n",
+                f"grip type: {self._griptype}\n",
+                f"arom: {self._arom}cm\n",
+                f"prom: {self._prom}cm\n",
                 f"trial: {self._data['trialno']+1}\n",
                 f"target: {self._data['targets'][self._data['trialno']]}cm\n",
                 f"start time: {self._data['trial_strt_t'].strftime('%Y-%m-%d %H:%M:%S.%f')}\n",
@@ -1035,7 +1045,7 @@ if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM4")
     pcalib = PlutoPropAssessWindow(plutodev=plutodev, arom=5.0, prom=7.5, promtorq=0.0,
-                                   outdir=f"{passdef.DATA_DIR}/test/2024-09-03-15-24-13",
+                                   outdir=f"{passdef.DATA_DIR}/test/slg_2024-09-11-09-03-21",
                                    dataviewer=True)
     pcalib.show()
     sys.exit(app.exec_())
