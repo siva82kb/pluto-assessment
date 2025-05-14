@@ -207,7 +207,7 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM4")
+    plutodev = QtPluto("COM13")
     pdataview = PlutoTestControlWindow(plutodev=plutodev,
                                        dataviewer=True)
     pdataview.show()
