@@ -38,20 +38,10 @@
       <item>
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
-         <widget class="QPushButton" name="pbTestDevice">
-          <property name="font">
-           <font>
-            <family>Bahnschrift Light</family>
-            <pointsize>10</pointsize>
-           </font>
-          </property>
-          <property name="text">
-           <string>Test Device</string>
-          </property>
-         </widget>
-        </item>
-        <item>
          <widget class="QPushButton" name="pbSubject">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="font">
            <font>
             <family>Bahnschrift Light</family>
@@ -69,7 +59,10 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
-           <widget class="QLabel" name="label">
+           <widget class="QLabel" name="lblSubjectType">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="text">
              <string>Subject Type:</string>
             </property>
@@ -77,6 +70,9 @@
           </item>
           <item>
            <widget class="QComboBox" name="cbSubjectType">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <item>
              <property name="text">
               <string/>
@@ -99,7 +95,10 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
-           <widget class="QLabel" name="label_2">
+           <widget class="QLabel" name="lblLimb">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="text">
              <string>Limb:</string>
             </property>
@@ -107,6 +106,9 @@
           </item>
           <item>
            <widget class="QComboBox" name="cbLimb">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <item>
              <property name="text">
               <string/>
@@ -128,6 +130,9 @@
         </item>
         <item>
          <widget class="QPushButton" name="pbSetLimb">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="text">
            <string>Set Limb</string>
           </property>
@@ -135,6 +140,9 @@
         </item>
         <item>
          <widget class="QGroupBox" name="gbMechanisms">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="minimumSize">
            <size>
             <width>0</width>
@@ -149,6 +157,9 @@
             <layout class="QVBoxLayout" name="verticalLayout_3">
              <item>
               <widget class="QRadioButton" name="rbWFE">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
                <property name="text">
                 <string>Wrist Flexion-Extension</string>
                </property>
@@ -156,6 +167,9 @@
              </item>
              <item>
               <widget class="QRadioButton" name="rbFPS">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
                <property name="text">
                 <string>Forearm Pronation-Supination</string>
                </property>
@@ -163,6 +177,9 @@
              </item>
              <item>
               <widget class="QRadioButton" name="rbHOC">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
                <property name="text">
                 <string>Hand Opening-Closing</string>
                </property>
@@ -170,57 +187,72 @@
              </item>
             </layout>
            </item>
-           <item>
-            <widget class="QPushButton" name="pbCalibrate">
-             <property name="font">
-              <font>
-               <family>Bahnschrift Light</family>
-               <pointsize>10</pointsize>
-              </font>
-             </property>
-             <property name="text">
-              <string>Calibrate Mechanism</string>
-             </property>
-             <property name="shortcut">
-              <string>Ctrl+S, Ctrl+S</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="pbRomAssess">
-             <property name="font">
-              <font>
-               <family>Bahnschrift Light</family>
-               <pointsize>10</pointsize>
-              </font>
-             </property>
-             <property name="text">
-              <string>Assess ROM</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="pbDiscReachAssess">
-             <property name="text">
-              <string>Discrete Reaching</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="pbPropAssess">
-             <property name="text">
-              <string>Proprioceptive Assessment</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="pbForceCtrlAssess">
-             <property name="text">
-              <string>Force Control Assessment</string>
-             </property>
-            </widget>
-           </item>
           </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pbCalibrate">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <family>Bahnschrift Light</family>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Calibrate Mechanism</string>
+          </property>
+          <property name="shortcut">
+           <string>Ctrl+S, Ctrl+S</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pbRomAssess">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <family>Bahnschrift Light</family>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Assess ROM</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pbDiscReachAssess">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Discrete Reaching</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pbPropAssess">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Proprioceptive Assessment</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pbForceCtrlAssess">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Force Control Assessment</string>
+          </property>
          </widget>
         </item>
        </layout>
@@ -244,7 +276,14 @@
          </widget>
         </item>
         <item>
-         <widget class="QGraphicsView" name="gvPlutoVis"/>
+         <widget class="QGraphicsView" name="gvPlutoVis">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">border: none;</string>
+          </property>
+         </widget>
         </item>
         <item>
          <widget class="QLabel" name="label_4">
@@ -264,10 +303,14 @@
         </item>
         <item>
          <widget class="QTextEdit" name="textPlutoData">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="styleSheet">
            <string notr="true">background-color: rgb(0, 0, 0);
 color: rgb(0, 255, 60);
-font: 8pt &quot;Cascadia Mono&quot;;</string>
+font: 8pt &quot;Cascadia Mono&quot;;
+border: none;</string>
           </property>
           <property name="readOnly">
            <bool>true</bool>
@@ -290,10 +333,14 @@ font: 8pt &quot;Cascadia Mono&quot;;</string>
         </item>
         <item>
          <widget class="QTextEdit" name="textProtocolProgress">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="styleSheet">
-           <string notr="true">background-color: rgb(0, 0, 0);
-color: rgb(0, 255, 60);
-font: 10pt &quot;Cascadia Mono&quot;;</string>
+           <string notr="true">background-color: white;
+color: rgb(0, 0, 0);
+font: 10pt &quot;Cascadia Mono&quot;;
+border: none;</string>
           </property>
           <property name="readOnly">
            <bool>true</bool>
@@ -301,7 +348,26 @@ font: 10pt &quot;Cascadia Mono&quot;;</string>
          </widget>
         </item>
         <item>
+         <widget class="QLabel" name="lblSessionInfo">
+          <property name="font">
+           <font>
+            <family>Cascadia Mono</family>
+            <pointsize>8</pointsize>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color: rgb(170, 0, 0);</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QTextEdit" name="textProtocolDetails">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="styleSheet">
            <string notr="true">font: 8pt &quot;Cascadia Mono&quot;;
 background: transparent;

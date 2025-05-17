@@ -10,6 +10,7 @@ import sys
 import re
 import pathlib
 import json
+from enum import Enum
 
 from qtpluto import QtPluto
 from datetime import datetime as dt
@@ -33,6 +34,119 @@ from plutopropassesswindow import PlutoPropAssessWindow
 
 from ui_plutofullassessment import Ui_PlutoFullAssessor
 
+DEBUG = True
+
+class PlutoFullAssessEvents(Enum):
+    SUBJECT_SET = 0
+    TYPE_LIMB_SET = 1
+
+
+class PlutoFullAssessStates(Enum):
+    WAIT_FOR_SUBJECT_SELECT = 0
+    WAIT_FOR_LIMB_SELECT = 1
+    WAIT_FOR_MECHANISM_SELECT = 2
+    WAIT_FOR_CALIBRATE = 3
+    WAIT_FOR_DISCREACH_ASSESS = 4
+    WAIT_FOR_PROP_ASSESS = 5
+    WAIT_FOR_FCTRL_ASSESS = 6
+    TASK_DONE = 7
+    MECHANISM_DONE = 8
+    SUBJECT_LIMB_DONE = 9
+
+
+class PlutoFullAssessmentStateMachine():
+    def __init__(self, plutodev, progconsole):
+        self._state = (PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT
+                       if DEBUG 
+                       else PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT)
+        self._instruction = ""
+        self._protocol = None
+        self._pconsole = progconsole
+        # Indicates if both AROM and PROM have been done for this
+        # particular instance of the statemachine.
+        self._pluto = plutodev
+        self._stateactions = {
+            PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT: self._wait_for_subject_select,
+            PlutoFullAssessStates.WAIT_FOR_LIMB_SELECT: self._wait_for_limb_select,
+            PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT: self._wait_for_mechanism_select,
+            PlutoFullAssessStates.WAIT_FOR_CALIBRATE: self._wait_for_calibrate,
+            PlutoFullAssessStates.WAIT_FOR_DISCREACH_ASSESS: self._wait_for_discreach_assess,
+            PlutoFullAssessStates.WAIT_FOR_PROP_ASSESS: self._wait_for_prop_assess,
+            PlutoFullAssessStates.WAIT_FOR_FCTRL_ASSESS: self._wait_for_fctrl_assess,
+            PlutoFullAssessStates.TASK_DONE: self._task_done,
+            PlutoFullAssessStates.MECHANISM_DONE: self._wait_for_mechanism_done,
+            PlutoFullAssessStates.SUBJECT_LIMB_DONE: self._wait_for_subject_limb_done,
+        }
+    
+    @property
+    def state(self):
+        return self._state
+    
+    @property
+    def instruction(self):
+        return self._instruction
+    
+    def run_statemachine(self, event, timeval):
+        """Execute the state machine depending on the given even that has occured.
+        """
+        self._stateactions[self._state](event, timeval)
+
+    def _wait_for_subject_select(self, event, timeval):
+        """
+        """
+        if event == PlutoFullAssessEvents.SUBJECT_SET:
+            # We need to now select the limb.
+            self._state = PlutoFullAssessStates.WAIT_FOR_LIMB_SELECT
+            self._pconsole.append(self._instruction)
+    
+    def _wait_for_limb_select(self, event, timeval):
+        """
+        """
+        if event == PlutoFullAssessEvents.TYPE_LIMB_SET:
+            # We need to now select the mechanism.
+            self._state = PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT
+            self._pconsole.append(self._instruction)
+
+    def _wait_for_mechanism_select(self, event, timeval):
+        """
+        """
+        pass
+
+    def _wait_for_calibrate(self, event, timeval):
+        """
+        """
+        pass
+
+    def _wait_for_discreach_assess(self, event, timeval):
+        """
+        """
+        pass
+
+    def _wait_for_prop_assess(self, event, timeval):
+        """
+        """
+        pass
+
+    def _wait_for_fctrl_assess(self, event, timeval):
+        """
+        """
+        pass
+
+    def _task_done(self, event, timeval):
+        """
+        """
+        pass
+
+    def _wait_for_mechanism_done(self, event, timeval):
+        """
+        """
+        pass
+
+    def _wait_for_subject_limb_done(self, event, timeval):
+        """
+        """
+        pass
+
 
 class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     """Main window of the PLUTO proprioception assessment program.
@@ -51,10 +165,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pluto.newdata.connect(self._callback_newdata)
         self.pluto.btnpressed.connect(self._callback_btn_pressed)
         self.pluto.btnreleased.connect(self._callback_btn_released)
-        
+
         # Subject details
-        self._subjid = None
-        self._subjdetails = None
+        self._subjid = "1234" if DEBUG else None
+        self._subjdetails = {"type": "Stroke", "limb": "Right"} if DEBUG else None
         self._mech = None
         self._mechdata = {
             "WFE": None,
@@ -70,7 +184,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         }
         self._propassdata = None
         self._protocol = None
-        # self._set_subjectid("test")
         
         # Initialize timers.
         self.apptimer = QTimer()
@@ -78,14 +191,20 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.apptimer.start(1000)
         self.apptime = 0
 
+        # Initialize the state machine.
+        self._smachine = PlutoFullAssessmentStateMachine(
+            plutodev=self.pluto,
+            progconsole=self.textProtocolDetails
+        )
+
         # Attach callback to the buttons
-        self.pbTestDevice.clicked.connect(self._callback_test_device)
         self.pbSubject.clicked.connect(self._callback_select_subject)
+        self.pbSetLimb.clicked.connect(self._callback_typelimb_set)
         self.pbCalibrate.clicked.connect(self._callback_calibrate)
         self.pbRomAssess.clicked.connect(self._callback_assess_rom)
         self.pbPropAssess.clicked.connect(self._callback_assess_prop)
-        self.cbSubjectType.currentIndexChanged.connect(self._callback_subjtype_select)
-        self.cbLimb.currentIndexChanged.connect(self._callback_limb_select)
+        # self.cbSubjectType.currentIndexChanged.connect(self._callback_subjtype_select)
+        # self.cbLimb.currentIndexChanged.connect(self._callback_limb_select)
 
         # Other windows
         self._devdatawnd = None
@@ -103,7 +222,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         }
 
         # Open the device data viewer by default.
-        self._open_devdata_viewer() 
+        # self._open_devdata_viewer() 
 
         # Update UI
         # A flag to disable the main window when another window is open.
@@ -141,8 +260,32 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                     return
             # Set subject ID, and create the folder if needed.
             self._set_subjectid(_subjid.lower())
+            # Run the state machine.
+            self._smachine.run_statemachine(
+                PlutoFullAssessEvents.SUBJECT_SET,  
+                0
+            )
         
         # update UI
+        self.update_ui()
+    
+    def _callback_typelimb_set(self):
+        # Open dialog to confirm limb selection (Ok or cancel).
+        reply = QMessageBox.question(
+            self,
+            "Confirm",
+            f"{self.cbSubjectType.currentText()} type and {self.cbLimb.currentText()} limb selected.\nDo you want to continue?",
+            QMessageBox.Ok | QMessageBox.Cancel
+        )
+        if reply == QMessageBox.Ok:
+            self._subjdetails["type"] = self.cbSubjectType.currentText()
+            self._subjdetails["limb"] = self.cbLimb.currentText()
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            PlutoFullAssessEvents.TYPE_LIMB_SET,
+            0
+        )
+        # Update UI
         self.update_ui()
     
     def _callback_calibrate(self):
@@ -206,16 +349,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.cbLimb.setCurrentIndex(0)
         self._subjdetails["grip"] = ""
         self.update_ui()
-
-    def _callback_limb_select(self):
-        if (self._subjdetails["limb"] != self.cbLimb.currentText()):
-            self._romdata["AROM"] = 0
-            self._romdata["PROM"] = 0
-        self._subjdetails["limb"] = self.cbLimb.currentText()
-        # Reset the grip type.
-        self._subjdetails["grip"] = ""
-        self.update_ui()
-
+    
     # 
     # Timer callbacks
     #
@@ -228,6 +362,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 _con if _con != "" else "Disconnected",
                 f"FR: {self.pluto.framerate():4.1f}Hz",
                 f"{self._subjid}",
+                f"{self._smachine.state.name:<20}",
             ))
         )
 
@@ -292,39 +427,63 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     #
     # UI Update function
     #
-    def update_ui(self):
-        enbflag = (self._maindisable is False 
-                   and self._subjid is not None 
-                   and self._mech is not None
-                   and self._mechdata[self._mech] is not None)
-        # Disable buttons if needed.
-        self.pbTestDevice.setEnabled(self._maindisable is False and self._subjid is None)
-        self.pbSubject.setEnabled(self._maindisable is False and self._subjid is None)
-        self.pbCalibrate.setEnabled(self._maindisable is False)
-        self.cbSubjectType.setEnabled(enbflag)
-        self.cbLimb.setEnabled(enbflag and self.cbSubjectType.currentText() != "")
-        self.pbPropAssess.setEnabled(enbflag)
+    def update_ui(self):        
+        # Select subject
+        self.pbSubject.setEnabled(self._maindisable is False and self._smachine.state == PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT)
+        
+        # Limb selection
+        _lmbflag = self._maindisable is False and self._smachine.state == PlutoFullAssessStates.WAIT_FOR_LIMB_SELECT
+        self.lblSubjectType.setEnabled(_lmbflag)
+        self.cbSubjectType.setEnabled(_lmbflag)
+        self.lblLimb.setEnabled(_lmbflag)
+        self.cbLimb.setEnabled(_lmbflag)
+        
+        # Set limb button
+        self.pbSetLimb.setEnabled(_lmbflag and self.cbLimb.currentText() != "" and self.cbSubjectType.currentText() != "")
 
-        # Calibration button
-        if self._calib is False:
-            self.pbCalibrate.setText(f"Calibrate")
-        else:
-            self.pbCalibrate.setText("Recalibrate")
+        # Mechanisms selection
+        _mechflag = self._maindisable is False and self._smachine.state == PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT
+        print(_mechflag)
+        self.gbMechanisms.setEnabled(_mechflag)
+
+        # Update session information.
+        self.lblSessionInfo.setText(self._get_session_info())
         
-        # Subject ID button
-        if self._subjid is not None:
-            if self._datadir is not None:
-                self.pbSubject.setText(f"Subject: {self._subjid} [{self._datadir.as_posix().split('/')[-1]}]")
-            else:
-                self.pbSubject.setText(f"Subject: {self._subjid} []")
-        else:
-            self.pbSubject.setText("Select Subject")
+        # if self._smachine.state == PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT:
+        #     # Disable everything except subject selection button.
+
+        # # Select limb
+        # enbflag = (self._maindisable is False 
+        #            and self._subjid is not None 
+        #            and self._mech is not None
+        #            and self._mechdata[self._mech] is not None)
+        # # Disable buttons if needed.
+        # self.pbTestDevice.setEnabled(self._maindisable is False and self._subjid is None)
+        # self.pbCalibrate.setEnabled(self._maindisable is False)
+        # self.cbSubjectType.setEnabled(enbflag)
+        # self.cbLimb.setEnabled(enbflag and self.cbSubjectType.currentText() != "")
+        # self.pbPropAssess.setEnabled(enbflag)
+
+        # # Calibration button
+        # if self._calib is False:
+        #     self.pbCalibrate.setText(f"Calibrate")
+        # else:
+        #     self.pbCalibrate.setText("Recalibrate")
         
-        # Update ROM values on button text.
-        if self._romdata["AROM"] > 0 and self._romdata["PROM"] > 0:
-            self.pbRomAssess.setText(f"Assess ROM [AROM: {self._romdata['AROM']:5.2f}cm | PROM: {self._romdata['PROM']:5.2f}cm]")
-        else:
-            self.pbRomAssess.setText("Assess ROM")
+        # # Subject ID button
+        # if self._subjid is not None:
+        #     if self._datadir is not None:
+        #         self.pbSubject.setText(f"Subject: {self._subjid} [{self._datadir.as_posix().split('/')[-1]}]")
+        #     else:
+        #         self.pbSubject.setText(f"Subject: {self._subjid} []")
+        # else:
+        #     self.pbSubject.setText("Select Subject")
+        
+        # # Update ROM values on button text.
+        # if self._romdata["AROM"] > 0 and self._romdata["PROM"] > 0:
+        #     self.pbRomAssess.setText(f"Assess ROM [AROM: {self._romdata['AROM']:5.2f}cm | PROM: {self._romdata['PROM']:5.2f}cm]")
+        # else:
+        #     self.pbRomAssess.setText("Assess ROM")
 
     #
     # Supporting functions
@@ -332,7 +491,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     def _set_subjectid(self, subjid):
         self._subjid = subjid
         self._datadir = None
-        self._subjdetails = {"type": "", "limb": "", "grip": ""}
+        self._subjdetails = {"type": "", "limb": ""}
         self._currsess = None
     
     def _get_curr_sess(self):
@@ -353,13 +512,22 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Write the subject details JSON file.
         self._write_subject_json()
 
+    def _get_session_info(self):
+        _str = [
+            f"{'' if self._currsess is None else self._currsess:<12}",
+            f"{'' if self._subjid is None else self._subjid:<8}",
+            f"{self._subjdetails['type'] if self._subjdetails is not None else '':<8}",
+            f"{self._subjdetails['limb'] if self._subjdetails is not None else '':<6}",
+        ]
+        return ":".join(_str)
+
     #
     # Device Data Viewer Functions 
     #
-    def _open_devdata_viewer(self):
-        self._devdatawnd = PlutoDataViewWindow(plutodev=self.pluto,
-                                               pos=(50, 400))
-        self._devdatawnd.show()
+    # def _open_devdata_viewer(self):
+    #     self._devdatawnd = PlutoDataViewWindow(plutodev=self.pluto,
+    #                                            pos=(50, 400))
+    #     self._devdatawnd.show()
 
     #
     # Main window close event
