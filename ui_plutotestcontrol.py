@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui\plutotestcontrol.ui'
+# Form implementation generated from reading ui file 'ui/plutotestcontrol.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -87,13 +87,3 @@ class Ui_PlutoTestControlWindow(object):
         self.radioPosition.setText(_translate("PlutoTestControlWindow", "Position"))
         self.lblFeedforwardTorqueValue.setText(_translate("PlutoTestControlWindow", "Feedforward Torque Value (Nm):"))
         self.lblPositionTargetValue.setText(_translate("PlutoTestControlWindow", "Target Position Value (deg):"))
-
-
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    PlutoTestControlWindow = QtWidgets.QMainWindow()
-    ui = Ui_PlutoTestControlWindow()
-    ui.setupUi(PlutoTestControlWindow)
-    PlutoTestControlWindow.show()
-    sys.exit(app.exec_())

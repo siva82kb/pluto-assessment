@@ -1,8 +1,8 @@
 """
-QT script defininf the functionality of the PLUTO proprioception assessment window.
+QT script defining the functionality of the PLUTO full assessment main window.
 
 Author: Sivakumar Balasubramanian
-Date: 24 July 2024
+Date: 16 May 2025
 Email: siva82kb@gmail.com
 """
 
@@ -23,7 +23,7 @@ from PyQt5.QtWidgets import (
     QInputDialog
 )
 
-import plutoassessdef as passdef
+import plutofullassessdef as passdef
 
 from plutodataviewwindow import PlutoDataViewWindow
 from plutocalibwindow import PlutoCalibrationWindow
@@ -31,16 +31,16 @@ from plutotestwindow import PlutoTestControlWindow
 from plutoromwindow import PlutoRomAssessWindow
 from plutopropassesswindow import PlutoPropAssessWindow
 
-from ui_plutopropass import Ui_PlutoPropAssessor
+from ui_plutofullassessment import Ui_PlutoFullAssessor
 
 
-class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
+class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     """Main window of the PLUTO proprioception assessment program.
     """
     
     def __init__(self, port, *args, **kwargs) -> None:
         """View initializer."""
-        super(PlutoPropAssesor, self).__init__(*args, **kwargs)
+        super(PlutoFullAssesor, self).__init__(*args, **kwargs)
         self.setupUi(self)
 
         # Move close to top left corner
@@ -55,6 +55,12 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         # Subject details
         self._subjid = None
         self._subjdetails = None
+        self._mech = None
+        self._mechdata = {
+            "WFE": None,
+            "FPS": None,
+            "HOC": None,
+        }
         self._currsess = None
         self._calib = False
         self._datadir = None
@@ -73,14 +79,13 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self.apptime = 0
 
         # Attach callback to the buttons
-        self.pbSubject.clicked.connect(self._callback_select_subject)
-        self.pbCalibration.clicked.connect(self._callback_calibrate)
         self.pbTestDevice.clicked.connect(self._callback_test_device)
+        self.pbSubject.clicked.connect(self._callback_select_subject)
+        self.pbCalibrate.clicked.connect(self._callback_calibrate)
         self.pbRomAssess.clicked.connect(self._callback_assess_rom)
-        self.pbPropAssessment.clicked.connect(self._callback_assess_prop)
+        self.pbPropAssess.clicked.connect(self._callback_assess_prop)
         self.cbSubjectType.currentIndexChanged.connect(self._callback_subjtype_select)
         self.cbLimb.currentIndexChanged.connect(self._callback_limb_select)
-        self.cbGripType.currentIndexChanged.connect(self._callback_griptype_select)
 
         # Other windows
         self._devdatawnd = None
@@ -200,7 +205,6 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._subjdetails["limb"] = ""
         self.cbLimb.setCurrentIndex(0)
         self._subjdetails["grip"] = ""
-        self.cbGripType.setCurrentIndex(0)
         self.update_ui()
 
     def _callback_limb_select(self):
@@ -210,14 +214,6 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
         self._subjdetails["limb"] = self.cbLimb.currentText()
         # Reset the grip type.
         self._subjdetails["grip"] = ""
-        self.cbGripType.setCurrentIndex(0)
-        self.update_ui()
-
-    def _callback_griptype_select(self):
-        if (self._subjdetails["grip"] != self.cbGripType.currentText()):
-            self._romdata["AROM"] = 0
-            self._romdata["PROM"] = 0
-        self._subjdetails["grip"] = self.cbGripType.currentText()
         self.update_ui()
 
     # 
@@ -297,27 +293,23 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
     # UI Update function
     #
     def update_ui(self):
-        enbflag = self._maindisable is False and self._subjid is not None and self._calib is True
+        enbflag = (self._maindisable is False 
+                   and self._subjid is not None 
+                   and self._mech is not None
+                   and self._mechdata[self._mech] is not None)
         # Disable buttons if needed.
-        self.pbCalibration.setEnabled(self._maindisable is False)
+        self.pbTestDevice.setEnabled(self._maindisable is False and self._subjid is None)
         self.pbSubject.setEnabled(self._maindisable is False and self._subjid is None)
-        self.pbTestDevice.setEnabled(False)
+        self.pbCalibrate.setEnabled(self._maindisable is False)
         self.cbSubjectType.setEnabled(enbflag)
         self.cbLimb.setEnabled(enbflag and self.cbSubjectType.currentText() != "")
-        self.cbGripType.setEnabled(enbflag and self.cbLimb.currentText() != "")
-        self.pbRomAssess.setEnabled(enbflag and self.cbGripType.currentText() != "")
-        self.pbPropAssessment.setEnabled(
-            enbflag
-            and self.cbGripType.currentText() != ""
-            and self._romdata["AROM"] > 0
-            and self._romdata["PROM"] > 0
-        )
+        self.pbPropAssess.setEnabled(enbflag)
 
         # Calibration button
         if self._calib is False:
-            self.pbCalibration.setText(f"Calibrate")
+            self.pbCalibrate.setText(f"Calibrate")
         else:
-            self.pbCalibration.setText("Recalibrate")
+            self.pbCalibrate.setText("Recalibrate")
         
         # Subject ID button
         if self._subjid is not None:
@@ -417,7 +409,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    mywin = PlutoPropAssesor("COM13")
+    mywin = PlutoFullAssesor("COM13")
     # ImageUpdate()
     mywin.show()
     sys.exit(app.exec_())
