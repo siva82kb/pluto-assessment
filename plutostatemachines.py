@@ -27,6 +27,17 @@ class PlutoPropAssessEvents(Enum):
     INTRA_TRIAL_REST_TIMEOUT = 6
     INTER_TRIAL_REST_TIMEOUT = 7
 
+
+class PlutoFullAssessEvents(Enum):
+    STARTSTOP_CLICKED = 0
+    PAUSE_CLICKED = 1
+    HAPTIC_DEMO_TARGET_REACHED_TIMEOUT = 2
+    HAPTIC_DEMO_OFF_TARGET_TIMEOUT = 3
+    HAPTIC_DEMO_ON_TARGET_TIMEOUT = 4
+    FULL_RANGE_REACHED = 5
+    INTRA_TRIAL_REST_TIMEOUT = 6
+    INTER_TRIAL_REST_TIMEOUT = 7
+
 class PlutoCalibStates(Enum):
     WAIT_FOR_ZERO_SET = 0
     WAIT_FOR_ROM_SET = 1
@@ -188,8 +199,6 @@ class PlutoRomAssessmentStateMachine():
         pass
 
 
-
-
 class PlutoPropAssessStates(Enum):
     PROP_DONE = 0
     WAIT_FOR_START = 1
@@ -289,3 +298,152 @@ class PlutoPropAssessmentStateMachine():
         pass
 
 
+class PlutoFullAssessStates(Enum):
+    WAIT_FOR_SUBJECT_SELECT = 0
+    WAIT_FOR_LIMB_SELECT = 0
+    WAIT_FOR_MECHANISM_SELECT = 1
+    WAIT_FOR_CALIBRATE = 2
+    WAIT_FOR_DISCREACH_ASSESS = 3
+    WAIT_FOR_PROP_ASSESS = 4
+    WAIT_FOR_FCTRL_ASSESS = 5
+    TASK_DONE = 6
+    MECHANISM_DONE = 7
+    SUBJECT_LIMB_DONE = 8
+
+
+class PlutoFullAssessmentStateMachine():
+    def __init__(self, plutodev, protocol, smtimer, progconsole):
+        self._state = PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT
+        self._instruction = ""
+        self._protocol = protocol
+        self._timer = smtimer
+        self._timer.stop()
+        self._pconsole = progconsole
+        # Indicates if both AROM and PROM have been done for this
+        # particular instance of the statemachine.
+        self._pluto = plutodev
+        self._stateactions = {
+            PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT: self._wait_for_subject_select,
+            PlutoFullAssessStates.WAIT_FOR_LIMB_SELECT: self._wait_for_limb_select,
+            PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT: self._wait_for_mechanism_select,
+            PlutoFullAssessStates.WAIT_FOR_CALIBRATE: self._wait_for_calibrate,
+            PlutoFullAssessStates.WAIT_FOR_DISCREACH_ASSESS: self._wait_for_discreach_assess,
+            PlutoFullAssessStates.WAIT_FOR_PROP_ASSESS: self._wait_for_prop_assess,
+            PlutoFullAssessStates.WAIT_FOR_FCTRL_ASSESS: self._wait_for_fctrl_assess,
+            PlutoFullAssessStates.TASK_DONE: self._task_done,
+            PlutoFullAssessStates.MECHANISM_DONE: self._wait_for_mechanism_done,
+            PlutoFullAssessStates.SUBJECT_LIMB_DONE: self._wait_for_subject_limb_done,
+        }
+    
+    @property
+    def state(self):
+        return self._state
+    
+    @property
+    def instruction(self):
+        return self._instruction
+    
+    def run_statemachine(self, event, timeval):
+        """Execute the state machine depending on the given even that has occured.
+        """
+        self._stateactions[self._state](event, timeval)
+
+    def _wait_for_subject_select(self, event, timeval):
+        """
+        """
+        pass
+    
+    def _wait_for_limb_select(self, event, timeval):
+        """
+        """
+        pass
+
+    def _wait_for_mechanism_select(self, event, timeval):
+        """
+        """
+        pass
+
+    def _wait_for_calibrate(self, event, timeval):
+        """
+        """
+        pass
+
+    def _wait_for_discreach_assess(self, event, timeval):
+        """
+        """
+        pass
+
+    def _wait_for_prop_assess(self, event, timeval):
+        """
+        """
+        pass
+
+    def _wait_for_fctrl_assess(self, event, timeval):
+        """
+        """
+        pass
+
+    def _task_done(self, event, timeval):
+        """
+        """
+        pass
+
+    def _wait_for_mechanism_done(self, event, timeval):
+        """
+        """
+        pass
+
+    def _wait_for_subject_limb_done(self, event, timeval):
+        """
+        """
+        pass
+
+    
+    # def _wait_for_start(self, event, timeval):
+    #     """Waits till the start button is pressed.
+    #     """
+    #     self._timer.stop()
+    #     if event == PlutoPropAssessEvents.STARTSTOP_CLICKED:
+    #         # Check to make sure the angle is close to zero.
+    #         if self._pluto.hocdisp < 0.25:
+    #             self._state = PlutoPropAssessStates.WAIT_FOR_HAPTIC_DISPAY_START
+    #             self._instruction = "Starting the ProprioceptionAssessment Protocol Display."
+    #         else:
+    #             self._instruction = "Hand must be closed before we start."
+
+    # def _wait_for_haptic_display_start(self, event, timeval):
+    #     self._timer.stop()
+    #     if event == PlutoButtonEvents.RELEASED:
+    #         self._state = PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY_MOVING
+    #         self._instruction = "Running Haptic Display"
+
+    # def _trial_haptic_display_moving(self, event, timeval):
+    #     # Check if the target has been reached.
+    #     if event == PlutoPropAssessEvents.HAPTIC_DEMO_TARGET_REACHED_TIMEOUT:
+    #         self._state = PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY
+    #         # Wait for the demo duration at the target.
+    #         self._timer.start(1000)
+
+
+    # def _trial_haptic_display(self, event, timeval):
+    #     # Check if the target has been reached.
+    #     if event == PlutoPropAssessEvents.HAPTIC_DEMO_ON_TARGET_TIMEOUT:
+    #         self._state = PlutoPropAssessStates.INTRA_TRIAL_REST
+
+    # def _intra_trial_rest(self, event, timeval):
+    #     pass
+
+    # def _trial_assessment(self, event, timeval):
+    #     pass
+
+    # def _inter_trial_rest(self, event, timeval):
+    #     pass
+
+    # def _protocol_pause(self, event, timeval):
+    #     pass
+
+    # def _protocol_stop(self, event, timeval):
+    #     pass
+
+    # def _protocol_done(self, event, timeval):
+    #     pass
