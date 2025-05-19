@@ -12,10 +12,13 @@ import json
 datadir = pathlib.Path("fullassessment")
 
 # Full assessment protocol.
-fullassess_protocol = {}
+fullassess_protocol = {
+    "tasks": ["AROM", "PROM", "APROM", "DISC", "PROP", "FCTRL"],
+    "details": {}
+}
 
 # Active range of motion: AROM
-fullassess_protocol["AROM"] = {
+fullassess_protocol["details"]["AROM"] = {
     "mech": ["WFE", "FPS", "HOC"],  # Mechanism used for this assessment.
     "N": 3,                         # Number of trials.
     "stop_duration": 2,             # Stop position duration (seconds).
@@ -23,20 +26,20 @@ fullassess_protocol["AROM"] = {
 }
 
 # Passive range of motion: PROM
-fullassess_protocol["PROM"] = {
+fullassess_protocol["details"]["PROM"] = {
     "mech": ["WFE", "FPS", "HOC"],  # Mechanism used for this assessment.
     "N": 3,                         # Number of trials.  
 }
 
 # Assisted passive range of motion: APROM
-fullassess_protocol["APROM"] = {
+fullassess_protocol["details"]["APROM"] = {
     "mech": ["WFE", "FPS", "HOC"],  # Mechanism used for this assessment.
     "N": 3,                         # Number of trials.
     "max_torque": 1.0,              # Maximum torque to be applied (Nm)
 }
 
 # Discrete reaching movements: DISC
-fullassess_protocol["DISC"] = {
+fullassess_protocol["details"]["DISC"] = {
     "mech": ["WFE", "FPS"],         # Mechanism used for this assessment.
     "N": 3,                         # Number of trials.
     "min_arom_range": 20,           # Minimum AROM range (degrees).
@@ -47,7 +50,7 @@ fullassess_protocol["DISC"] = {
 }
 
 # Proprioceptive assessment: PROP
-fullassess_protocol["PROP"] = {
+fullassess_protocol["details"]["PROP"] = {
     "mech": ["HOC"],                # Mechanism used for this assessment.
     "N": 3,                         # Number of trials.
     "targets": [0.25, 0.5, 0.75],   # Target positions (fraction of PROM).
@@ -61,7 +64,7 @@ fullassess_protocol["PROP"] = {
 }
 
 # Force control: FCTRL
-fullassess_protocol["FCTRL"] = {
+fullassess_protocol["details"]["FCTRL"] = {
     "mech": ["HOC"],                # Mechanism used for this assessment.
     "N": 3,                         # Number of trials.
     "hold_force": 0.4,              # Target holding force (Nm).

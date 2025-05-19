@@ -6,6 +6,7 @@ Date: 16 May 2025
 Email: siva82kb@gmail.com
 """
 
+import random
 import sys
 import re
 import pathlib
@@ -36,6 +37,124 @@ from ui_plutofullassessment import Ui_PlutoFullAssessor
 
 DEBUG = True
 
+
+
+
+class PlutoAssessmentData(object):
+    """Class to hold the data for the proprioception assessment.
+    """
+    def __init__(self):
+        self.subjid = None
+        self.type = None
+        self.limb = None
+        self.mech = None
+        self.mechdata = {
+            "WFE": None,
+            "FPS": None,
+            "HOC": None,
+        }
+        self.currsess = None
+        self.calib = False
+        self.datadir = None
+        self.romdata = {
+            "AROM": 10,
+            "PROM": 10
+        }
+        self.propassdata = None
+        self.protocol = None
+        self._protoconfig  = None
+    
+    #
+    # Supporting functions
+    #
+    def set_subjectid(self, subjid):
+        print(f"Subject ID: {subjid}")
+        self.subjid = subjid
+        self.datadir = None
+        self.type = None
+        self.limb = None
+        self.currsess = None
+    
+    def set_limbtype(self, slimb, stype):
+        self.type = slimb
+        self.limb = stype
+        self.create_session_folder()
+    
+    def get_curr_sess(self):
+        return (self.type[0].lower()
+                + self.limb[0].lower()
+                + "_"
+                + dt.now().strftime("%Y%m%d_%H%M%S"))
+    
+    def create_session_folder(self):
+        # Create the data directory now.
+        # set data dirr and create if needed.
+        self.currsess = self.get_curr_sess()
+        print(passdef.DATA_DIR, self.subjid, self.currsess)
+        self.datadir = pathlib.Path(passdef.DATA_DIR,
+                                    self.subjid,
+                                    self.currsess)
+        self.datadir.mkdir(exist_ok=True, parents=True)
+
+    def get_session_info(self):
+        _str = [
+            f"{'' if self.data.currsess is None else self.data.currsess:<12}",
+            f"{'' if self.data.subjid is None else self.data.subjid:<8}",
+            f"{self.data.type:<8}",
+            f"{self.data.limb:<6}",
+        ]
+        return ":".join(_str)
+
+    def create_assessment_protocol(self):
+        # First create the necessary folders for the current subject and session.
+        self.create_assessment_summary_file()
+
+        # Read the protocol configuration file.
+        with open(passdef.PROTOCOL_FILE, "r") as _f:
+            self._protoconfig = json.load(_f)
+        # Read the assessment summary document.
+
+        # Get the list of mechanisms.
+        _mechs = []
+        for _t in self._protoconfig["tasks"]:
+            for _m in self._protoconfig["details"][_t]["mech"]:
+                if _m not in _mechs:
+                    _mechs.append(_m)
+        # Randomize the list of mechanisms.
+        random.shuffle(_mechs)
+        # Get the assessment to be done for each mechanism.
+        self.protocol = []
+        for _m in _mechs:
+            for _t in self._protoconfig["tasks"]:
+                if _m in self._protoconfig["details"][_t]["mech"]:
+                    self.protocol.append([f"{_m}-{_t}", list(range(1, 1 + self._protoconfig["details"][_t]["N"]))])
+    
+    def set_current_mechanism(self):
+        # Protocol must be set.
+        if self.protocol is None:
+            self.mech = None
+        # Parse the first protocol entry.
+        self.mech = self.protocol[0][0].split("-")[0]
+        # Initialize the mechanism task data.
+    
+    #
+    # Data logging fucntions
+    #
+    def create_assessment_summary_file(self):
+        _fname = pathlib.Path(self.datadir, "assessment_summary.csv")
+        print(_fname)
+        # Check if the file already exists.
+        if _fname.exists():
+            return
+        # Assessment summary CSV file.
+        with open(self.datadir / "assessment_summary.csv", "w") as _f:
+            # Header
+            _f.write("\n".join([f"ID: {self.subjid}",
+                                f"Type: {self.type}",
+                                f"Limb: {self.limb}",
+                                "session,mechanism,task,trial,rawfile\n"]))
+
+
 class PlutoFullAssessEvents(Enum):
     SUBJECT_SET = 0
     TYPE_LIMB_SET = 1
@@ -55,10 +174,9 @@ class PlutoFullAssessStates(Enum):
 
 
 class PlutoFullAssessmentStateMachine():
-    def __init__(self, plutodev, progconsole):
-        self._state = (PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT
-                       if DEBUG 
-                       else PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT)
+    def __init__(self, plutodev: QtPluto, data: PlutoAssessmentData, progconsole):
+        self._state = PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT
+        self._data = data
         self._instruction = ""
         self._protocol = None
         self._pconsole = progconsole
@@ -86,63 +204,73 @@ class PlutoFullAssessmentStateMachine():
     def instruction(self):
         return self._instruction
     
-    def run_statemachine(self, event, timeval):
+    def run_statemachine(self, event, data):
         """Execute the state machine depending on the given even that has occured.
         """
-        self._stateactions[self._state](event, timeval)
+        print(self._state, data)
+        self._stateactions[self._state](event, data)
 
-    def _wait_for_subject_select(self, event, timeval):
+    def _wait_for_subject_select(self, event, data):
         """
         """
         if event == PlutoFullAssessEvents.SUBJECT_SET:
+            # Set the subject ID.
+            print(data['subjid'])
+            self._data.set_subjectid(data['subjid'])
             # We need to now select the limb.
             self._state = PlutoFullAssessStates.WAIT_FOR_LIMB_SELECT
             self._pconsole.append(self._instruction)
     
-    def _wait_for_limb_select(self, event, timeval):
+    def _wait_for_limb_select(self, event, data):
         """
         """
         if event == PlutoFullAssessEvents.TYPE_LIMB_SET:
+            # Set limb type and limb.
+            self._data.set_limbtype(slimb=data["limb"], stype=data["type"])
             # We need to now select the mechanism.
             self._state = PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT
             self._pconsole.append(self._instruction)
+            # Generated assessment protocol.
+            self._data.create_assessment_protocol()
+            # Set the current mechanism, and initialize the mechanism data.
+            self._data.set_current_mechanism()
 
-    def _wait_for_mechanism_select(self, event, timeval):
+    def _wait_for_mechanism_select(self, event, data):
         """
         """
         pass
 
-    def _wait_for_calibrate(self, event, timeval):
+    def _wait_for_calibrate(self, event, data):
         """
         """
         pass
 
-    def _wait_for_discreach_assess(self, event, timeval):
+    def _wait_for_discreach_assess(self, event, data):
         """
         """
         pass
 
-    def _wait_for_prop_assess(self, event, timeval):
+    def _wait_for_prop_assess(self, event, data):
         """
         """
         pass
 
-    def _wait_for_fctrl_assess(self, event, timeval):
+    def _wait_for_fctrl_assess(self, event, data):
         """
         """
         pass
 
-    def _task_done(self, event, timeval):
+    def _task_done(self, event, data):
         """
         """
         pass
 
-    def _wait_for_mechanism_done(self, event, timeval):
+    def _wait_for_mechanism_done(self, event, data):
         """
         """
         pass
 
-    def _wait_for_subject_limb_done(self, event, timeval):
+    def _wait_for_subject_limb_done(self, event, data):
         """
         """
         pass
@@ -166,24 +294,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pluto.btnpressed.connect(self._callback_btn_pressed)
         self.pluto.btnreleased.connect(self._callback_btn_released)
 
-        # Subject details
-        self._subjid = "1234" if DEBUG else None
-        self._subjdetails = {"type": "Stroke", "limb": "Right"} if DEBUG else None
-        self._mech = None
-        self._mechdata = {
-            "WFE": None,
-            "FPS": None,
-            "HOC": None,
-        }
-        self._currsess = None
-        self._calib = False
-        self._datadir = None
-        self._romdata = {
-            "AROM": 10,
-            "PROM": 10
-        }
-        self._propassdata = None
-        self._protocol = None
+        # Assessment data
+        self.data = PlutoAssessmentData()
         
         # Initialize timers.
         self.apptimer = QTimer()
@@ -194,8 +306,18 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Initialize the state machine.
         self._smachine = PlutoFullAssessmentStateMachine(
             plutodev=self.pluto,
+            data=self.data,
             progconsole=self.textProtocolDetails
         )
+        if DEBUG:
+            self._smachine.run_statemachine(PlutoFullAssessEvents.SUBJECT_SET, 
+                                            {"subjid": "1234"})
+            _data = {"type": "Stroke", "limb": "Right"}
+            self._smachine.run_statemachine(PlutoFullAssessEvents.TYPE_LIMB_SET,
+                                            _data)
+            # Set limb and type.
+            self.cbLimb.setCurrentText(_data["limb"])
+            self.cbSubjectType.setCurrentText(_data["type"])
 
         # Attach callback to the buttons
         self.pbSubject.clicked.connect(self._callback_select_subject)
@@ -258,18 +380,19 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 )
                 if reply == QMessageBox.No:
                     return
-            # Set subject ID, and create the folder if needed.
-            self._set_subjectid(_subjid.lower())
             # Run the state machine.
             self._smachine.run_statemachine(
                 PlutoFullAssessEvents.SUBJECT_SET,  
-                0
+                {'subjid': _subjid.lower()}
             )
         
         # update UI
         self.update_ui()
     
     def _callback_typelimb_set(self):
+        # Check the text of the button.
+        if self.pbSetLimb.text() == "Reset Limb":
+            return
         # Open dialog to confirm limb selection (Ok or cancel).
         reply = QMessageBox.question(
             self,
@@ -361,7 +484,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 f"{self.apptime:5d}s",
                 _con if _con != "" else "Disconnected",
                 f"FR: {self.pluto.framerate():4.1f}Hz",
-                f"{self._subjid}",
+                f"{self.data.subjid}",
                 f"{self._smachine.state.name:<20}",
             ))
         )
@@ -439,26 +562,38 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.cbLimb.setEnabled(_lmbflag)
         
         # Set limb button
-        self.pbSetLimb.setEnabled(_lmbflag and self.cbLimb.currentText() != "" and self.cbSubjectType.currentText() != "")
+        self.pbSetLimb.setEnabled(self.cbLimb.currentText() != "" and self.cbSubjectType.currentText() != "")
 
         # Mechanisms selection
         _mechflag = self._maindisable is False and self._smachine.state == PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT
-        print(_mechflag)
+        if self.pbSetLimb.text() == "Set Limb": self.pbSetLimb.setText("Reset Limb")
         self.gbMechanisms.setEnabled(_mechflag)
+        # Enable the appropriate mechanisms.
+        if self.data.mech == "WFE":
+            self.rbWFE.setEnabled(True)
+        elif self.data.mech == "FPS":
+            self.rbFPS.setEnabled(True)
+        elif self.data.mech == "HOC":
+            self.rbHOC.setEnabled(True)
+
+
+
 
         # Update session information.
         self.lblSessionInfo.setText(self._get_session_info())
+
+        
         
         # if self._smachine.state == PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT:
         #     # Disable everything except subject selection button.
 
         # # Select limb
         # enbflag = (self._maindisable is False 
-        #            and self._subjid is not None 
+        #            and self.data.subjid is not None 
         #            and self._mech is not None
         #            and self._mechdata[self._mech] is not None)
         # # Disable buttons if needed.
-        # self.pbTestDevice.setEnabled(self._maindisable is False and self._subjid is None)
+        # self.pbTestDevice.setEnabled(self._maindisable is False and self.data.subjid is None)
         # self.pbCalibrate.setEnabled(self._maindisable is False)
         # self.cbSubjectType.setEnabled(enbflag)
         # self.cbLimb.setEnabled(enbflag and self.cbSubjectType.currentText() != "")
@@ -471,11 +606,11 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         #     self.pbCalibrate.setText("Recalibrate")
         
         # # Subject ID button
-        # if self._subjid is not None:
+        # if self.data.subjid is not None:
         #     if self._datadir is not None:
-        #         self.pbSubject.setText(f"Subject: {self._subjid} [{self._datadir.as_posix().split('/')[-1]}]")
+        #         self.pbSubject.setText(f"Subject: {self.data.subjid} [{self._datadir.as_posix().split('/')[-1]}]")
         #     else:
-        #         self.pbSubject.setText(f"Subject: {self._subjid} []")
+        #         self.pbSubject.setText(f"Subject: {self.data.subjid} []")
         # else:
         #     self.pbSubject.setText("Select Subject")
         
@@ -488,38 +623,15 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     #
     # Supporting functions
     #
-    def _set_subjectid(self, subjid):
-        self._subjid = subjid
-        self._datadir = None
-        self._subjdetails = {"type": "", "limb": ""}
-        self._currsess = None
-    
-    def _get_curr_sess(self):
-        return (self._subjdetails["type"][0].lower()
-                + self._subjdetails["limb"][0].lower()
-                + self._subjdetails["grip"][0].lower()
-                + "_"
-                + dt.now().strftime("%Y-%m-%d-%H-%M-%S"))
-    
-    def _create_session_folder(self):
-        # Create the data directory now.
-        # set data dirr and create if needed.
-        self._currsess = self._get_curr_sess()
-        self._datadir = pathlib.Path(passdef.DATA_DIR,
-                                     self._subjid,
-                                     self._currsess)
-        self._datadir.mkdir(exist_ok=True, parents=True)
-        # Write the subject details JSON file.
-        self._write_subject_json()
-
     def _get_session_info(self):
         _str = [
-            f"{'' if self._currsess is None else self._currsess:<12}",
-            f"{'' if self._subjid is None else self._subjid:<8}",
-            f"{self._subjdetails['type'] if self._subjdetails is not None else '':<8}",
-            f"{self._subjdetails['limb'] if self._subjdetails is not None else '':<6}",
+            f"{'' if self.data.currsess is None else self.data.currsess:<20}",
+            f"{'' if self.data.subjid is None else self.data.subjid:<8}",
+            f"{self.data.type if self.data.type is not None else '':<8}",
+            f"{self.data.limb if self.data.limb is not None else '':<6}",
         ]
         return ":".join(_str)
+
 
     #
     # Device Data Viewer Functions 
@@ -555,24 +667,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Close the proprioception assessment window
         if self._propwnd is not None:
             self._propwnd.close()
-
-    #
-    # Data logging fucntions
-    #
-    def _write_subject_json(self):
-        _subjdata = {
-            "SubjectID": self._subjid,
-            "Session": self._currsess,
-            "SubjectType": self._subjdetails["type"],
-            "Limb": self._subjdetails["limb"],
-            "GripType": self._subjdetails["grip"],
-            "ROM": self._romdata,
-            "Protocol": self._protocol,
-            "PropAssessment": self._propassdata
-        }
-        # Session file name
-        with open(self._datadir / "session_details.json", "w") as _f:
-            json.dump(_subjdata, _f, indent=4)
 
 
 if __name__ == "__main__":
