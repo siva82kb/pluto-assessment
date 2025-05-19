@@ -76,6 +76,8 @@ fullassess_protocol["details"]["FCTRL"] = {
     "crush_duration": 3,            # Minimum duration after which the target is crushed (seconds).
 }
 
+pathlib.Path(datadir).mkdir(parents=True, exist_ok=True)
+
 # Write the protocol to a JSON file.
 with open(datadir / "fullassess_protocol.json", "w") as f:
     json.dump(fullassess_protocol, f, indent=4)
