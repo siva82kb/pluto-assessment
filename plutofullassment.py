@@ -6,11 +6,15 @@ Date: 16 May 2025
 Email: siva82kb@gmail.com
 """
 
+import itertools
 import random
 import sys
 import re
 import pathlib
 import json
+import numpy as np
+import pandas as pd
+
 from enum import Enum
 
 from qtpluto import QtPluto
@@ -38,48 +42,58 @@ from ui_plutofullassessment import Ui_PlutoFullAssessor
 DEBUG = True
 
 
-
-
 class PlutoAssessmentData(object):
     """Class to hold the data for the proprioception assessment.
     """
     def __init__(self):
+        self.init_values()
+    
+    def init_values(self):
         self.subjid = None
         self.type = None
         self.limb = None
-        self.mech = None
-        self.mechdata = {
-            "WFE": None,
-            "FPS": None,
-            "HOC": None,
-        }
+        self._index = None
         self.currsess = None
         self.calib = False
         self.datadir = None
-        self.romdata = {
-            "AROM": 10,
-            "PROM": 10
-        }
-        self.propassdata = None
-        self.protocol = None
-        self._protoconfig  = None
+        self._pconfig = None
+        self._summary_data = None
+
+    @property
+    def summary_data(self):
+        return self._summary_data
+        
+    @property
+    def summary_filename(self):
+        return pathlib.Path(self.datadir, "assessment_summary.csv").as_posix()
+
+    @property
+    def mech_enabled(self):
+        if self._summary_data is None:
+            return []
+        # Get the list of mechanisms that have been assessed.
+        return list(self._summary_data[self._summary_data["session"] != np.nan]["mechanism"].unique())
     
+    @property
+    def task_enabled(self):
+        return self._task_enabled
+    
+    @property
+    def index(self):
+        return self._index
+
     #
     # Supporting functions
     #
     def set_subjectid(self, subjid):
-        print(f"Subject ID: {subjid}")
+        self.init_values()
         self.subjid = subjid
-        self.datadir = None
-        self.type = None
-        self.limb = None
-        self.currsess = None
     
     def set_limbtype(self, slimb, stype):
         self.type = slimb
         self.limb = stype
         self.create_session_folder()
-    
+
     def get_curr_sess(self):
         return (self.type[0].lower()
                 + self.limb[0].lower()
@@ -90,7 +104,6 @@ class PlutoAssessmentData(object):
         # Create the data directory now.
         # set data dirr and create if needed.
         self.currsess = self.get_curr_sess()
-        print(passdef.DATA_DIR, self.subjid, self.currsess)
         self.datadir = pathlib.Path(passdef.DATA_DIR,
                                     self.subjid,
                                     self.currsess)
@@ -106,58 +119,79 @@ class PlutoAssessmentData(object):
         return ":".join(_str)
 
     def create_assessment_protocol(self):
-        # First create the necessary folders for the current subject and session.
-        self.create_assessment_summary_file()
-
         # Read the protocol configuration file.
         with open(passdef.PROTOCOL_FILE, "r") as _f:
-            self._protoconfig = json.load(_f)
-        # Read the assessment summary document.
+            self._pconfig = json.load(_f)
+        
+        # Create the protocol summary file.
+        self.create_assessment_summary_file()
+        
+        # Read the summary file.
+        self._summary_data = pd.read_csv(self.summary_filename, header=0, index_col=None)
 
-        # Get the list of mechanisms.
-        _mechs = []
-        for _t in self._protoconfig["tasks"]:
-            for _m in self._protoconfig["details"][_t]["mech"]:
-                if _m not in _mechs:
-                    _mechs.append(_m)
-        # Randomize the list of mechanisms.
-        random.shuffle(_mechs)
-        # Get the assessment to be done for each mechanism.
-        self.protocol = []
-        for _m in _mechs:
-            for _t in self._protoconfig["tasks"]:
-                if _m in self._protoconfig["details"][_t]["mech"]:
-                    self.protocol.append([f"{_m}-{_t}", list(range(1, 1 + self._protoconfig["details"][_t]["N"]))])
+        # Set index to the row that is incomplete.
+        print(self._summary_data)
+        print(np.isnan(self._summary_data["session"]))
+        self._index = self._summary_data[np.isnan(self._summary_data["session"])].index[0]
     
     def set_current_mechanism(self):
         # Protocol must be set.
         if self.protocol is None:
             self.mech = None
         # Parse the first protocol entry.
-        self.mech = self.protocol[0][0].split("-")[0]
-        # Initialize the mechanism task data.
+        # self.mech = self.protocol[0][0].split("-")[0]
+        # self.task = self.protocol[0][0].split("-")[1]
+    
+    def is_mechanism_assessed(self, mechname):
+        # Check if the task entries are all filled.
+        # _taskcompleted = [len(_task[2]) == _task[1] for _task in self.protocol if mechname not in _task[0]]
+        # return False if len(_taskcompleted) == 0 else np.all(_taskcompleted)
+        return False
     
     #
     # Data logging fucntions
     #
     def create_assessment_summary_file(self):
-        _fname = pathlib.Path(self.datadir, "assessment_summary.csv")
-        print(_fname)
-        # Check if the file already exists.
-        if _fname.exists():
+        if pathlib.Path(self.summary_filename).exists():
             return
-        # Assessment summary CSV file.
-        with open(self.datadir / "assessment_summary.csv", "w") as _f:
-            # Header
-            _f.write("\n".join([f"ID: {self.subjid}",
-                                f"Type: {self.type}",
-                                f"Limb: {self.limb}",
-                                "session,mechanism,task,trial,rawfile\n"]))
-
+        # Create the protocol summary file.
+        _dframe = pd.DataFrame(columns=["session", "mechanism", "task", "trial", "rawfile"])
+        _mechs = self._pconfig["mechanisms"].copy()
+        random.shuffle(_mechs)
+        for _m in _mechs:
+            for _t in self._pconfig["tasks"]:
+                _taskdetails = self._pconfig["details"][_t]
+                if _m not in _taskdetails["mech"]:
+                    continue
+                # Create the rows.
+                _n = _taskdetails["N"]
+                _dframe = pd.concat([
+                    _dframe,
+                    pd.DataFrame.from_dict({
+                        "session": [''] * _n,
+                        "mechanism": [_m] * _n,
+                        "task": [_t] * _n,
+                        "trial": list(range(1, 1 + _n)),
+                        "rawfile": [''] * _n
+                    })
+                ], ignore_index=True)
+        # Write file to disk
+        _dframe.to_csv(self.summary_filename, sep=",", index=None)
+        
 
 class PlutoFullAssessEvents(Enum):
     SUBJECT_SET = 0
     TYPE_LIMB_SET = 1
+    WFE_MECHANISM_SET = 2
+    FPS_MECHANISM_SET = 3
+    HOC_MECHANISM_SET = 4
+    CALIBRATE = 5
+    AROM_SET = 6
+    PROM_SET = 7
+    APROM_SET = 8
+    DISCREACH_ASSESS = 9
+    PROP_ASSESS = 10
+    FCTRL_ASSESS = 11
 
 
 class PlutoFullAssessStates(Enum):
@@ -180,6 +214,7 @@ class PlutoFullAssessmentStateMachine():
         self._instruction = ""
         self._protocol = None
         self._pconsole = progconsole
+        self._pconsolemsgs = []
         # Indicates if both AROM and PROM have been done for this
         # particular instance of the statemachine.
         self._pluto = plutodev
@@ -232,13 +267,25 @@ class PlutoFullAssessmentStateMachine():
             self._pconsole.append(self._instruction)
             # Generated assessment protocol.
             self._data.create_assessment_protocol()
+            self.log(f"Protocol created.")
             # Set the current mechanism, and initialize the mechanism data.
-            self._data.set_current_mechanism()
+            # self._data.set_current_mechanism()
+            # self.log(f"Mechanism: {self._data.mech} | Task: {self._data.task}")
 
     def _wait_for_mechanism_select(self, event, data):
         """
         """
-        pass
+        # Check which mechanism is selected.
+        if event == PlutoFullAssessEvents.WFE_MECHANISM_SET:
+            # Check if this mechanism has been assessed.
+            pass
+        elif event == PlutoFullAssessEvents.FPS_MECHANISM_SET:
+            pass
+        elif event == PlutoFullAssessEvents.HOC_MECHANISM_SET:
+            pass
+        else:
+            return
+
 
     def _wait_for_calibrate(self, event, data):
         """
@@ -274,6 +321,19 @@ class PlutoFullAssessmentStateMachine():
         """
         """
         pass
+    
+    #
+    # Protocol console logging
+    #
+    def log(self, msg):
+        """Log the message to the protocol console.
+        """
+        if len(self._pconsolemsgs) > 100:
+            self._pconsolemsgs.pop(0)
+        self._pconsolemsgs.append(f"{dt.now().strftime('%m/%d %H:%M:%S'):<15} {msg}")
+        self._pconsole.clear()
+        self._pconsole.append("\n".join(self._pconsolemsgs))
+        self._pconsole.verticalScrollBar().setValue(self._pconsole.verticalScrollBar().maximum())
 
 
 class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
@@ -325,9 +385,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pbCalibrate.clicked.connect(self._callback_calibrate)
         self.pbRomAssess.clicked.connect(self._callback_assess_rom)
         self.pbPropAssess.clicked.connect(self._callback_assess_prop)
-        # self.cbSubjectType.currentIndexChanged.connect(self._callback_subjtype_select)
-        # self.cbLimb.currentIndexChanged.connect(self._callback_limb_select)
-
+        self.pbStartMechAssessment.clicked.connect(self._callback_start_mech_assess)
+        
         # Other windows
         self._devdatawnd = None
         self._calibwnd = None
@@ -473,6 +532,27 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._subjdetails["grip"] = ""
         self.update_ui()
     
+    def _callback_start_mech_assess(self):
+        # # Check if the current mechanisms is WFE.
+        # if self.data.mech != "WFE":
+        #     return
+        # # Ask if the user wants to start the WFE assessment.
+        # reply = QMessageBox.question(
+        #     self,
+        #     "Confirm",
+        #     f"Start WFE assessment?\n\n",
+        #     QMessageBox.Ok | QMessageBox.Cancel
+        # )
+        # if reply == QMessageBox.Cancel:
+        #     return
+        # # Run the state machine.
+        # self._smachine.run_statemachine(
+        #     PlutoFullAssessEvents.WFE_MECHANISM_SET,
+        #     {}
+        # )
+        pass
+
+    
     # 
     # Timer callbacks
     #
@@ -568,21 +648,20 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         _mechflag = self._maindisable is False and self._smachine.state == PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT
         if self.pbSetLimb.text() == "Set Limb": self.pbSetLimb.setText("Reset Limb")
         self.gbMechanisms.setEnabled(_mechflag)
+        
         # Enable the appropriate mechanisms.
-        if self.data.mech == "WFE":
-            self.rbWFE.setEnabled(True)
-        elif self.data.mech == "FPS":
-            self.rbFPS.setEnabled(True)
-        elif self.data.mech == "HOC":
-            self.rbHOC.setEnabled(True)
-
-
-
+        # _mechdone = self.data.is_mechanism_assessed(self.data.mech)
+        # if self.data.mech == "WFE":
+        #     # Check if mechanism has been assessed.
+        #     # if self.data.is_mechanism_assessed("WFE")
+        #     self.pbWFE.setEnabled(True)
+        # elif self.data.mech == "FPS":
+        #     self.pbFPS.setEnabled(True)
+        # elif self.data.mech == "HOC":
+        #     self.pbHOC.setEnabled(True)
 
         # Update session information.
         self.lblSessionInfo.setText(self._get_session_info())
-
-        
         
         # if self._smachine.state == PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT:
         #     # Disable everything except subject selection button.
@@ -628,10 +707,11 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             f"{'' if self.data.currsess is None else self.data.currsess:<20}",
             f"{'' if self.data.subjid is None else self.data.subjid:<8}",
             f"{self.data.type if self.data.type is not None else '':<8}",
-            f"{self.data.limb if self.data.limb is not None else '':<6}",
+            f"{self.data.limb if self.data.limb is not None else '':<8}",
+            # f"{self.data.mech if self.data.mech is not None else '':<8}",
+            # f"{self.data.task if self.data.task is not None else '':<8}",
         ]
         return ":".join(_str)
-
 
     #
     # Device Data Viewer Functions 

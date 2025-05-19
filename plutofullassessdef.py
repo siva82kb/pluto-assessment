@@ -17,68 +17,34 @@ PROTOCOL_FILE = f"{DATA_DIR}/fullassess_protocol.json"
 # Proprioceptive assessment control timer delta (seconds).
 PROPASS_CTRL_TIMER_DELTA = 0.01
 
+
 # Class containing data of ROM Assessment
 class PlutoMechanismROM(object):
     """
     Class containing ROM data for the full assessment protocol.
     """
-    def __init__(self, mech: str, limb: str):
+    def __init__(self, mech: str, limb: str, romname:str, ntrials: int):
         self.mech = mech
         self.limb = limb
-        self._arom = None
-        self._prom = None
-        self._aprom = None
+        self.ntrials = ntrials
+        self.name  = romname
+        self.rom = []
     
-    @property
-    def arom(self):
-        return self._arom
-    
-    @arom.setter
-    def arom(self, value):
-        if not isinstance(value, list):
-            raise TypeError("AROM should be a list.")
-        if self._prom is not None and not misc.rangea_within_rangeb(value, self._prom):
-            raise ValueError(f"AROM {self._arom} should be within PROM {self._prom}.")
-        if self._aprom is not None and not misc.rangea_within_rangeb(value, self._aprom):
-            raise ValueError(f"AROM {self._arom} should be within Assisted PROM {self._aprom}.")
-        self._arom = value
-    
-    @property
-    def prom(self):
-        return self._prom
-    
-    @prom.setter
-    def prom(self, value):
-        if not isinstance(value, list):
-            raise TypeError("PROM should be a list.")
-        if self._arom is not None and not misc.rangea_within_rangeb(self._arom, value):
-            raise ValueError(f"AROM {self._arom} should be within PROM {self._prom}.")
-        if self._aprom is not None and not misc.rangea_within_rangeb(value, self._aprom):
-            raise ValueError(f"Assisted PROM {self._aprom} should be within PROM {self._prom}.")
-        self._prom = value
+    def add_rom(self, arom: list[float]):
+        """
+        Add ROM data to the assessment.
+        
+        Args:
+            rom (list[float]): The ROM data.
+        """
+        if len(arom) != self.ntrials:
+            raise ValueError(f"AROM data length {len(arom)} does not match number of trials {self.ntrials}.")
+        if arom[0] > arom[1]:
+            raise ValueError(f"First value of {arom} must be lower than the second value.")
+        self.arom.append(arom)
 
-    @property
-    def aprom(self):
-        return self._aprom
-    
-    @aprom.setter
-    def aprom(self, value):
-        if not isinstance(value, list):
-            raise TypeError("Assisted PROM should be a list.")
-        if self._arom is not None and not misc.rangea_within_rangeb(self._arom, value):
-            raise ValueError(f"AROM {self._arom} should be within Assisted PROM {self._aprom}.")
-        if self._prom is not None and not misc.rangea_within_rangeb(value, self._prom):
-            raise ValueError(f"Assisted PROM {self._aprom} should be within PROM {self._prom}.")
-        self._aprom = value
-    
-    def isComplete(self):
-        return (
-            self._arom is not None and
-            self._prom is not None and
-            self._aprom is not None and
-            misc.rangea_within_rangeb(self._arom, self._aprom) and
-            misc.rangea_within_rangeb(self._aprom, self._prom)
-        )
+    def is_complete(self):
+        return len(self.rom) == self.ntrials
 
 
 # Wrist flexion/extension (WFE) mechanism assessment

@@ -14,9 +14,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_PlutoFullAssessor(object):
     def setupUi(self, PlutoFullAssessor):
         PlutoFullAssessor.setObjectName("PlutoFullAssessor")
-        PlutoFullAssessor.resize(1130, 439)
-        PlutoFullAssessor.setMinimumSize(QtCore.QSize(1130, 439))
-        PlutoFullAssessor.setMaximumSize(QtCore.QSize(1130, 439))
+        PlutoFullAssessor.resize(1130, 450)
+        PlutoFullAssessor.setMinimumSize(QtCore.QSize(1130, 450))
+        PlutoFullAssessor.setMaximumSize(QtCore.QSize(1130, 450))
         font = QtGui.QFont()
         font.setFamily("Bahnschrift Light")
         font.setPointSize(10)
@@ -91,6 +91,10 @@ class Ui_PlutoFullAssessor(object):
         self.rbHOC.setEnabled(False)
         self.rbHOC.setObjectName("rbHOC")
         self.verticalLayout_3.addWidget(self.rbHOC)
+        self.pbStartMechAssessment = QtWidgets.QPushButton(self.gbMechanisms)
+        self.pbStartMechAssessment.setEnabled(False)
+        self.pbStartMechAssessment.setObjectName("pbStartMechAssessment")
+        self.verticalLayout_3.addWidget(self.pbStartMechAssessment)
         self.verticalLayout_4.addLayout(self.verticalLayout_3)
         self.verticalLayout.addWidget(self.gbMechanisms)
         self.pbCalibrate = QtWidgets.QPushButton(self.centralwidget)
@@ -181,9 +185,17 @@ class Ui_PlutoFullAssessor(object):
         self.verticalLayout_5.addWidget(self.lblSessionInfo)
         self.textProtocolDetails = QtWidgets.QTextEdit(self.centralwidget)
         self.textProtocolDetails.setEnabled(False)
+        font = QtGui.QFont()
+        font.setFamily("Cascadia Mono")
+        font.setPointSize(8)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setWeight(50)
+        self.textProtocolDetails.setFont(font)
         self.textProtocolDetails.setStyleSheet("font: 8pt \"Cascadia Mono\";\n"
 "background: transparent;\n"
-"color: black;\n"
+"color: ;\n"
+"color: rgb(130, 130, 130);\n"
 "border: none;")
         self.textProtocolDetails.setObjectName("textProtocolDetails")
         self.verticalLayout_5.addWidget(self.textProtocolDetails)
@@ -214,9 +226,10 @@ class Ui_PlutoFullAssessor(object):
         self.cbLimb.setItemText(2, _translate("PlutoFullAssessor", "Right"))
         self.pbSetLimb.setText(_translate("PlutoFullAssessor", "Set Limb"))
         self.gbMechanisms.setTitle(_translate("PlutoFullAssessor", "Mechanisms"))
-        self.rbWFE.setText(_translate("PlutoFullAssessor", "Wrist Flexion-Extension"))
-        self.rbFPS.setText(_translate("PlutoFullAssessor", "Forearm Pronation-Supination"))
-        self.rbHOC.setText(_translate("PlutoFullAssessor", "Hand Opening-Closing"))
+        self.rbWFE.setText(_translate("PlutoFullAssessor", "Wrist Flexion/Extension"))
+        self.rbFPS.setText(_translate("PlutoFullAssessor", "Forearm Pronation/Supination"))
+        self.rbHOC.setText(_translate("PlutoFullAssessor", "Hand Opening/Closing"))
+        self.pbStartMechAssessment.setText(_translate("PlutoFullAssessor", "Start Mechanism Assessment"))
         self.pbCalibrate.setText(_translate("PlutoFullAssessor", "Calibrate Mechanism"))
         self.pbCalibrate.setShortcut(_translate("PlutoFullAssessor", "Ctrl+S, Ctrl+S"))
         self.pbRomAssess.setText(_translate("PlutoFullAssessor", "Assess ROM"))

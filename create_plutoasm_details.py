@@ -13,6 +13,7 @@ datadir = pathlib.Path("fullassessment")
 
 # Full assessment protocol.
 fullassess_protocol = {
+    "mechanisms": ["WFE", "FPS", "HOC"],
     "tasks": ["AROM", "PROM", "APROM", "DISC", "PROP", "FCTRL"],
     "details": {}
 }
