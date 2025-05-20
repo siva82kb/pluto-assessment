@@ -2,24 +2,27 @@
 <ui version="4.0">
  <class>PlutoFullAssessor</class>
  <widget class="QMainWindow" name="PlutoFullAssessor">
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
     <width>1200</width>
-    <height>450</height>
+    <height>500</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>1200</width>
-    <height>450</height>
+    <height>500</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
-    <width>1130</width>
-    <height>450</height>
+    <width>1200</width>
+    <height>500</height>
    </size>
   </property>
   <property name="font">
@@ -37,6 +40,9 @@
      <layout class="QHBoxLayout" name="horizontalLayout_3">
       <item>
        <layout class="QVBoxLayout" name="verticalLayout">
+        <property name="spacing">
+         <number>3</number>
+        </property>
         <item>
          <widget class="QPushButton" name="pbSubject">
           <property name="enabled">
@@ -146,7 +152,7 @@
           <property name="minimumSize">
            <size>
             <width>250</width>
-            <height>70</height>
+            <height>140</height>
            </size>
           </property>
           <property name="title">
@@ -211,6 +217,9 @@
             <pointsize>10</pointsize>
            </font>
           </property>
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
           <property name="text">
            <string>Calibrate Mechanism</string>
           </property>
@@ -220,7 +229,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="pbRomAssess">
+         <widget class="QPushButton" name="pbAROM">
           <property name="enabled">
            <bool>false</bool>
           </property>
@@ -230,15 +239,65 @@
             <pointsize>10</pointsize>
            </font>
           </property>
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
           <property name="text">
-           <string>Assess ROM</string>
+           <string>Assess AROM</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="pbDiscReachAssess">
+         <widget class="QPushButton" name="pbPROM">
           <property name="enabled">
            <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <family>Bahnschrift Light</family>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
+          <property name="text">
+           <string>Assess PROM</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pbAPROM">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <family>Bahnschrift Light</family>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
+          <property name="text">
+           <string>Assess APROM</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pbDiscReach">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <family>Bahnschrift Light</family>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"/>
           </property>
           <property name="text">
            <string>Discrete Reaching</string>
@@ -246,9 +305,18 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="pbPropAssess">
+         <widget class="QPushButton" name="pbProp">
           <property name="enabled">
            <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <family>Bahnschrift Light</family>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"/>
           </property>
           <property name="text">
            <string>Proprioceptive Assessment</string>
@@ -256,9 +324,18 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="pbForceCtrlAssess">
+         <widget class="QPushButton" name="pbForceCtrl">
           <property name="enabled">
            <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <family>Bahnschrift Light</family>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"/>
           </property>
           <property name="text">
            <string>Force Control Assessment</string>

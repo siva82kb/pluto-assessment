@@ -18,6 +18,8 @@ import pandas as pd
 from enum import Enum
 
 from qtpluto import QtPluto
+import plutodefs as pdef
+import plutofullassessdef as pfadef
 from datetime import datetime as dt
 
 from PyQt5 import (
@@ -28,6 +30,7 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QInputDialog
 )
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 import plutofullassessdef as passdef
 
@@ -56,9 +59,9 @@ class PlutoAssessmentData(object):
         self.currsess = None
         self.calib = False
         self.datadir = None
-        self._pconfig = None
         self._summary_data = None
         self._current_mech = None
+        self._calibrated = False
         self._current_task = None
 
     @property
@@ -68,6 +71,10 @@ class PlutoAssessmentData(object):
     @property
     def current_task(self):
         return self._current_task
+    
+    @property
+    def calibrated(self):
+        return self._calibrated
     
     @property
     def summary_data(self):
@@ -83,6 +90,14 @@ class PlutoAssessmentData(object):
             return []
         # Get the list of mechanisms that have been assessed.
         return list(self._summary_data[self._summary_data.index <= self._index]["mechanism"].unique())
+    
+    @property
+    def task_enabled(self):
+        if self._summary_data is None and self._index is None:
+            return []
+        # Get the list of mechanisms that have been assessed.
+        _inx = self._summary_data.index[self._summary_data["mechanism"] == self._current_mech]
+        return list(self._summary_data[self._summary_data.index <= self._index]["task"].unique())
     
     @property
     def is_mechanism_completed(self, mechname):
@@ -131,10 +146,6 @@ class PlutoAssessmentData(object):
         return ":".join(_str)
 
     def create_assessment_protocol(self):
-        # Read the protocol configuration file.
-        with open(passdef.PROTOCOL_FILE, "r") as _f:
-            self._pconfig = json.load(_f)
-        
         # Create the protocol summary file.
         self.create_assessment_summary_file()
         
@@ -150,7 +161,13 @@ class PlutoAssessmentData(object):
         if mechname != self._summary_data.iloc[self._index]["mechanism"]:
             raise ValueError(f"Mechanism [{mechname}] does not match the protocol mechanism [{self._summary_data.iloc[self._index]['mechanism']}]")
         self._current_mech = mechname
+        self._calibrated = False
         self._current_task = None
+    
+    def mechanism_calibrated(self, mechname):
+        if self._current_mech is None and self.current_mech == mechname:
+            raise ValueError("Mechanism not set or W.")
+        self._calibrated = True
     
     def is_mechanism_assessed(self, mechname):
         # Check if the task entries are all filled.
@@ -166,15 +183,14 @@ class PlutoAssessmentData(object):
             return
         # Create the protocol summary file.
         _dframe = pd.DataFrame(columns=["session", "mechanism", "task", "trial", "rawfile"])
-        _mechs = self._pconfig["mechanisms"].copy()
+        _mechs = pfadef.mechanisms.copy()
         random.shuffle(_mechs)
         for _m in _mechs:
-            for _t in self._pconfig["tasks"]:
-                _taskdetails = self._pconfig["details"][_t]
-                if _m not in _taskdetails["mech"]:
+            for _t in pfadef.tasks:
+                if _m not in pfadef.protocol[_t]["mech"]:
                     continue
                 # Create the rows.
-                _n = _taskdetails["N"]
+                _n = pfadef.protocol[_t]["N"]
                 _dframe = pd.concat([
                     _dframe,
                     pd.DataFrame.from_dict({
@@ -195,7 +211,7 @@ class PlutoFullAssessEvents(Enum):
     WFE_MECHANISM_SET = 2
     FPS_MECHANISM_SET = 3
     HOC_MECHANISM_SET = 4
-    CALIBRATE = 5
+    CALIBRATED = 5
     AROM_SET = 6
     PROM_SET = 7
     APROM_SET = 8
@@ -209,12 +225,15 @@ class PlutoFullAssessStates(Enum):
     WAIT_FOR_LIMB_SELECT = 1
     WAIT_FOR_MECHANISM_SELECT = 2
     WAIT_FOR_CALIBRATE = 3
-    WAIT_FOR_DISCREACH_ASSESS = 4
-    WAIT_FOR_PROP_ASSESS = 5
-    WAIT_FOR_FCTRL_ASSESS = 6
-    TASK_DONE = 7
-    MECHANISM_DONE = 8
-    SUBJECT_LIMB_DONE = 9
+    WAIT_FOR_AROM_ASSESS = 4
+    WAIT_FOR_PROM_ASSESS = 5
+    WAIT_FOR_APROM_ASSESS = 6
+    WAIT_FOR_DISCREACH_ASSESS = 7
+    WAIT_FOR_PROP_ASSESS = 8
+    WAIT_FOR_FCTRL_ASSESS = 9
+    TASK_DONE = 10
+    MECHANISM_DONE = 11
+    SUBJECT_LIMB_DONE = 12
 
 
 class PlutoFullAssessmentStateMachine():
@@ -233,6 +252,9 @@ class PlutoFullAssessmentStateMachine():
             PlutoFullAssessStates.WAIT_FOR_LIMB_SELECT: self._wait_for_limb_select,
             PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT: self._wait_for_mechanism_select,
             PlutoFullAssessStates.WAIT_FOR_CALIBRATE: self._wait_for_calibrate,
+            PlutoFullAssessStates.WAIT_FOR_AROM_ASSESS: self._wait_for_arom_assess,
+            PlutoFullAssessStates.WAIT_FOR_PROM_ASSESS: self._wait_for_prom_assess,
+            PlutoFullAssessStates.WAIT_FOR_APROM_ASSESS: self._wait_for_aprom_assess,
             PlutoFullAssessStates.WAIT_FOR_DISCREACH_ASSESS: self._wait_for_discreach_assess,
             PlutoFullAssessStates.WAIT_FOR_PROP_ASSESS: self._wait_for_prop_assess,
             PlutoFullAssessStates.WAIT_FOR_FCTRL_ASSESS: self._wait_for_fctrl_assess,
@@ -252,7 +274,6 @@ class PlutoFullAssessmentStateMachine():
     def run_statemachine(self, event, data):
         """Execute the state machine depending on the given even that has occured.
         """
-        print(self._state, data)
         self._stateactions[self._state](event, data)
 
     def _wait_for_subject_select(self, event, data):
@@ -286,23 +307,35 @@ class PlutoFullAssessmentStateMachine():
         """
         """
         # Check which mechanism is selected.
-        if event == PlutoFullAssessEvents.WFE_MECHANISM_SET:
-            # Check if this mechanism has been assessed.
-            self._data.set_current_mechanism("WFE")
-            self._state = PlutoFullAssessStates.WAIT_FOR_CALIBRATE
-        elif event == PlutoFullAssessEvents.FPS_MECHANISM_SET:
-            self._data.set_current_mechanism("FPS")
-            self._state = PlutoFullAssessStates.WAIT_FOR_CALIBRATE
-        elif event == PlutoFullAssessEvents.HOC_MECHANISM_SET:
-            self._data.set_current_mechanism("HOC")
-            self._state = PlutoFullAssessStates.WAIT_FOR_CALIBRATE
-        else:
-            return
-
+        _event_mech_map = {
+            PlutoFullAssessEvents.WFE_MECHANISM_SET: "WFE",
+            PlutoFullAssessEvents.FPS_MECHANISM_SET: "FPS",
+            PlutoFullAssessEvents.HOC_MECHANISM_SET: "HOC",
+        }
+        if event not in _event_mech_map:
+            return   
+        # Set current mechanism.
+        self._data.set_current_mechanism(_event_mech_map[event])
+        self._state = PlutoFullAssessStates.WAIT_FOR_CALIBRATE
+        self.log(f"Mechanism set to {self._data.current_mech}.")
 
     def _wait_for_calibrate(self, event, data):
         """
         """
+        # Check if the calibration is done.
+        if event == PlutoFullAssessEvents.CALIBRATED:
+            self._data.mechanism_calibrated(data["mech"])
+            self.log(f"Mechanism {self._data.current_mech} calibrated.")
+            # Next task is AROM.
+            self._state = PlutoFullAssessStates.WAIT_FOR_AROM_ASSESS
+
+    def _wait_for_arom_assess(self):
+        pass
+
+    def _wait_for_prom_assess(self):
+        pass
+
+    def _wait_for_aprom_assess(self):
         pass
 
     def _wait_for_discreach_assess(self, event, data):
@@ -396,8 +429,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pbSubject.clicked.connect(self._callback_select_subject)
         self.pbSetLimb.clicked.connect(self._callback_typelimb_set)
         self.pbCalibrate.clicked.connect(self._callback_calibrate)
-        self.pbRomAssess.clicked.connect(self._callback_assess_rom)
-        self.pbPropAssess.clicked.connect(self._callback_assess_prop)
+        self.pbAROM.clicked.connect(self._callback_assess_arom)
+        self.pbPROM.clicked.connect(self._callback_assess_prom)
+        self.pbAPROM.clicked.connect(self._callback_assess_aprom)
+        self.pbProp.clicked.connect(self._callback_assess_prop)
         self.rbWFE.clicked.connect(self._callback_mech_selected)
         self.rbFPS.clicked.connect(self._callback_mech_selected)
         self.rbHOC.clicked.connect(self._callback_mech_selected)
@@ -425,6 +460,14 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # A flag to disable the main window when another window is open.
         self._maindisable = False
         self.update_ui()
+
+        # One time set up
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift Light")
+        font.setPointSize(10)
+        self.rbWFE.setFont(font)
+        self.rbFPS.setFont(font)
+        self.rbHOC.setFont(font)
     
     #
     # Controls callback
@@ -504,17 +547,44 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._testdevwnd.closeEvent = self._testwnd_close_event
         self._testdevwnd.show()
 
-    def _callback_assess_rom(self):
-        # Disable main controls
-        self._maindisable = True
-        self._romwnd = PlutoRomAssessWindow(plutodev=self.pluto,
-                                            mechanism="HOC",
-                                            modal=True)
-        # Attach to the aromset and promset events.
-        self._romwnd.aromset.connect(self._callback_aromset)
-        self._romwnd.promset.connect(self._callback_promset)
-        self._romwnd.closeEvent = self._romwnd_close_event
-        self._romwnd.show()
+    def _callback_assess_arom(self):
+        # # Disable main controls
+        # self._maindisable = True
+        # self._romwnd = PlutoRomAssessWindow(plutodev=self.pluto,
+        #                                     mechanism="HOC",
+        #                                     modal=True)
+        # # Attach to the aromset and promset events.
+        # self._romwnd.aromset.connect(self._callback_aromset)
+        # self._romwnd.promset.connect(self._callback_promset)
+        # self._romwnd.closeEvent = self._romwnd_close_event
+        # self._romwnd.show()
+        pass
+
+    def _callback_assess_prom(self):
+        # # Disable main controls
+        # self._maindisable = True
+        # self._romwnd = PlutoRomAssessWindow(plutodev=self.pluto,
+        #                                     mechanism="HOC",
+        #                                     modal=True)
+        # # Attach to the aromset and promset events.
+        # self._romwnd.aromset.connect(self._callback_aromset)
+        # self._romwnd.promset.connect(self._callback_promset)
+        # self._romwnd.closeEvent = self._romwnd_close_event
+        # self._romwnd.show()
+        pass
+
+    def _callback_assess_aprom(self):
+        # # Disable main controls
+        # self._maindisable = True
+        # self._romwnd = PlutoRomAssessWindow(plutodev=self.pluto,
+        #                                     mechanism="HOC",
+        #                                     modal=True)
+        # # Attach to the aromset and promset events.
+        # self._romwnd.aromset.connect(self._callback_aromset)
+        # self._romwnd.promset.connect(self._callback_promset)
+        # self._romwnd.closeEvent = self._romwnd_close_event
+        # self._romwnd.show()
+        pass
 
     def _callback_assess_prop(self):
         # Disable main controls
@@ -607,11 +677,11 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     def _callback_newdata(self):
         """Update the UI of the appropriate window.
         """
+        # Update PLUTO data display.
+        if np.random.rand() < 0.25:
+            self._display_pluto_data()
         # Update data viewer window.
         self.update_ui()
-
-        # Update calibration status
-        self._calib = (self.pluto.calibration == 1)
             
     def _callback_btn_pressed(self):
         pass
@@ -631,10 +701,24 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     # Other callbacks
     #
     def _calibwnd_close_event(self, event):
-        self._calibwnd.close()
+        try:
+            self._calibwnd.close()
+        except:
+            pass
         self._calibwnd = None
         # Reenable main controls
         self._maindisable = False
+        print("Calibration closed")
+        # Check of the calibration was successful.
+        print(self.pluto.mechanism, self.data.current_mech, self.pluto.calibration)
+        if (pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism) == self.data.current_mech
+            and self.pluto.calibration == 1):
+            # Run the state machine.
+            self._smachine.run_statemachine(
+                PlutoFullAssessEvents.CALIBRATED,
+                {"mech": pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism)}
+            )
+        self.update_ui()
     
     def _testwnd_close_event(self, event):
         self._testdevwnd = None
@@ -689,6 +773,16 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
 
         # Enable the calibration button.
         self.pbCalibrate.setEnabled(self._maindisable is False and self.data.current_mech is not None)
+        if self.pbCalibrate.isEnabled():
+            self.pbCalibrate.setStyleSheet(
+                pfadef.SS_COMPLETE if self.data.calibrated 
+                else pfadef.SS_INCOMPLETE
+            )
+        else:
+            self.pbCalibrate.setStyleSheet("")
+
+        # Enable the task buttons.
+        self._update_task_controls()
         
         # Update session information.
         self.lblSessionInfo.setText(self._get_session_info())
@@ -745,11 +839,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
 
     def _update_mech_controls(self):
         # Update the text of the radio buttons.
-        _labels = {
-            "WFE": "Wrist Flexion/Extension",
-            "FPS": "Fore Pronation/Supination",
-            "HOC": "Hand Opening/Closing"
-        }
         _mctrl = {
             "WFE": self.rbWFE,
             "FPS": self.rbFPS,
@@ -757,7 +846,29 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         }
         for i, _m in enumerate(self.data.mech_enabled):
             _mctrl[_m].setEnabled(True)
-            _mctrl[_m].setText(_labels[_m] + " [C]" if i < len(self.data.mech_enabled) - 1 else _labels[_m])
+            _mctrl[_m].setText(f"{pfadef.mech_labels[_m]} {'[C]' if i < len(self.data.mech_enabled) - 1 else ''}")
+            _mctrl[_m].setStyleSheet(
+                pfadef.SS_COMPLETE if i < len(self.data.mech_enabled) - 1 
+                else pfadef.SS_INCOMPLETE
+            )
+        
+    def _update_task_controls(self):
+        _tctrl = {
+            "AROM": self.pbAPROM,
+            "PROM": self.pbPROM,
+            "APROM": self.pbAPROM,
+            "DISC": self.pbDiscReach,
+            "PROP": self.pbProp,
+            "FCTRL": self.pbForceCtrl,
+        }
+        print(self.data.task_enabled)
+        for i, _m in enumerate(self.data.task_enabled):
+            _tctrl[_m].setEnabled(True)
+            # _tctrl[_m].setText(f"{pfadef.mech_labels[_m]} {'[C]' if i < len(self.data.mech_enabled) - 1 else ''}")
+            _tctrl[_m].setStyleSheet(
+                pfadef.SS_COMPLETE if i < len(self.data.mech_enabled) - 1 
+                else pfadef.SS_INCOMPLETE
+            )
     
     def _any_mechanism_selected(self):
         """Check if any mechanism is selected.
@@ -796,6 +907,43 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return PlutoFullAssessEvents.HOC_MECHANISM_SET
         else:
             return None
+        
+    def _display_pluto_data(self):
+        # Check if new data is available
+        if self.pluto.is_data_available() is False:
+            self.textPlutoData.setText("No data available.")
+            return
+        # New data available. Format and display
+        _dispdata = [
+            f"Time    : {self.pluto.time}"
+        ]
+        _statusstr = ' | '.join((pdef.get_name(pdef.OutDataType, self.pluto.datatype),
+                                 pdef.get_name(pdef.ControlType, self.pluto.controltype),
+                                 pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)))
+        _dispdata += [
+            f"Status  : {_statusstr}",
+            f"Error   : {pdef.get_name(pdef.ErrorTypes, self.pluto.error)}",
+            f"Mech    : {pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<6s} | Calib   : {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
+            f"Actd    : {self.pluto.actuated:<6d} | Button  : {self.pluto.button}",
+            ""
+        ]
+        _dispdata += [
+            "~ SENSOR DATA ~",
+            f"Angle   : {self.pluto.angle:-07.2f}deg"
+            + (f" [{self.pluto.hocdisp:05.2f}cm]" if self.pluto.calibration == 1 else "")
+        ]
+        _dispdata += [
+            f"Control : {self.pluto.control:3.1f}",
+            f"Target  : {self.pluto.target:3.1f}",
+        ]
+        # Check if in DIAGNOSTICS mode.
+        if pdef.get_name(pdef.OutDataType, self.pluto.datatype) == "DIAGNOSTICS":
+            _dispdata += [
+                f"Err     : {self.pluto.error:3.1f}",
+                f"ErrDiff : {self.pluto.errordiff:3.1f}",
+                f"ErrSum  : {self.pluto.errorsum:3.1f}",
+            ]
+        self.textPlutoData.setText('\n'.join(_dispdata))
 
     #
     # Device Data Viewer Functions 
@@ -814,27 +962,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             self.pluto.close()
         except Exception as e:
             print(f"Error during close: {e}")
-
-        # Close the data viewer window
-        # if self._devdatawnd is not None:
-        #     self._devdatawnd.close()
-
-        # # Close the calibration window
-        # if self._calibwnd is not None:
-        #     self._calibwnd.close()
-
-        # # Close the test device window
-        # if self._testdevwnd is not None:
-        #     self._testdevwnd.close()
-
-        # # Close the ROM assessment window
-        # if self._romwnd is not None:
-        #     self._romwnd.close()
-        
-        # # Close the proprioception assessment window
-        # if self._propwnd is not None:
-        #     self._propwnd.close()
-        
         # Accept the close event.
         event.accept()
 

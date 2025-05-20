@@ -15,7 +15,7 @@ datadir = pathlib.Path("fullassessment")
 fullassess_protocol = {
     "mechanisms": ["WFE", "FPS", "HOC"],
     "tasks": ["AROM", "PROM", "APROM", "DISC", "PROP", "FCTRL"],
-    "details": {}
+    "details": {},
 }
 
 # Active range of motion: AROM

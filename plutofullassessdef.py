@@ -6,6 +6,8 @@ Date: 16 May 2025
 Email: siva82kb@gmail.com
 """
 
+import json
+import pathlib
 import numpy as np
 from enum import Enum
 import misc
@@ -17,58 +19,104 @@ PROTOCOL_FILE = f"{DATA_DIR}/fullassess_protocol.json"
 # Proprioceptive assessment control timer delta (seconds).
 PROPASS_CTRL_TIMER_DELTA = 0.01
 
+# List of mechanisms to be used
+mechanisms = ["WFE", "FPS", "HOC"]
 
-# Class containing data of ROM Assessment
-class PlutoMechanismROM(object):
-    """
-    Class containing ROM data for the full assessment protocol.
-    """
-    def __init__(self, mech: str, limb: str, romname:str, ntrials: int):
-        self.mech = mech
-        self.limb = limb
-        self.ntrials = ntrials
-        self.name  = romname
-        self.rom = []
-    
-    def add_rom(self, arom: list[float]):
-        """
-        Add ROM data to the assessment.
-        
-        Args:
-            rom (list[float]): The ROM data.
-        """
-        if len(arom) != self.ntrials:
-            raise ValueError(f"AROM data length {len(arom)} does not match number of trials {self.ntrials}.")
-        if arom[0] > arom[1]:
-            raise ValueError(f"First value of {arom} must be lower than the second value.")
-        self.arom.append(arom)
+# Mechanisms labels
+mech_labels = {
+    "WFE": "Wrist Flexion/Extension",
+    "FPS": "Forearm Pronation/Supination",
+    "HOC": "Hand Opening/Closing"
+}
 
-    def is_complete(self):
-        return len(self.rom) == self.ntrials
+# List of tasks in the order they are to be done
+tasks = ["AROM", "PROM", "APROM", "DISC", "PROP", "FCTRL"]
+
+# Tasks labels
+task_labels = {
+    "AROM": "Active ROM",
+    "PROM": "Passive ROM",
+    "APROM": "Asst. Pasive ROM",
+    "DISC": "Discrete Reaching",
+    "PROP": "Proprioceptiion",
+    "FCTRL": "Force Control",
+}
+
+# Stylesheet for complete/incomplete mech/task
+SS_COMPLETE = "color: rgb(0, 100, 0);"
+SS_INCOMPLETE = "color: rgb(170, 0, 0);"
+
+# Full assessment protocol.
+protocol = {}
+
+# Active range of motion: AROM
+protocol["AROM"] = {
+    "mech": ["WFE", "FPS", "HOC"],  # Mechanism used for this assessment.
+    "N": 3,                         # Number of trials.
+    "stop_duration": 2,             # Stop position duration (seconds).
+    "stop_velocity_th": 5,          # Stop velocity threshold (deg/s).
+}
+
+# Passive range of motion: PROM
+protocol["PROM"] = {
+    "mech": ["WFE", "FPS", "HOC"],  # Mechanism used for this assessment.
+    "N": 3,                         # Number of trials.  
+}
+
+# Assisted passive range of motion: APROM
+protocol["APROM"] = {
+    "mech": ["WFE", "FPS", "HOC"],  # Mechanism used for this assessment.
+    "N": 3,                         # Number of trials.
+    "max_torque": 1.0,              # Maximum torque to be applied (Nm)
+}
+
+# Discrete reaching movements: DISC
+protocol["DISC"] = {
+    "mech": ["WFE", "FPS"],         # Mechanism used for this assessment.
+    "N": 3,                         # Number of trials.
+    "min_arom_range": 20,           # Minimum AROM range (degrees).
+    "targets": [0.25, 0.75],        # Target positions (fraction of AROM).
+    "target_width": 2.5,            # Target width (deg).
+    "on_off_target_duration": 1,    # Duration for deciding the hand is on or off target (seconds).
+    "on_target_duration": 2,        # Duration for deciding the hand is on target (seconds).
+}
+
+# Proprioceptive assessment: PROP
+protocol["PROP"] = {
+    "mech": ["HOC"],                # Mechanism used for this assessment.
+    "N": 3,                         # Number of trials.
+    "targets": [0.25, 0.5, 0.75],   # Target positions (fraction of PROM).
+    "min_target_sep": 1,            # Minimum target separation (cm).
+    "move_speed": 0.5,              # Duration for haptic demonstration (cm/seconds).
+    "on_off_target_duration": 1,    # Duration for deciding the hand is on or off target (seconds).
+    "target_error_th": 0.25,        # Target error threshold (cm).
+    "demo_duration": 5,             # Duration for haptic demonstration (seconds).
+    "intrat_rest_duration": 3,      # Intra-Trial Rest Duration (seconds).
+    "intert_rest_duration": 5,      # Inter-Trial Rest Duration (seconds).
+}
+
+# Force control: FCTRL
+protocol["FCTRL"] = {
+    "mech": ["HOC"],                # Mechanism used for this assessment.
+    "N": 3,                         # Number of trials.
+    "hold_force": 0.4,              # Target holding force (Nm).
+    "min_force": 0.3,               # Minimum force to be applied (Nm).
+    "max_force": 0.5,               # Maximum force to be applied (Nm).
+    "target_duration": 20,          # Duration for holding the target force (seconds).
+    "drop_duration": 3,             # Minimum duration after which the target drops (seconds).
+    "crush_duration": 3,            # Minimum duration after which the target is crushed (seconds).
+}
 
 
-# Wrist flexion/extension (WFE) mechanism assessment
-class WristFlexionExtensionAssessment(object):
-    """
-    Class for handling the wrist flexion/extension mechanism assessment.
-    """
-    def __init__(self, limb: str):
-        self.rom = PlutoMechanismROM("WFE", limb)
+if __name__ == "__main__":
+    # Create folder if needed
+    datadir = pathlib.Path(DATA_DIR)
+    datadir.mkdir(parents=True, exist_ok=True)
 
-
-# Forearm pronation/supination (FPS) mechanism assessment
-class ForearmPronationSupinationAssessment(object):
-    """
-    Class for handling the forearm pronation/supination mechanism assessment.
-    """
-    def __init__(self, limb: str):
-        self.rom = PlutoMechanismROM("FPS", limb)
-
-
-# Hand openinbg/closing (HOC) mechanism assessment
-class HandOpeningClosingAssessment(object):
-    """
-    Class for handling the hand opening/closing mechanism assessment.
-    """
-    def __init__(self, limb: str):
-        self.rom = PlutoMechanismROM("HOC", limb)
+    # Write the protocol to a JSON file.
+    with open(datadir / "fullassess_protocol.json", "w") as f:
+        json.dump({
+            "mechanisms": mechanisms,
+            "tasks": tasks,
+            "protocol": protocol
+        }, f, indent=4)
