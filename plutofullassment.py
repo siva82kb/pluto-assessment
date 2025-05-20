@@ -58,7 +58,17 @@ class PlutoAssessmentData(object):
         self.datadir = None
         self._pconfig = None
         self._summary_data = None
+        self._current_mech = None
+        self._current_task = None
 
+    @property
+    def current_mech(self):
+        return self._current_mech
+    
+    @property
+    def current_task(self):
+        return self._current_task
+    
     @property
     def summary_data(self):
         return self._summary_data
@@ -75,8 +85,10 @@ class PlutoAssessmentData(object):
         return list(self._summary_data[self._summary_data.index <= self._index]["mechanism"].unique())
     
     @property
-    def task_enabled(self):
-        return self._task_enabled
+    def is_mechanism_completed(self, mechname):
+        print(self.mech_enabled)
+        print(self.mech_enabled[:-1])
+        return mechname in self.mech_enabled[:-1] 
     
     @property
     def index(self):
@@ -133,13 +145,12 @@ class PlutoAssessmentData(object):
         print(self._summary_data)
         self._index = self._summary_data[np.isnan(self._summary_data["session"])].index[0]
     
-    def set_current_mechanism(self):
-        # Protocol must be set.
-        if self.protocol is None:
-            self.mech = None
-        # Parse the first protocol entry.
-        # self.mech = self.protocol[0][0].split("-")[0]
-        # self.task = self.protocol[0][0].split("-")[1]
+    def set_current_mechanism(self, mechname):
+        # Sanity check. Make sure the set mechanism matches the mechnaism in the protocol.
+        if mechname != self._summary_data.iloc[self._index]["mechanism"]:
+            raise ValueError(f"Mechanism [{mechname}] does not match the protocol mechanism [{self._summary_data.iloc[self._index]['mechanism']}]")
+        self._current_mech = mechname
+        self._current_task = None
     
     def is_mechanism_assessed(self, mechname):
         # Check if the task entries are all filled.
@@ -277,11 +288,14 @@ class PlutoFullAssessmentStateMachine():
         # Check which mechanism is selected.
         if event == PlutoFullAssessEvents.WFE_MECHANISM_SET:
             # Check if this mechanism has been assessed.
-            pass
+            self._data.set_current_mechanism("WFE")
+            self._state = PlutoFullAssessStates.WAIT_FOR_CALIBRATE
         elif event == PlutoFullAssessEvents.FPS_MECHANISM_SET:
-            pass
+            self._data.set_current_mechanism("FPS")
+            self._state = PlutoFullAssessStates.WAIT_FOR_CALIBRATE
         elif event == PlutoFullAssessEvents.HOC_MECHANISM_SET:
-            pass
+            self._data.set_current_mechanism("HOC")
+            self._state = PlutoFullAssessStates.WAIT_FOR_CALIBRATE
         else:
             return
 
@@ -384,6 +398,9 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pbCalibrate.clicked.connect(self._callback_calibrate)
         self.pbRomAssess.clicked.connect(self._callback_assess_rom)
         self.pbPropAssess.clicked.connect(self._callback_assess_prop)
+        self.rbWFE.clicked.connect(self._callback_mech_selected)
+        self.rbFPS.clicked.connect(self._callback_mech_selected)
+        self.rbHOC.clicked.connect(self._callback_mech_selected)
         self.pbStartMechAssessment.clicked.connect(self._callback_start_mech_assess)
         
         # Other windows
@@ -460,7 +477,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         )
         if reply == QMessageBox.Ok:
             self._subjdetails["type"] = self.cbSubjectType.currentText()
-            self._subjdetails["limb"] = self.cbLimb.currentText()
+            self._subjdetails["slimb"] = self.cbLimb.currentText()
         # Run the state machine.
         self._smachine.run_statemachine(
             PlutoFullAssessEvents.TYPE_LIMB_SET,
@@ -474,7 +491,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._maindisable = True
         # Calibration window and open it as a modal window.
         self._calibwnd = PlutoCalibrationWindow(plutodev=self.pluto,
-                                                mechanism="HOC",
+                                                mechanism=self.data.current_mech,
                                                 modal=True)
         self._calibwnd.closeEvent = self._calibwnd_close_event
         self._calibwnd.show()
@@ -531,26 +548,42 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._subjdetails["grip"] = ""
         self.update_ui()
     
+    def _callback_mech_selected(self):
+        self.update_ui()
+    
     def _callback_start_mech_assess(self):
-        # # Check if the current mechanisms is WFE.
-        # if self.data.mech != "WFE":
-        #     return
-        # # Ask if the user wants to start the WFE assessment.
-        # reply = QMessageBox.question(
-        #     self,
-        #     "Confirm",
-        #     f"Start WFE assessment?\n\n",
-        #     QMessageBox.Ok | QMessageBox.Cancel
-        # )
-        # if reply == QMessageBox.Cancel:
-        #     return
-        # # Run the state machine.
-        # self._smachine.run_statemachine(
-        #     PlutoFullAssessEvents.WFE_MECHANISM_SET,
-        #     {}
-        # )
-        pass
-
+        # Check if the chosen mechanism is already assessed.
+        _mechchosen = self._get_chosen_mechanism()
+        if self.data.is_mechanism_assessed(_mechchosen):
+            # Ask if the user wants to continue with this mechanism.
+            reply = QMessageBox.question(
+                self,
+                "Confirm",
+                f"Mechanism [{_mechchosen}] already assessed.\nDo you want to continue?",
+                QMessageBox.Ok | QMessageBox.Cancel
+            )
+            if reply == QMessageBox.Cancel:
+                # Cancel the radio button selection.
+                self._reset_mech_selection()
+                return
+        # Message box to inform the user that the mechanism is selected.
+        reply = QMessageBox.question(
+            self,
+            "Confirm",
+            f"Start {_mechchosen} assessment?\n\n",
+            QMessageBox.Ok | QMessageBox.Cancel
+        )
+        if reply == QMessageBox.Cancel:
+            # Cancel the radio button selection.
+            self._reset_mech_selection()
+            return
+        # Run the state machine.
+        # Get the appropriate event.
+        self._smachine.run_statemachine(
+            self._get_chosen_mechanism_event(),
+            {}
+        )
+        self.update_ui()
     
     # 
     # Timer callbacks
@@ -649,23 +682,14 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.gbMechanisms.setEnabled(_mechflag)
         
         # Enable the appropriate mechanisms.
-        print(self.data.mech_enabled)
-        for _m in self.data.mech_enabled:
-            if _m == "WFE":
-                self.rbWFE.setEnabled(True)
-            elif _m == "FPS":
-                self.rbFPS.setEnabled(True)
-            elif _m == "HOC":
-                self.rbHOC.setEnabled(True)
-        # if self.data.mech == "WFE":
-        #     # Check if mechanism has been assessed.
-        #     # if self.data.is_mechanism_assessed("WFE")
-        #     self.pbWFE.setEnabled(True)
-        # elif self.data.mech == "FPS":
-        #     self.pbFPS.setEnabled(True)
-        # elif self.data.mech == "HOC":
-        #     self.pbHOC.setEnabled(True)
+        self._update_mech_controls()
 
+        # Check if any mechanism is selected to enable the mechanism assessment start button.
+        self.pbStartMechAssessment.setEnabled(self._any_mechanism_selected())
+
+        # Enable the calibration button.
+        self.pbCalibrate.setEnabled(self._maindisable is False and self.data.current_mech is not None)
+        
         # Update session information.
         self.lblSessionInfo.setText(self._get_session_info())
         
@@ -718,6 +742,60 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             # f"{self.data.task if self.data.task is not None else '':<8}",
         ]
         return ":".join(_str)
+
+    def _update_mech_controls(self):
+        # Update the text of the radio buttons.
+        _labels = {
+            "WFE": "Wrist Flexion/Extension",
+            "FPS": "Fore Pronation/Supination",
+            "HOC": "Hand Opening/Closing"
+        }
+        _mctrl = {
+            "WFE": self.rbWFE,
+            "FPS": self.rbFPS,
+            "HOC": self.rbHOC
+        }
+        for i, _m in enumerate(self.data.mech_enabled):
+            _mctrl[_m].setEnabled(True)
+            _mctrl[_m].setText(_labels[_m] + " [C]" if i < len(self.data.mech_enabled) - 1 else _labels[_m])
+    
+    def _any_mechanism_selected(self):
+        """Check if any mechanism is selected.
+        """
+        return (self.rbWFE.isChecked() or
+                self.rbFPS.isChecked() or
+                self.rbHOC.isChecked())
+
+    def _get_chosen_mechanism(self):
+        """Get the selected mechanism.
+        """
+        if self.rbWFE.isChecked():
+            return "WFE"
+        elif self.rbFPS.isChecked():
+            return "FPS"
+        elif self.rbHOC.isChecked():
+            return "HOC"
+        else:
+            return None
+    
+    def _reset_mech_selection(self):
+        """Reset the mechanism selection.
+        """
+        self.rbWFE.setChecked(False)
+        self.rbFPS.setChecked(False)
+        self.rbHOC.setChecked(False)
+    
+    def _get_chosen_mechanism_event(self):
+        """Get the event for the selected mechanism.
+        """
+        if self.rbWFE.isChecked():
+            return PlutoFullAssessEvents.WFE_MECHANISM_SET
+        elif self.rbFPS.isChecked():
+            return PlutoFullAssessEvents.FPS_MECHANISM_SET
+        elif self.rbHOC.isChecked():
+            return PlutoFullAssessEvents.HOC_MECHANISM_SET
+        else:
+            return None
 
     #
     # Device Data Viewer Functions 

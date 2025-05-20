@@ -70,8 +70,8 @@ class PlutoCalibrationStateMachine():
         # Check if the button release event has happened.
         if event == pdef.PlutoEvents.RELEASED:
             # Check if the ROM is acceptable.
-            _romcheck = (-self._pluto.angle >= 0.9 * pdef.PlutoAngleRanges[mech]
-                         and -self._pluto.angle <= 1.1 * pdef.PlutoAngleRanges[mech])
+            _romcheck = (np.abs(self._pluto.angle) >= 0.9 * pdef.PlutoAngleRanges[mech]
+                         and np.abs(self._pluto.angle) <= 1.1 * pdef.PlutoAngleRanges[mech])
             if _romcheck:
                 # Everything looks good. Calibration is complete.
                 self._state = PlutoCalibStates.WAIT_FOR_CLOSE
@@ -127,6 +127,11 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 
         # Update UI.
         self.update_ui()
+        # Set label for position display.
+        if self._mechanism == "HOC":
+            self.ui.lblPositionTitle.setText("Hand Aperture:")
+        else:
+            self.ui.lblPositionTitle.setText("Joint Position:")
 
         # Open the PLUTO data viewer window for sanity
         if dataviewer:
@@ -153,15 +158,21 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
         # Update based on the current state of the Calib statemachine
         if self._smachine.state == PlutoCalibStates.WAIT_FOR_ZERO_SET:
             self.ui.lblCalibStatus.setText("Not done.")
-            self.ui.lblHandDistance.setText("- NA- ")
+            self.ui.lblPositionDisplay.setText("- NA- ")
             self.ui.lblInstruction2.setText("Press the PLUTO button set zero.")
         elif self._smachine.state == PlutoCalibStates.WAIT_FOR_ROM_SET:
             self.ui.lblCalibStatus.setText("Zero set.")
-            self.ui.lblHandDistance.setText(f"{self.pluto.hocdisp:5.2f}cm")
+            self.ui.lblPositionDisplay.setText(
+                f"{self.pluto.hocdisp:5.2f}cm" if self.mechanism == "HOC"
+                else f"{self.pluto.angle:5.2f}deg"
+            )
             self.ui.lblInstruction2.setText("Press the PLUTO button set ROM.")
         elif self._smachine.state == PlutoCalibStates.WAIT_FOR_CLOSE:
             self.ui.lblCalibStatus.setText("All Done!")
-            self.ui.lblHandDistance.setText(f"{self.pluto.hocdisp:5.2f}cm")
+            self.ui.lblPositionDisplay.setText(
+                f"{self.pluto.hocdisp:5.2f}cm" if self.mechanism == "HOC"
+                else f"{self.pluto.angle:5.2f}deg"
+            )
             self.ui.lblInstruction2.setText("Press the PLUTO button to close window.")
         elif self._smachine.state == PlutoCalibStates.CALIB_ERROR:
             self.ui.lblCalibStatus.setText("Error!")
@@ -203,10 +214,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM12")
-    pcalib = PlutoCalibrationWindow(plutodev=plutodev, mechanism="HOC",
+    pcalib = PlutoCalibrationWindow(plutodev=plutodev, mechanism="FPS",
                                     dataviewer=True)
     pcalib.show()
     sys.exit(app.exec_())
-
-
-

@@ -12,7 +12,7 @@ from enum import Enum
 
 
 # Hand Openiong and Closing Mechanism Conversion Factor
-HOCScale = 3.97 * np.pi / 180
+HOCScale = 3.97 * (np.pi / 180) * (14 / 9)
 PLUTOMaxTorque = 1.0 #Nm
 
 class PlutoEvents(Enum):
@@ -30,7 +30,7 @@ ControlType = {
 Mehcanisms = {
     "WFE":    0x00,
     "WUD":    0x01,
-    "WPS":    0x02,
+    "FPS":    0x02,
     "HOC":    0x03,
     "NOMECH": 0x04,
 }
@@ -74,10 +74,10 @@ CalibrationStatus = {
 }
 
 PlutoAngleRanges = {
-    "WFE": 120,
-    "WUD": 120,
-    "WPS": 120,
-    "HOC": 140,
+    "WFE": 150,
+    "WUD": 150,
+    "FPS": 180,
+    "HOC": 90,
 }
 
 PlutoTargetRanges = {

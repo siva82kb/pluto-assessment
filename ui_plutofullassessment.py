@@ -14,8 +14,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_PlutoFullAssessor(object):
     def setupUi(self, PlutoFullAssessor):
         PlutoFullAssessor.setObjectName("PlutoFullAssessor")
-        PlutoFullAssessor.resize(1130, 450)
-        PlutoFullAssessor.setMinimumSize(QtCore.QSize(1130, 450))
+        PlutoFullAssessor.resize(1200, 450)
+        PlutoFullAssessor.setMinimumSize(QtCore.QSize(1200, 450))
         PlutoFullAssessor.setMaximumSize(QtCore.QSize(1130, 450))
         font = QtGui.QFont()
         font.setFamily("Bahnschrift Light")
@@ -73,7 +73,7 @@ class Ui_PlutoFullAssessor(object):
         self.verticalLayout.addWidget(self.pbSetLimb)
         self.gbMechanisms = QtWidgets.QGroupBox(self.centralwidget)
         self.gbMechanisms.setEnabled(False)
-        self.gbMechanisms.setMinimumSize(QtCore.QSize(0, 70))
+        self.gbMechanisms.setMinimumSize(QtCore.QSize(250, 70))
         self.gbMechanisms.setObjectName("gbMechanisms")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.gbMechanisms)
         self.verticalLayout_4.setObjectName("verticalLayout_4")

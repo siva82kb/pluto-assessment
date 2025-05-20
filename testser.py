@@ -1,6 +1,6 @@
 import serial
 
-ser = serial.Serial("COM13", 115200, timeout=0.1)
+ser = serial.Serial("COM12", 115200, timeout=0.1)
 
 while True:
     if ser.in_waiting:
