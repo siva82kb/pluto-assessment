@@ -69,10 +69,10 @@ class PlutoAssessmentData(object):
 
     @property
     def mech_enabled(self):
-        if self._summary_data is None:
+        if self._summary_data is None and self._index is None:
             return []
         # Get the list of mechanisms that have been assessed.
-        return list(self._summary_data[self._summary_data["session"] != np.nan]["mechanism"].unique())
+        return list(self._summary_data[self._summary_data.index <= self._index]["mechanism"].unique())
     
     @property
     def task_enabled(self):
@@ -131,7 +131,6 @@ class PlutoAssessmentData(object):
 
         # Set index to the row that is incomplete.
         print(self._summary_data)
-        print(np.isnan(self._summary_data["session"]))
         self._index = self._summary_data[np.isnan(self._summary_data["session"])].index[0]
     
     def set_current_mechanism(self):
@@ -650,7 +649,14 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.gbMechanisms.setEnabled(_mechflag)
         
         # Enable the appropriate mechanisms.
-        # _mechdone = self.data.is_mechanism_assessed(self.data.mech)
+        print(self.data.mech_enabled)
+        for _m in self.data.mech_enabled:
+            if _m == "WFE":
+                self.rbWFE.setEnabled(True)
+            elif _m == "FPS":
+                self.rbFPS.setEnabled(True)
+            elif _m == "HOC":
+                self.rbHOC.setEnabled(True)
         # if self.data.mech == "WFE":
         #     # Check if mechanism has been assessed.
         #     # if self.data.is_mechanism_assessed("WFE")
@@ -725,28 +731,34 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     # Main window close event
     # 
     def closeEvent(self, event):
-        # Set device to no control.
-        self.pluto.set_control_type("NONE")
+        try:
+            self.pluto.set_control_type("NONE")
+            self.pluto.close()
+        except Exception as e:
+            print(f"Error during close: {e}")
 
         # Close the data viewer window
-        if self._devdatawnd is not None:
-            self._devdatawnd.close()
+        # if self._devdatawnd is not None:
+        #     self._devdatawnd.close()
 
-        # Close the calibration window
-        if self._calibwnd is not None:
-            self._calibwnd.close()
+        # # Close the calibration window
+        # if self._calibwnd is not None:
+        #     self._calibwnd.close()
 
-        # Close the test device window
-        if self._testdevwnd is not None:
-            self._testdevwnd.close()
+        # # Close the test device window
+        # if self._testdevwnd is not None:
+        #     self._testdevwnd.close()
 
-        # Close the ROM assessment window
-        if self._romwnd is not None:
-            self._romwnd.close()
+        # # Close the ROM assessment window
+        # if self._romwnd is not None:
+        #     self._romwnd.close()
         
-        # Close the proprioception assessment window
-        if self._propwnd is not None:
-            self._propwnd.close()
+        # # Close the proprioception assessment window
+        # if self._propwnd is not None:
+        #     self._propwnd.close()
+        
+        # Accept the close event.
+        event.accept()
 
 
 if __name__ == "__main__":

@@ -175,6 +175,14 @@ class QtPluto(QObject):
             if self.prevstatedata[4] == 0.0 and self.currstatedata[4] == 1.0:
                 self.btnreleased.emit()
 
+    def close(self):
+        """Function to close the connection.
+        """
+        if self.dev is not None and self.dev.isRunning():
+            self.dev.abort()
+            self.dev.quit()
+            self.dev.wait()
+    
     def calibrate(self, mech):
         """Function to set the encoder calibration.
         """

@@ -74,17 +74,16 @@ class JediComm(QThread):
         Thread operation.
         """
         self._state = JediParsingStates.LookingForHeader
-        while True and self._ser.isOpen():
-            # check if the currently paused
+        while self._ser.isOpen() and not self._abort:
             if self._sleeping:
-                # wait till the thread is un-paused.
+                self.msleep(100)
                 continue
-
-            # abort?
-            if self._abort is True:
-                return
-
             self._read_handle_data()
+            self.msleep(1)
+        try:
+            self._ser.close()  # safe to close here
+        except:
+            pass
 
     def sleep(self):
         """
@@ -103,10 +102,9 @@ class JediComm(QThread):
         """
         Aborts the current thread.
         """
-        self._abort = True
-        self._ser.close()
         if self._sleeping:
             self.wakeup()
+        self._abort = True
 
     def _read_handle_data(self):
         """
