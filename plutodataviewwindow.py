@@ -120,10 +120,24 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
         if self._dispcount == 0:
             self.update_ui()
 
+    #
+    # Close event
+    #
+    def closeEvent(self, event):
+        try:
+            self.pluto.set_control_type("NONE")
+            self.pluto.close()
+            print("PLUTO closed.")
+        except Exception as e:
+            print(f"Error during close: {e}")
+        
+        # Accept the close event.
+        event.accept()
 
+    
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM13")
+    plutodev = QtPluto("COM12")
     pdataview = PlutoDataViewWindow(plutodev=plutodev,
                                     mode="DIAGNOSTICS")
     pdataview.show()

@@ -209,6 +209,23 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
             self._mechanism
         )
         self.update_ui()
+    
+    #
+    # Close event
+    #
+    def closeEvent(self, event):
+        try:
+            self.pluto.set_control_type("NONE")
+            self.pluto.close()
+            print("PLUTO closed.")
+        except Exception as e:
+            print(f"Error during close: {e}")
+        try:
+            self._devdatawnd.close()
+        except:
+            pass
+        # Accept the close event.
+        event.accept()
 
 
 if __name__ == '__main__':
