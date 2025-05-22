@@ -122,6 +122,9 @@ class QtPluto(QObject):
     def errorsum(self):
         return self.currsensordata[6] if len(self.currsensordata) > 6 else None
     
+    def delt(self):
+        return self._deltimes[-1] if len(self._deltimes) > 0 else 0
+    
     def framerate(self):
         return FR_WINDOW_N / sum(self._deltimes) if sum(self._deltimes) != 0 else 0.0
  

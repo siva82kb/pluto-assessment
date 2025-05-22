@@ -854,21 +854,22 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         
     def _update_task_controls(self):
         _tctrl = {
-            "AROM": self.pbAPROM,
+            "AROM": self.pbAROM,
             "PROM": self.pbPROM,
             "APROM": self.pbAPROM,
             "DISC": self.pbDiscReach,
             "PROP": self.pbProp,
             "FCTRL": self.pbForceCtrl,
         }
-        print(self.data.task_enabled)
-        for i, _m in enumerate(self.data.task_enabled):
-            _tctrl[_m].setEnabled(True)
-            # _tctrl[_m].setText(f"{pfadef.mech_labels[_m]} {'[C]' if i < len(self.data.mech_enabled) - 1 else ''}")
-            _tctrl[_m].setStyleSheet(
-                pfadef.SS_COMPLETE if i < len(self.data.mech_enabled) - 1 
-                else pfadef.SS_INCOMPLETE
-            )
+        for i, _t in enumerate(self.data.task_enabled):
+            _tctrl[_t].setEnabled(self.data.calibrated)
+            if self.data.calibrated:
+                _tctrl[_t].setStyleSheet(
+                    pfadef.SS_COMPLETE if i < len(self.data.task_enabled) - 1 
+                    else pfadef.SS_INCOMPLETE
+                )
+            else:
+                _tctrl[_t].setStyleSheet("")
     
     def _any_mechanism_selected(self):
         """Check if any mechanism is selected.
