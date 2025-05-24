@@ -57,6 +57,13 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
 
         # Attach callbacks
         self.pluto.newdata.connect(self._callback_pluto_newdata)
+        # self.pluto.btnreleased.connect(self._callback_pluto_button_released)
+        # self.pluto.btnpressed.connect(self._callback_pluto_button_pressed)
+
+        # Heartbeat timer
+        self.heartbeattimer = QTimer()
+        self.heartbeattimer.timeout.connect(lambda: self.pluto.send_heartbeat())
+        self.heartbeattimer.start(500)
 
         # Update UI.
         self.update_ui()
@@ -105,9 +112,9 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
         # Check if in DIAGNOSTICS mode.
         if pdef.get_name(pdef.OutDataType, self.pluto.datatype) == "DIAGNOSTICS":
             _dispdata += [
-                f"Err     : {self.pluto.error:3.1f}",
-                f"ErrDiff : {self.pluto.errordiff:3.1f}",
-                f"ErrSum  : {self.pluto.errorsum:3.1f}",
+                f"Err     : {self.pluto.err:3.1f}",
+                f"ErrDiff : {self.pluto.errdiff:3.1f}",
+                f"ErrSum  : {self.pluto.errsum:3.1f}",
             ]
         # Control bound, dir and gain
         _dispdata += [
@@ -133,6 +140,12 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
         self._dispcount %= 10
         if self._dispcount == 0:
             self.update_ui()
+    
+    def _callback_pluto_button_released(self):
+        print("Button released.")
+    
+    def _callback_pluto_button_pressed(self):
+        print("Button pressed.")
 
     #
     # Close event

@@ -15,7 +15,12 @@ from enum import Enum
 HOCScale = 3.97 * (np.pi / 180) * (14 / 9)
 PLUTOMaxTorque = 1.0 #Nm
 
-# MAx control gain
+# Min, Max control bound
+PlutoMinControlBound = 0.0
+PlutoMaxControlBound = 1.0
+
+# Min, Max control gain
+PlutoMinControlGain = 10.0
 PlutoMaxControlGain = 10.0
 
 class PlutoEvents(Enum):
@@ -61,7 +66,8 @@ InDataType = {
     "SET_CONTROL_DIR":      0x09,
     "SET_AAN_TARGET":       0x0A,
     "RESET_AAN_TARGET":     0x0B,
-    "HEARTBEAT":            0x0C,
+    "SET_CONTROL_GAIN":     0x0C,
+    "HEARTBEAT":            0x80,
 }
 
 ControlDetails = {
@@ -70,9 +76,9 @@ ControlDetails = {
 }
 
 ErrorTypes = {
-    "ANGSENSERR":   0x0000,
-    "MCURRSENSERR": 0x0001,
-    "NOHEARTBEAT":  0x0002,
+    "ANGSENSERR":   0x0001,
+    "MCURRSENSERR": 0x0002,
+    "NOHEARTBEAT":  0x0004,
 }
 
 OperationStatus = {
@@ -86,15 +92,15 @@ CalibrationStatus = {
 }
 
 PlutoAngleRanges = {
-    "WFE": 150,
-    "WURD": 150,
-    "FPS": 180,
-    "HOC": 90,
+    "WFE": [-75, 75],
+    "WURD": [-75, 75],
+    "FPS": [-90, 90],
+    "HOC": [0, -90],
 }
 
 PlutoTargetRanges = {
     "TORQUE":   [-PLUTOMaxTorque, PLUTOMaxTorque],
-    "POSITION": [-135, 0],
+    "POSITION": PlutoAngleRanges
 }
 
 PlutoSensorDataNumber = {

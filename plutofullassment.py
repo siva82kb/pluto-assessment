@@ -329,13 +329,13 @@ class PlutoFullAssessmentStateMachine():
             # Next task is AROM.
             self._state = PlutoFullAssessStates.WAIT_FOR_AROM_ASSESS
 
-    def _wait_for_arom_assess(self):
+    def _wait_for_arom_assess(self, event, data):
         pass
 
-    def _wait_for_prom_assess(self):
+    def _wait_for_prom_assess(self, event, data):
         pass
 
-    def _wait_for_aprom_assess(self):
+    def _wait_for_aprom_assess(self, event, data):
         pass
 
     def _wait_for_discreach_assess(self, event, data):
@@ -400,6 +400,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pluto.btnpressed.connect(self._callback_btn_pressed)
         self.pluto.btnreleased.connect(self._callback_btn_released)
 
+        # Get the version and device information
+        self.pluto.get_version()
+        self.pluto.start_sensorstream()
+
         # Assessment data
         self.data = PlutoAssessmentData()
         
@@ -408,6 +412,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.apptimer.timeout.connect(self._callback_app_timer)
         self.apptimer.start(1000)
         self.apptime = 0
+        # Heartbeat timer
+        self.heartbeattimer = QTimer()
+        self.heartbeattimer.timeout.connect(lambda: self.pluto.send_heartbeat())
+        self.heartbeattimer.start(250)
 
         # Initialize the state machine.
         self._smachine = PlutoFullAssessmentStateMachine(
@@ -670,7 +678,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 f"{self._smachine.state.name:<20}",
             ))
         )
-
+    
     #
     # Signal callbacks
     #
@@ -916,16 +924,21 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # New data available. Format and display
         _dispdata = [
-            f"Time    : {self.pluto.time}"
+            f"Sys Time: {self.pluto.systime}",
+            f"Dev Info: {self.pluto.devname} | Ver: {self.pluto.version} [{self.pluto.compliedate}]",
+            f"Dev Time: {self.pluto.currt:6.3f}s | Pack No : {self.pluto.packetnumber:06d}",
         ]
         _statusstr = ' | '.join((pdef.get_name(pdef.OutDataType, self.pluto.datatype),
-                                 pdef.get_name(pdef.ControlType, self.pluto.controltype),
-                                 pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)))
+                                 f"Ctrl Type: {pdef.get_name(pdef.ControlType, self.pluto.controltype)}",
+                                 f"Err: {pdef.get_name(pdef.ErrorTypes, self.pluto.error)}"))
+        _mechstr = ' | '.join((f"{pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<6s}",
+                               pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration),
+                               "Actuated" if self.pluto.actuated else "Unactuated",
+                               f"Button: {self.pluto.button}"))
         _dispdata += [
             f"Status  : {_statusstr}",
-            f"Error   : {pdef.get_name(pdef.ErrorTypes, self.pluto.error)}",
-            f"Mech    : {pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<6s} | Calib   : {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
-            f"Actd    : {self.pluto.actuated:<6d} | Button  : {self.pluto.button}",
+            f"Mech    : {_mechstr}",
+            # f"Actd    : {self.pluto.actuated:<6d} | Button  : {self.pluto.button}",
             ""
         ]
         _dispdata += [
@@ -940,9 +953,9 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Check if in DIAGNOSTICS mode.
         if pdef.get_name(pdef.OutDataType, self.pluto.datatype) == "DIAGNOSTICS":
             _dispdata += [
-                f"Err     : {self.pluto.error:3.1f}",
-                f"ErrDiff : {self.pluto.errordiff:3.1f}",
-                f"ErrSum  : {self.pluto.errorsum:3.1f}",
+                f"Err     : {self.pluto.err:3.1f}",
+                f"ErrDiff : {self.pluto.errdiff:3.1f}",
+                f"ErrSum  : {self.pluto.errsum:3.1f}",
             ]
         self.textPlutoData.setText('\n'.join(_dispdata))
 

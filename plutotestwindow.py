@@ -25,7 +25,7 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO test control window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None, modal=False, 
+    def __init__(self, parent=None, plutodev: QtPluto=None, mech=None, modal=False, 
                  dataviewer=False):
         """
         Constructor for the PTestControlViewWindow class.
@@ -38,6 +38,7 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
         
         # PLUTO device
         self._pluto = plutodev
+        self._mech = mech
 
         # Attach callbacks
         self.pluto.newdata.connect(self._callback_pluto_newdata)
@@ -83,11 +84,15 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
         # Enable/disable sliders
         self.ui.hSliderPosTgtValue.setEnabled(self.ui.radioPosition.isChecked())
         self.ui.hSliderTorqTgtValue.setEnabled(self.ui.radioTorque.isChecked())
+        self.ui.hSliderCtrlBndValue.setEnabled(self.ui.radioTorque.isChecked())
+        self.ui.hSliderCtrlGainValue.setEnabled(self.ui.radioTorque.isChecked())
         
         # Check the status of the radio buttons.
         if _nocontrol:
             self.ui.lblFeedforwardTorqueValue.setText("Feedforward Torque Value (Nm):")
             self.ui.lblPositionTargetValue.setText("Target Position Value (deg):")
+            self.ui.lblControlBoundValue.setText("Control Bound Value:")
+            self.ui.lblControlGainValue.setText("Control Gain Value:")
         else:
             # Desired torque
             _str = "Feedforward Torque Value (Nm) "
@@ -99,11 +104,19 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
             # Desired position
             # Set the text based on the control selected.
             _str = "Target Position Value (deg):"
-            _str += f"[{pdef.PlutoTargetRanges['POSITION'][0]:3.0f}, {pdef.PlutoTargetRanges['POSITION'][1]:3.0f}]:"
+            _str += f"[{pdef.PlutoTargetRanges['POSITION'][self._mech][0]:3.0f}, {pdef.PlutoTargetRanges['POSITION'][self._mech][1]:3.0f}]:"
             slrrange, valrange = self.get_position_slider_value_ranges()
             _val = self._pos2tgt(slrrange, valrange, self.ui.hSliderPosTgtValue.value())
             _str += f" {_val:-3.1f}deg"
             self.ui.lblPositionTargetValue.setText(_str)
+            # Control Bound
+            # Set the text based on the control selected.
+            _str = "Control Bound Value:"
+            _str += f"[0, 1]:"
+            slrrange, valrange = self.get_ctrlbnd_slider_value_ranges()
+            _val = self._pos2tgt(slrrange, valrange, self.ui.hSliderCtrlBndValue.value())
+            _str += f" {_val:-1.2f}"
+            self.ui.lblControlBoundValue.setText(_str)
     
     #
     # Device Data Viewer Functions 
@@ -165,8 +178,24 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
         return (
             (self.ui.hSliderPosTgtValue.minimum(),
              self.ui.hSliderPosTgtValue.maximum()),
-            (pdef.PlutoTargetRanges["POSITION"][0],
-             pdef.PlutoTargetRanges["POSITION"][1])
+            (pdef.PlutoTargetRanges["POSITION"][self._mech][0],
+             pdef.PlutoTargetRanges["POSITION"][self._mech][1])
+        )
+
+    def get_ctrlbnd_slider_value_ranges(self):
+        return (
+            (self.ui.hSliderCtrlBndValue.minimum(),
+             self.ui.hSliderCtrlBndValue.maximum()),
+            (pdef.PlutoMinControlBound, 
+             pdef.PlutoMaxControlBound)
+        )
+
+    def get_ctrlgain_slider_value_ranges(self):
+        return (
+            (self.ui.hSliderCtrlGainValue.minimum(),
+             self.ui.hSliderCtrlGainValue.maximum()),
+            (pdef.PlutoMinControlGain, 
+             pdef.PlutoMaxControlGain)
         )
     
     def _tgt2pos(self, sldrrange, valrange, value):
@@ -205,10 +234,12 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
         slrrange, valrange = self.get_position_slider_value_ranges()
         self.ui.hSliderPosTgtValue.setValue(self._tgt2pos(slrrange, valrange, value))
 
+
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM13")
+    plutodev = QtPluto("COM12")
     pdataview = PlutoTestControlWindow(plutodev=plutodev,
+                                       mech="WFE",
                                        dataviewer=True)
     pdataview.show()
     sys.exit(app.exec_())

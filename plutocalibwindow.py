@@ -15,6 +15,7 @@ from qtpluto import QtPluto
 from PyQt5 import (
     QtCore,
     QtWidgets,)
+from PyQt5.QtCore import QTimer
 from enum import Enum
 
 import plutodefs as pdef
@@ -31,7 +32,7 @@ class PlutoCalibStates(Enum):
 
 
 class PlutoCalibrationStateMachine():
-    def __init__(self, plutodev):
+    def __init__(self, plutodev: QtPluto):
         self._state = PlutoCalibStates.WAIT_FOR_ZERO_SET
         self._pluto = plutodev
         self._stateactions = {
@@ -70,9 +71,8 @@ class PlutoCalibrationStateMachine():
         # Check if the button release event has happened.
         if event == pdef.PlutoEvents.RELEASED:
             # Check if the ROM is acceptable.
-            _romcheck = (np.abs(self._pluto.angle) >= 0.9 * pdef.PlutoAngleRanges[mech]
-                         and np.abs(self._pluto.angle) <= 1.1 * pdef.PlutoAngleRanges[mech])
-            if _romcheck:
+            _limit = pdef.PlutoAngleRanges[mech][1]
+            if np.abs(self._pluto.angle - _limit) < 0.1 * np.abs(_limit):
                 # Everything looks good. Calibration is complete.
                 self._state = PlutoCalibStates.WAIT_FOR_CLOSE
             else:
@@ -124,6 +124,11 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
         # Attach callbacks
         self.pluto.newdata.connect(self._callback_pluto_newdata)
         self.pluto.btnreleased.connect(self._callback_pluto_btn_released)
+
+        # Heartbeat timer
+        self.heartbeattimer = QTimer()
+        self.heartbeattimer.timeout.connect(lambda: self.pluto.send_heartbeat())
+        self.heartbeattimer.start(250)
 
         # Update UI.
         self.update_ui()
@@ -204,6 +209,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 
     def _callback_pluto_btn_released(self):
         # Run the statemachine
+        print("Button released.", self._smachine.state)
         self._smachine.run_statemachine(
             pdef.PlutoEvents.RELEASED,
             self._mechanism
@@ -217,7 +223,6 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
         try:
             self.pluto.set_control_type("NONE")
             self.pluto.close()
-            print("PLUTO closed.")
         except Exception as e:
             print(f"Error during close: {e}")
         try:
@@ -231,7 +236,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM12")
-    pcalib = PlutoCalibrationWindow(plutodev=plutodev, mechanism="FPS",
+    pcalib = PlutoCalibrationWindow(plutodev=plutodev, mechanism="WFE",
                                     dataviewer=True)
     pcalib.show()
     sys.exit(app.exec_())

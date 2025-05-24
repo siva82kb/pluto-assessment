@@ -134,15 +134,15 @@ class QtPluto(QObject):
         return self.currsensordata[3] if len(self.currsensordata) > 0 else None
     
     @property
-    def error(self):
+    def err(self):
         return self.currsensordata[4] if len(self.currsensordata) > 4 else None
     
     @property
-    def errordiff(self):
+    def errdiff(self):
         return self.currsensordata[5] if len(self.currsensordata) > 5 else None
     
     @property
-    def errorsum(self):
+    def errsum(self):
         return self.currsensordata[6] if len(self.currsensordata) > 6 else None
     
     @property
@@ -167,9 +167,11 @@ class QtPluto(QObject):
     
     @property
     def controlgain(self):
-        return ((pdef.PlutoMaxControlGain - 1) * (self.currstatedata[8] / 255.0) + 1 
-                if len(self.currstatedata) > 0 
-                else None)
+        return (
+            (pdef.PlutoMaxControlGain - pdef.PlutoMinControlGain) * (self.currstatedata[8] / 255.0) + pdef.PlutoMinControlGain
+            if len(self.currstatedata) > 0 
+            else None
+        )
     
     @property
     def button(self):
@@ -318,6 +320,48 @@ class QtPluto(QObject):
         """
         _payload = [pdef.InDataType["GET_VERSION"]]
         self.dev.send_message(_payload)
+    
+    def set_control_bound(self, bound):
+        """Set the control bound.
+        """
+        if not self.is_connected():
+            return
+        # Make sure the bound is between 0 and 1.
+        bound = max(pdef.PlutoMinControlBound, min(bound, pdef.PlutoMaxControlBound))
+        _payload = [pdef.InDataType["SET_CONTROL_BOUND"]]
+        _payload.append(int(bound * 255))
+        self.dev.send_message(_payload)
+    
+    def set_control_dir(self, dir):
+        """Set the control direction.
+        """
+        if not self.is_connected():
+            return
+        # Make sure the direction is either 0 or +/-1.
+        if dir not in [-1, 0, 1]:
+            return
+        _payload = [pdef.InDataType["SET_CONTROL_DIR"]]
+        _payload.append(struct.pack('b', dir)[0])
+        self.dev.send_message(_payload)
+    
+    def set_control_gain(self, gain):
+        """Set the control gain.
+        """
+        if not self.is_connected():
+            return
+        # Limit the gain to the max and min value.
+        gain = max(pdef.PlutoMinControlGain, min(gain, pdef.PlutoMaxControlGain))
+        _payload = [pdef.InDataType["SET_CONTROL_GAIN"]]
+        _payload.append(int((gain -pdef.PlutoMinControlGain) * 255 / (pdef.PlutoMaxControlGain - pdef.PlutoMinControlGain)))
+        self.dev.send_message(_payload)
+    
+    def send_heartbeat(self):
+        """Send a heartbeat signal to the device.
+        """
+        if not self.is_connected():
+            return
+        _payload = [pdef.InDataType["HEARTBEAT"]]
+        self.dev.send_message(_payload)
 
 
 if __name__ == "__main__":
@@ -328,5 +372,6 @@ if __name__ == "__main__":
     pluto = QtPluto(port="COM12")
     pluto.stop_sensorstream()
     pluto.get_version()
+    pluto.send_heartbeat()
     pluto.start_sensorstream()
     app.exec_()
