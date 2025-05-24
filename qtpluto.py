@@ -42,11 +42,26 @@ class QtPluto(QObject):
         # Upacked data from PLUTO with time stamp.
         self.currstatedata = []
         self.prevstatedata = []
+        self._packetnumber = 0
+        self._runtime = 0.0
         self.currsensordata = []
+        # Other variables.
+        self._preverrstatus = 0
+        self._currerrstatus = 0
         # framerate related stuff
         self._currt = None
         self._prevt = None
         self._deltimes = []
+        # Version and device name
+        self._version = ""
+        self._devname = ""
+        self._compliedate = ""
+        # Packet decoding functions.
+        self._packet_type_handlers = {
+            pdef.OutDataType["SENSORSTREAM"]: self._handle_stream,
+            pdef.OutDataType["DIAGNOSTICS"]: self._handle_stream,
+            pdef.OutDataType["VERSION"]: self._handle_version,
+        }
 
         # Call back for newdata_signal
         self.dev.newdata_signal.connect(self._callback_newdata)
@@ -55,7 +70,19 @@ class QtPluto(QObject):
         self.dev.start()
 
     @property
-    def time(self):
+    def devname(self):
+        return self._devname
+    
+    @property
+    def compliedate(self):
+        return self._compliedate
+    
+    @property
+    def version(self):
+        return self._version
+
+    @property
+    def systime(self):
         return self.currstatedata[0] if len(self.currstatedata) > 0 else None
     
     @property
@@ -85,10 +112,6 @@ class QtPluto(QObject):
     @property
     def actuated(self):
         return self.currstatedata[3] & 0x01 if len(self.currstatedata) > 0 else None
-    
-    @property
-    def button(self):
-        return self.currstatedata[4] if len(self.currstatedata) > 0 else None
     
     @property
     def angle(self):
@@ -122,6 +145,36 @@ class QtPluto(QObject):
     def errorsum(self):
         return self.currsensordata[6] if len(self.currsensordata) > 6 else None
     
+    @property
+    def currt(self):
+        return self._currt
+
+    @property
+    def prevt(self):
+        return self._prevt
+    
+    @property
+    def packetnumber(self):
+        return self.currstatedata[4] if len(self.currstatedata) > 0 else None
+    
+    @property
+    def controlbound(self):
+        return (1.0 * self.currstatedata[6] /255) if len(self.currstatedata) > 0 else None
+    
+    @property
+    def controldir(self):
+        return self.currstatedata[7] if len(self.currstatedata) > 0 else None
+    
+    @property
+    def controlgain(self):
+        return ((pdef.PlutoMaxControlGain - 1) * (self.currstatedata[8] / 255.0) + 1 
+                if len(self.currstatedata) > 0 
+                else None)
+    
+    @property
+    def button(self):
+        return self.currstatedata[9] if len(self.currstatedata) > 0 else None
+
     def delt(self):
         return self._deltimes[-1] if len(self._deltimes) > 0 else 0
     
@@ -140,43 +193,71 @@ class QtPluto(QObject):
         """
         # Store previous data
         self.prevstatedata = self.currstatedata
+        
         # Unpack and update current data
-        self._currt = datetime.now()
-        self.currstatedata = [self._currt.strftime('%Y-%m-%d %H:%M:%S.%f')]
-        # status
+        # System time - 0
+        self.currstatedata = [datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')]
+        # status - 1
         self.currstatedata.append(newdata[0])
-        # error
+        # error - 2
         self.currstatedata.append(255 * newdata[2] + newdata[1])
-        # actuated
+        # actuated - 3
         self.currstatedata.append(newdata[3])
+        
+        # Decode according to the datatype.
+        self._packet_type_handlers[self.datatype](newdata)
+    
+    def _handle_stream(self, newdata):
+        """
+        Function to handle SENSORSTREAM and DIAGNOSTICS data.
+        """
+        # Packet number - 4 
+        self.currstatedata.append(255 * newdata[5] + newdata[4])
+
+        # Run time - 5
+        self.currstatedata.append(struct.unpack('L', bytes(newdata[6:10]))[0])
+
         # Robot sensor data. This depends on the datatype.
         N = pdef.PlutoSensorDataNumber[pdef.get_name(pdef.OutDataType, self.datatype)]
-        # pluto button
-        self.currstatedata.append(newdata[(N + 1) * 4])
 
         # pluto sensor data
         self.currsensordata = [
             struct.unpack('f', bytes(newdata[i:i+4]))[0]
-            for i in range(4, (N + 1) * 4, 4)
+            for i in range(10, 10 + N * 4, 4)
         ]
 
+        # Control bound - 6
+        self.currstatedata.append(newdata[10 + N * 4])
+        # Control direction - 7
+        self.currstatedata.append(newdata[10 + N * 4 + 1])
+        # # Control gain - 8
+        self.currstatedata.append(newdata[10 + N * 4 + 2])
+        # PLUTO button - 9
+        self.currstatedata.append(newdata[10 + N * 4 + 3])
+        
         # Update frame rate related data.
-        if self._prevt is not None:
-            _delt = (self._currt - self._prevt).microseconds * 1e-6
-            self._deltimes.append(_delt)
+        self._currt = self.currstatedata[5] * 1e-3
+        if self.prevt is not None:
+            self._deltimes.append(self._currt - self._prevt)
             if len(self._deltimes) > FR_WINDOW_N:
                 self._deltimes.pop(0)
         self._prevt = self._currt
         
         # Emit newdata signal for other listeners
         self.newdata.emit()
-        
+
         # Check and verify button events.
-        if len(self.currstatedata) > 0 and len(self.prevstatedata) > 0:    
-            if self.prevstatedata[4] == 1.0 and self.currstatedata[4] == 0.0:
+        if len(self.currstatedata) > 0 and len(self.prevstatedata) > 4:    
+            if self.prevstatedata[9] == 1.0 and self.currstatedata[9] == 0.0:
                 self.btnpressed.emit()
-            if self.prevstatedata[4] == 0.0 and self.currstatedata[4] == 1.0:
+            if self.prevstatedata[9] == 0.0 and self.currstatedata[9] == 1.0:
                 self.btnreleased.emit()
+    
+    def _handle_version(self, newdata):
+        """
+        Function to handle VERSION data.
+        """
+        self._devname, self._version, self._compliedate = bytes(newdata[4:]).decode('ascii').split(",")
 
     def close(self):
         """Function to close the connection.
@@ -231,3 +312,21 @@ class QtPluto(QObject):
         """
         _payload = [pdef.InDataType["SET_DIAGNOSTICS"]]
         self.dev.send_message(_payload)
+    
+    def get_version(self):
+        """Get the version of the device.
+        """
+        _payload = [pdef.InDataType["GET_VERSION"]]
+        self.dev.send_message(_payload)
+
+
+if __name__ == "__main__":
+    import sys
+    from PyQt5.QtWidgets import QApplication
+    from qtjedi import JediComm
+    app = QApplication(sys.argv)
+    pluto = QtPluto(port="COM12")
+    pluto.stop_sensorstream()
+    pluto.get_version()
+    pluto.start_sensorstream()
+    app.exec_()

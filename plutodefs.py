@@ -15,40 +15,53 @@ from enum import Enum
 HOCScale = 3.97 * (np.pi / 180) * (14 / 9)
 PLUTOMaxTorque = 1.0 #Nm
 
+# MAx control gain
+PlutoMaxControlGain = 10.0
+
 class PlutoEvents(Enum):
     PRESSED = 0
     RELEASED = 1
     NEWDATA = 2
 
 ControlType = {
-    "NONE":     0x00,
-    "POSITION": 0x01,
-    "RESIST":   0x02,
-    "TORQUE":   0x03,
+    "NONE":         0x00,
+    "POSITION":     0x01,
+    "RESIST":       0x02,
+    "TORQUE":       0x03,
+    "POSITIONAAN":  0x04,
 }
 
 Mehcanisms = {
-    "WFE":    0x00,
-    "WUD":    0x01,
-    "FPS":    0x02,
-    "HOC":    0x03,
-    "NOMECH": 0x04,
+    "NOMECH": 0x00,
+    "WFE":    0x01,
+    "WURD":   0x02,
+    "FPS":    0x03,
+    "HOC":    0x04,
+    "FME1":   0x05,
+    "FME2":   0x06,
 }
 
 OutDataType = {
     "SENSORSTREAM": 0x00,
     "CONTROLPARAM": 0x01,
     "DIAGNOSTICS":  0x02,
+    "VERSION":      0x03,
 }
 
 InDataType = {
-    "GET_VERSION":        0x00,
-    "CALIBRATE":          0x01,
-    "START_STREAM":       0x02,
-    "STOP_STREAM":        0x03,
-    "SET_CONTROL_TYPE":   0x04,
-    "SET_CONTROL_TARGET": 0x05,
-    "SET_DIAGNOSTICS":    0x06,
+    "GET_VERSION":          0x00,
+    "CALIBRATE":            0x01,
+    "START_STREAM":         0x02,
+    "STOP_STREAM":          0x03,
+    "SET_CONTROL_TYPE":     0x04,
+    "SET_CONTROL_TARGET":   0x05,
+    "SET_DIAGNOSTICS":      0x06,
+    "SET_CONTROL_BOUND":    0x07,
+    "RESET_PACKETNO":       0x08,
+    "SET_CONTROL_DIR":      0x09,
+    "SET_AAN_TARGET":       0x0A,
+    "RESET_AAN_TARGET":     0x0B,
+    "HEARTBEAT":            0x0C,
 }
 
 ControlDetails = {
@@ -57,10 +70,9 @@ ControlDetails = {
 }
 
 ErrorTypes = {
-    "ANGSENSERR":   0x0001,
-    "VELSENSERR":   0x0002,
-    "TORQSENSERR":  0x0004,
-    "MCURRSENSERR": 0x0008,
+    "ANGSENSERR":   0x0000,
+    "MCURRSENSERR": 0x0001,
+    "NOHEARTBEAT":  0x0002,
 }
 
 OperationStatus = {
@@ -75,7 +87,7 @@ CalibrationStatus = {
 
 PlutoAngleRanges = {
     "WFE": 150,
-    "WUD": 150,
+    "WURD": 150,
     "FPS": 180,
     "HOC": 90,
 }
@@ -86,8 +98,8 @@ PlutoTargetRanges = {
 }
 
 PlutoSensorDataNumber = {
-    "SENSORSTREAM": 4,
-    "DIAGNOSTICS": 7,
+    "SENSORSTREAM": 5,
+    "DIAGNOSTICS": 8,
 }
 
 def get_name(def_dict, code):

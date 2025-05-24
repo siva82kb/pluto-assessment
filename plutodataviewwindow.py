@@ -15,6 +15,7 @@ from qtpluto import QtPluto
 from PyQt5 import (
     QtWidgets,
 )
+from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QKeyEvent
 from enum import Enum
 
@@ -42,6 +43,10 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
 
         # PLUTO mode
         self._mode = mode
+        # Get the version and device information
+        self._pluto.get_version()
+        # Pause for 0.5sec
+        QTimer.singleShot(500, lambda: None) 
         if self._mode == "DIAGNOSTICS":
             self._pluto.set_diagnostic_mode()
         else:
@@ -72,7 +77,10 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
         _dispdata = [
             f"PLUTO Data [fr: {self.pluto.framerate():4.1f}Hz]",
             "----------",
-            f"Time    : {self.pluto.time}"
+            f"Dev Name: {self.pluto.devname}",
+            f"F/W Ver : {self.pluto.version} | Compile Date: {self.pluto.compliedate}",
+            f"Time    : {self.pluto.systime}",
+            f"Dev Time: {self.pluto.currt:6.3f}s | Pack No : {self.pluto.packetnumber:06d}",
         ]
         _statusstr = ' | '.join((pdef.get_name(pdef.OutDataType, self.pluto.datatype),
                                  pdef.get_name(pdef.ControlType, self.pluto.controltype),
@@ -101,6 +109,12 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
                 f"ErrDiff : {self.pluto.errordiff:3.1f}",
                 f"ErrSum  : {self.pluto.errorsum:3.1f}",
             ]
+        # Control bound, dir and gain
+        _dispdata += [
+            f"C Bound : {self.pluto.controlbound:1.2f}",
+            f"C Dir   : {self.pluto.controldir}",
+            f"C Gain  : {self.pluto.controlgain:02.2f}",
+        ]
         self.ui.textDevData.setText('\n'.join(_dispdata))
     
     #
