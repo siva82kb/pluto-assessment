@@ -37,6 +37,7 @@ import plutofullassessdef as passdef
 from plutodataviewwindow import PlutoDataViewWindow
 from plutocalibwindow import PlutoCalibrationWindow
 from plutotestwindow import PlutoTestControlWindow
+from plutoapromwindow import PlutoAPRomAssessWindow
 from plutoromwindow import PlutoRomAssessWindow
 from plutopropassesswindow import PlutoPropAssessWindow
 
@@ -556,17 +557,16 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._testdevwnd.show()
 
     def _callback_assess_arom(self):
-        # # Disable main controls
-        # self._maindisable = True
-        # self._romwnd = PlutoRomAssessWindow(plutodev=self.pluto,
-        #                                     mechanism="HOC",
-        #                                     modal=True)
-        # # Attach to the aromset and promset events.
-        # self._romwnd.aromset.connect(self._callback_aromset)
-        # self._romwnd.promset.connect(self._callback_promset)
-        # self._romwnd.closeEvent = self._romwnd_close_event
-        # self._romwnd.show()
-        pass
+        # Disable main controls
+        self._maindisable = True
+        self._romwnd = PlutoAPRomAssessWindow(plutodev=self.pluto,
+                                              mechanism=self.data.current_mech,
+                                              ntrials=pfadef.protocol["AROM"]["N"],
+                                              modal=True)
+        # Attach to the aromset and promset events.
+        self._romwnd.romset.connect(self._callback_aromset)
+        self._romwnd.closeEvent = self._romwnd_close_event
+        self._romwnd.show()
 
     def _callback_assess_prom(self):
         # # Disable main controls
@@ -686,7 +686,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         """Update the UI of the appropriate window.
         """
         # Update PLUTO data display.
-        if np.random.rand() < 0.25:
+        if np.random.rand() < 0.1:
             self._display_pluto_data()
         # Update data viewer window.
         self.update_ui()
@@ -699,7 +699,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     
     def _callback_aromset(self):
         """Set AROM."""
-        self._romdata["AROM"] = self._romwnd.arom
+        print("ROM")
+        # self._romdata["AROM"] = self._romwnd.arom
     
     def _callback_promset(self):
         """Set PROM."""
