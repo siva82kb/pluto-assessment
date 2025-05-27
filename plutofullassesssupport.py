@@ -62,7 +62,7 @@ class PlutoAssessmentProtocolData(object):
         self.currsess = None
         self.calib = False
         self.datadir = None
-        self._summary_data = None
+        self._data = None
         self._current_mech = None
         self._calibrated = False
         self._current_task = None
@@ -80,8 +80,8 @@ class PlutoAssessmentProtocolData(object):
         return self._calibrated
     
     @property
-    def summary_data(self):
-        return self._summary_data
+    def data(self):
+        return self._data
         
     @property
     def summary_filename(self):
@@ -89,18 +89,18 @@ class PlutoAssessmentProtocolData(object):
 
     @property
     def mech_enabled(self):
-        if self._summary_data is None and self._index is None:
+        if self._data is None and self._index is None:
             return []
         # Get the list of mechanisms that have been assessed.
-        return list(self._summary_data[self._summary_data.index <= self._index]["mechanism"].unique())
+        return list(self._data[self._data.index <= self._index]["mechanism"].unique())
     
     @property
     def task_enabled(self):
-        if self._summary_data is None and self._index is None:
+        if self._data is None and self._index is None:
             return []
         # Get the list of mechanisms that have been assessed.
-        _inx = self._summary_data.index[self._summary_data["mechanism"] == self._current_mech]
-        return list(self._summary_data[self._summary_data.index <= self._index]["task"].unique())
+        _inx = self._data.index[self._data["mechanism"] == self._current_mech]
+        return list(self._data[self._data.index <= self._index]["task"].unique())
     
     @property
     def is_mechanism_completed(self, mechname):
@@ -151,23 +151,31 @@ class PlutoAssessmentProtocolData(object):
         self.create_assessment_summary_file()
         
         # Read the summary file.
-        self._summary_data = pd.read_csv(self.summary_filename, header=0, index_col=None)
+        self._data = pd.read_csv(self.summary_filename, header=0, index_col=None)
+        # Change session, rawfile, and summaryfile columns to strings
+        for col in ["session", "rawfile", "summaryfile"]:
+            if col in self._data.columns:
+                self._data[col] = self._data[col].astype("string")
 
         # Set index to the row that is incomplete.
-        self._index = self._summary_data[np.isnan(self._summary_data["session"])].index[0]
+        nan_rows = self._data[self._data["session"].isna()]
+        if not nan_rows.empty:
+            self._index = nan_rows.index[0]
+        else:
+            self._index = None
     
     def set_current_mechanism(self, mechname):
         # Sanity check. Make sure the set mechanism matches the mechnaism in the protocol.
-        if mechname != self._summary_data.iloc[self._index]["mechanism"]:
-            raise ValueError(f"Mechanism [{mechname}] does not match the protocol mechanism [{self._summary_data.iloc[self._index]['mechanism']}]")
+        if mechname != self._data.iloc[self._index]["mechanism"]:
+            raise ValueError(f"Mechanism [{mechname}] does not match the protocol mechanism [{self._data.iloc[self._index]['mechanism']}]")
         self._current_mech = mechname
         self._calibrated = False
         self._current_task = None
     
     def set_current_task(self, taskname):
         # Sanity check. Make sure the set task matches the task in the protocol.
-        if taskname != self._summary_data.iloc[self._index]["task"]:
-            raise ValueError(f"Task [{taskname}] does not match the protocol task [{self._summary_data.iloc[self._index]['task']}]")
+        if taskname != self._data.iloc[self._index]["task"]:
+            raise ValueError(f"Task [{taskname}] does not match the protocol task [{self._data.iloc[self._index]['task']}]")
         self._current_task = taskname
     
     def mechanism_calibrated(self, mechname):
@@ -184,24 +192,24 @@ class PlutoAssessmentProtocolData(object):
     def set_mechanism_task_data(self, rawfile, summaryfile):
         """Set the mechanism task data in the summary file.
         """
-        if self._summary_data is None or self._index is None:
+        if self._data is None or self._index is None:
             raise ValueError("Summary data not initialized or index not set.")
         
         # Set the session, rawfile and summaryfile in the summary data.
         _updateindex = (
-            (self._summary_data["mechanism"] == self._current_mech) &
-            (self._summary_data["task"] == self._current_task)
+            (self._data["mechanism"] == self._current_mech) &
+            (self._data["task"] == self._current_task)
         )
-        self._summary_data.loc[_updateindex, "session"] = self.currsess
-        self._summary_data.loc[_updateindex, "rawfile"] = rawfile
-        self._summary_data.loc[_updateindex, "summaryfile"] = summaryfile
+        self._data.loc[_updateindex, "session"] = self.currsess
+        self._data.loc[_updateindex, "rawfile"] = rawfile
+        self._data.loc[_updateindex, "summaryfile"] = summaryfile
         
         # Write the updated summary data to the file.
-        self._summary_data.to_csv(self.summary_filename, sep=",", index=None)
+        self._data.to_csv(self.summary_filename, sep=",", index=None)
 
         # Update current index.
         # Update current index to first row where 'session' is still NaN
-        nan_rows = self._summary_data[self._summary_data["session"].isna()]
+        nan_rows = self._data[self._data["session"].isna()]
         if not nan_rows.empty:
             self._index = nan_rows.index[0]
         else:
@@ -249,7 +257,7 @@ class PlutoAssessmentProtocolData(object):
         # Create the new file and handle.
         return pathlib.Path(
             self.datadir, 
-            f"{self.currsess}_{self.current_mech}_{self.current_task}_rawdata_{dt.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            f"{self.currsess}_{self.current_mech}_{self.current_task}_summary_{dt.now().strftime('%Y%m%d_%H%M%S')}.csv"
         ).as_posix()
 
 

@@ -245,21 +245,30 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             modal=True
         )
         # Attach to the aromset and promset events.
-        self._romwnd.closeEvent = self._romwnd_close_event
+        self._romwnd.closeEvent = self._aromwnd_close_event
         self._romwnd.show()
 
     def _callback_assess_prom(self):
-        # # Disable main controls
-        # self._maindisable = True
-        # self._romwnd = PlutoRomAssessWindow(plutodev=self.pluto,
-        #                                     mechanism="HOC",
-        #                                     modal=True)
-        # # Attach to the aromset and promset events.
-        # self._romwnd.aromset.connect(self._callback_aromset)
-        # self._romwnd.promset.connect(self._callback_promset)
-        # self._romwnd.closeEvent = self._romwnd_close_event
-        # self._romwnd.show()
-        pass
+        # Set the current task.
+        self.protocoldata.set_current_task("PROM")
+        # Disable main controls
+        self._maindisable = True
+        self._romwnd = PlutoAPRomAssessWindow(
+            plutodev=self.pluto,
+            assessinfo={
+                "mechanism": self.protocoldata.current_mech,
+                "romtype": "Passive",
+                "session": self.protocoldata.currsess,
+                "ntrials": pfadef.protocol["AROM"]["N"],
+                "rawfile": self.protocoldata.get_rawfilename(),
+                "summaryfile": self.protocoldata.get_summaryfilename(),
+                "arom": self.assessdata["AROM"][-1]["rom"]
+            },
+            modal=True
+        )
+        # Attach to the aromset and promset events.
+        self._romwnd.closeEvent = self._promwnd_close_event
+        self._romwnd.show()
 
     def _callback_assess_aprom(self):
         # # Disable main controls
@@ -408,9 +417,33 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Reenable main controls
         self._maindisable = False
 
-    def _romwnd_close_event(self, event):
+    def _aromwnd_close_event(self, event):
         # Update AROM assessment data.
         self.assessdata["AROM"].append(
+            {
+                "session": self.protocoldata.currsess,
+                "values": self._romwnd.data.rom,
+                "rawfile": self._romwnd.data.rawfile,
+                "summaryfile": self._romwnd.data.summaryfile,
+                "rom": np.mean(np.array(self._romwnd.data.rom), axis=0).tolist(),
+            }
+        )
+        # Update the protocol data.
+        self.protocoldata.set_mechanism_task_data(self._romwnd.data.rawfile,
+                                                  self._romwnd.data.summaryfile)
+        # Update the Table.
+        self._updatetable = True
+        
+        #
+        self._romwnd.close()
+        self._romwnd = None
+        self._wndui = None
+        # Reenable main controls
+        self._maindisable = False
+    
+    def _promwnd_close_event(self, event):
+        # Update AROM assessment data.
+        self.assessdata["PROM"].append(
             {
                 "session": self.protocoldata.currsess,
                 "values": self._romwnd.data.rom,
@@ -461,8 +494,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pbSetLimb.setEnabled(self.cbLimb.currentText() != "" and self.cbSubjectType.currentText() != "")
 
         # Update the table.
-        if self.protocoldata.summary_data is not None and self._updatetable: 
-            self.tableProtocolProgress.setModel(DataFrameModel(self.protocoldata.summary_data))
+        if self.protocoldata.data is not None and self._updatetable: 
+            self.tableProtocolProgress.setModel(DataFrameModel(self.protocoldata.data))
             # Optional: also shrink rows to contents
             self.tableProtocolProgress.resizeRowsToContents()
             # Set fixed row height for uniformity
