@@ -61,7 +61,8 @@ class PlutoAssessmentProtocolData(object):
         self._index = None
         self.currsess = None
         self.calib = False
-        self.datadir = None
+        self.basedir = None
+        self.sessdir = None
         self._data = None
         self._current_mech = None
         self._calibrated = False
@@ -84,8 +85,12 @@ class PlutoAssessmentProtocolData(object):
         return self._data
         
     @property
-    def summary_filename(self):
-        return pathlib.Path(self.datadir, "assessment_summary.csv").as_posix()
+    def protocol_filename(self):
+        return pathlib.Path(self.basedir, "pfa_summary.csv").as_posix()
+    
+    @property
+    def assess_filename(self):
+        return pathlib.Path(self.basedir, "pfa_assess.json").as_posix()
 
     @property
     def mech_enabled(self):
@@ -132,10 +137,11 @@ class PlutoAssessmentProtocolData(object):
         # Create the data directory now.
         # set data dirr and create if needed.
         self.currsess = self.get_curr_sess()
-        self.datadir = pathlib.Path(passdef.DATA_DIR,
-                                    self.subjid,
+        self.basedir = pathlib.Path(passdef.DATA_DIR,
+                                    self.subjid)
+        self.sessdir = pathlib.Path(self.basedir,
                                     self.currsess)
-        self.datadir.mkdir(exist_ok=True, parents=True)
+        self.sessdir.mkdir(exist_ok=True, parents=True)
 
     def get_session_info(self):
         _str = [
@@ -151,7 +157,7 @@ class PlutoAssessmentProtocolData(object):
         self.create_assessment_summary_file()
         
         # Read the summary file.
-        self._data = pd.read_csv(self.summary_filename, header=0, index_col=None)
+        self._data = pd.read_csv(self.protocol_filename, header=0, index_col=None)
         # Change session, rawfile, and summaryfile columns to strings
         for col in ["session", "rawfile", "summaryfile"]:
             if col in self._data.columns:
@@ -205,7 +211,7 @@ class PlutoAssessmentProtocolData(object):
         self._data.loc[_updateindex, "summaryfile"] = summaryfile
         
         # Write the updated summary data to the file.
-        self._data.to_csv(self.summary_filename, sep=",", index=None)
+        self._data.to_csv(self.protocol_filename, sep=",", index=None)
 
         # Update current index.
         # Update current index to first row where 'session' is still NaN
@@ -219,7 +225,7 @@ class PlutoAssessmentProtocolData(object):
     # Data logging functions
     #
     def create_assessment_summary_file(self):
-        if pathlib.Path(self.summary_filename).exists():
+        if pathlib.Path(self.protocol_filename).exists():
             return
         # Create the protocol summary file.
         _dframe = pd.DataFrame(columns=["session", "mechanism", "task", "trial", 
@@ -244,19 +250,19 @@ class PlutoAssessmentProtocolData(object):
                     })
                 ], ignore_index=True)
         # Write file to disk
-        _dframe.to_csv(self.summary_filename, sep=",", index=None)
+        _dframe.to_csv(self.protocol_filename, sep=",", index=None)
     
     def get_rawfilename(self):
         # Create the new file and handle.
         return pathlib.Path(
-            self.datadir, 
+            self.sessdir, 
             f"{self.currsess}_{self.current_mech}_{self.current_task}_rawdata.csv"
         ).as_posix()
     
-    def get_summaryfilename(self):
+    def get_task_summaryfilename(self):
         # Create the new file and handle.
         return pathlib.Path(
-            self.datadir, 
+            self.sessdir, 
             f"{self.currsess}_{self.current_mech}_{self.current_task}_summary_{dt.now().strftime('%Y%m%d_%H%M%S')}.csv"
         ).as_posix()
 

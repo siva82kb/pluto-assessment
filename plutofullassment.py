@@ -240,7 +240,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "session": self.protocoldata.currsess,
                 "ntrials": pfadef.protocol["AROM"]["N"],
                 "rawfile": self.protocoldata.get_rawfilename(),
-                "summaryfile": self.protocoldata.get_summaryfilename(),
+                "summaryfile": self.protocoldata.get_task_summaryfilename(),
             },
             modal=True
         )
@@ -261,7 +261,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "session": self.protocoldata.currsess,
                 "ntrials": pfadef.protocol["AROM"]["N"],
                 "rawfile": self.protocoldata.get_rawfilename(),
-                "summaryfile": self.protocoldata.get_summaryfilename(),
+                "summaryfile": self.protocoldata.get_task_summaryfilename(),
                 "arom": self.assessdata["AROM"][-1]["rom"]
             },
             modal=True
