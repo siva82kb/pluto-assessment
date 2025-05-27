@@ -24,7 +24,10 @@ import pyqtgraph as pg
 from enum import Enum
 
 import plutodefs as pdef
+import plutofullassessdef as pfadef
 from ui_plutoapromassess import Ui_APRomAssessWindow
+
+from misc import CSVBufferWriter 
 
 #
 # APROM Assessment Constants
@@ -47,6 +50,12 @@ INST_X_POSITION = 0.5
 INST_Y_POSITION = 2.75
 
 
+class AROMRawDataLoggingState(Enum):
+    WAIT_FOR_LOG = 0
+    LOG_DATA = 1
+    LOGGING_DONE = 2
+
+
 class PlutoAPRomAssessStates(Enum):
     FREE_RUNNING = 0
     TRIAL_ACTIVE_WAIT_TO_MOVE = 1
@@ -58,29 +67,58 @@ class PlutoAPRomAssessStates(Enum):
 
 
 class PlutoAPRomData(object):
-    def __init__(self, mechname, romtype, ntrials):
-        self._mechname = mechname
-        self._romtype = romtype
-        self._ntrials = ntrials
+    def __init__(self, assessinfo: dict):
+        # self._mechname = mechname
+        # self._romtype = romtype
+        # self._rawfile = rawfile
+        # self._summaryfile = summaryfile
+        # self.ntrials = ntrials
+        self._assessinfo = assessinfo
         self._demodone = None
+        # Trial variables
         self._currtrial = 0
         self._startpos = None
         self._trialrom = []
         self._trialdata = {"dt": [], "pos": [], "vel": []}
         self._currtrial = -1
-        self._rom = [[] for _ in range(ntrials)]
+        # ROM data
+        self._rom = [[] for _ in range(self.ntrials)]
+        # Logging variables
+        self._logstate: AROMRawDataLoggingState = AROMRawDataLoggingState.WAIT_FOR_LOG
+        self._rawfilewriter: CSVBufferWriter = CSVBufferWriter(
+            self.rawfile, 
+            header=pfadef.RAWDATA_HEADER
+        )
+        self._summaryfilewriter: CSVBufferWriter = CSVBufferWriter(
+            self.summaryfile, 
+            header=pfadef.ROM_SUMMARY_HEADER,
+            flush_interval=0.0,
+            max_rows=1
+        )
 
     @property
     def mechanism(self):
-        return self._mechname
+        return self._assessinfo['mechanism']
 
     @property
     def romtype(self):
-        return self._romtype
+        return self._assessinfo['romtype']
+    
+    @property
+    def session(self):
+        return self._assessinfo['session']
 
     @property
     def ntrials(self):
-        return self._ntrials
+        return self._assessinfo['ntrials']
+    
+    @property
+    def rawfile(self):
+        return self._assessinfo['rawfile']
+    
+    @property
+    def summaryfile(self):
+        return self._assessinfo['summaryfile']
 
     @property
     def currtrial(self):
@@ -111,15 +149,23 @@ class PlutoAPRomData(object):
         return self._demodone is False
     
     @property
+    def logstate(self):
+        return self._logstate
+        
+    @property
     def all_trials_done(self):
         """Check if all trials are done.
         """
-        return self._currtrial >= self._ntrials
+        return self._currtrial >= self.ntrials
+    
+    @property
+    def rawfilewriter(self):
+        return self._rawfilewriter
     
     def start_newtrial(self):
         """Start a new trial.
         """
-        if self._currtrial < self._ntrials:
+        if self._currtrial < self.ntrials:
             self._trialdata = {"dt": [], "pos": [], "vel": []}
             self._trialrom = []
             self._startpos = None
@@ -141,7 +187,7 @@ class PlutoAPRomData(object):
     def add_new_trialrom_data(self):
         """Add new value to trial ROM.
         """
-        self._trialrom.append(np.mean(self._trialdata['pos']))
+        self._trialrom.append(float(np.mean(self._trialdata['pos'])))
         # Sort trial ROM values in the ascending order.
         self._trialrom.sort()
         print("Trial ROM: ", self._trialrom)
@@ -150,14 +196,35 @@ class PlutoAPRomData(object):
         """Set the ROM value for the given trial.
         """
         self._rom[self._currtrial] = [self._trialrom[0], self._trialrom[-1]]
+        # Update the summary file.
+        self._summaryfilewriter.write_row([
+            self.session,
+            self.currtrial,
+            self._startpos,
+            self._trialrom[0],
+            self._trialrom[-1],
+            self._trialrom[-1] - self._trialrom[0],
+            0,
+            0
+        ])
         
     def set_startpos(self):
         """Sets the start position as the average of trial data.
         """
         self._startpos = np.mean(self._trialdata['pos'])
         self._trialrom = [self._startpos]
-        print("Start Pos: ", self._startpos)
-        print("Trial ROM: ", self._trialrom)
+
+    def start_rawlogging(self):
+        self._logstate = AROMRawDataLoggingState.LOG_DATA
+    
+    def terminate_rawlogging(self):
+        self._logstate = AROMRawDataLoggingState.LOGGING_DONE
+        self._rawfilewriter.close()
+        self._rawfilewriter = None
+    
+    def terminate_summarylogging(self):
+        self._summaryfilewriter.close()
+        self._summaryfilewriter = None
 
 
 class PlutoAPRomAssessmentStateMachine():
@@ -207,6 +274,10 @@ class PlutoAPRomAssessmentStateMachine():
     def _free_running(self, event, dt):
         # Check if all trials are done.
         if not self._data.in_demo_mode and self._data.all_trials_done:
+            # Set the logging state.
+            if self._data.rawfilewriter is not None: 
+                self._data.terminate_rawlogging()
+                self._data.terminate_summarylogging()
             self._instruction = f"{self._data.romtype} ROM Assessment Done. Press the PLUTO Button to exit."
             if event == pdef.PlutoEvents.RELEASED:
                 self._state = PlutoAPRomAssessStates.ROM_DONE
@@ -225,6 +296,8 @@ class PlutoAPRomAssessmentStateMachine():
                 self._trialrom = [] if self._data.mechanism != "HOC" else [0,]
                 self._state = PlutoAPRomAssessStates.TRIAL_ACTIVE_WAIT_TO_MOVE
                 self._statetimer = 0
+                # Set the logging state.
+                if not self._data.in_demo_mode: self._data.start_rawlogging()
     
     def _trial_active_wait_to_move(self, event, dt):
         self._instruction = f"Move an hold to record ROM."
@@ -312,10 +385,8 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO ROM assessment window.
     """
-    romset = pyqtSignal()
 
-    def __init__(self, parent=None, plutodev: QtPluto=None, mechanism: str=None, 
-                 romtype: str="Active", ntrials: int=1, modal=False):
+    def __init__(self, parent=None, plutodev: QtPluto=None, assessinfo: dict=None, modal=False):
         """
         Constructor for the PlutoAPRomAssessWindow class.
         """
@@ -327,7 +398,8 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
         
         # PLUTO device
         self._pluto = plutodev
-        self.data = PlutoAPRomData(mechanism, romtype, ntrials)
+
+        self.data: PlutoAPRomData = PlutoAPRomData(assessinfo=assessinfo)
 
         # Set control to NONE
         self._pluto.set_control_type("NONE")
@@ -353,20 +425,8 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
         return self._pluto
     
     @property
-    def mechanism(self):
-        return self._mechanism
-    
-    @property
     def statemachine(self):
         return self._smachine
-    
-    @property
-    def arom(self):
-        return self._smachine.arom
-    
-    @property
-    def prom(self):
-        return self._smachine.prom
     
     #
     # Update UI
@@ -612,12 +672,20 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
             pdef.PlutoEvents.NEWDATA,
             dt=self.pluto.delt()
         )
-        # Check if ROM assessment is complete.
-        if self._smachine.state == PlutoAPRomAssessStates.FREE_RUNNING and self.data.all_trials_done: 
-            self.romset.emit()
         # Update the GUI only at 1/10 the data rate
         if np.random.rand() < 0.1:
             self.update_ui()
+        #
+        # Log data
+        if self.data.logstate == AROMRawDataLoggingState.LOG_DATA:        
+            self.data.rawfilewriter.write_row([
+                self.pluto.systime, self.pluto.currt, self.pluto.packetnumber,
+                self.pluto.status, self.pluto.controltype, self.pluto.error, self.pluto.mechanism,
+                self.pluto.angle, self.pluto.hocdisp, self.pluto.torque, self.pluto.control, self.pluto.target, self.pluto.desired,
+                self.pluto.controlbound, self.pluto.controldir, self.pluto.controlgain, self.pluto.button,
+                self.data.currtrial,
+                f"{self._smachine.state.name}"
+            ])
 
     def _callback_pluto_btn_released(self):
         # Run the statemachine
@@ -640,7 +708,17 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM12")
-    pcalib = PlutoAPRomAssessWindow(plutodev=plutodev, mechanism="HOC", ntrials=2)
-    pcalib.romset.connect(lambda : print(f"ROM set: {pcalib.data.rom}"))
+    pcalib = PlutoAPRomAssessWindow(
+        plutodev=plutodev, 
+        assessinfo={
+            "mechanism": "WFE",
+            "romtype": "APROM",
+            "session": "testing",
+            "ntrials": 3,
+            "rawfile": "rawfiletest.csv",
+            "summaryfile": "summaryfiletest.csv"
+        }
+    )
+    pcalib.closeEvent = lambda : print(f"ROM set: {pcalib.data.rom}")
     pcalib.show()
     sys.exit(app.exec_())

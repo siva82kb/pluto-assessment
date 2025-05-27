@@ -134,16 +134,20 @@ class QtPluto(QObject):
         return self.currsensordata[3] if len(self.currsensordata) > 0 else None
     
     @property
+    def desired(self):
+        return self.currsensordata[4] if len(self.currsensordata) > 0 else None
+    
+    @property
     def err(self):
-        return self.currsensordata[4] if len(self.currsensordata) > 4 else None
+        return self.currsensordata[5] if len(self.currsensordata) > 4 else None
     
     @property
     def errdiff(self):
-        return self.currsensordata[5] if len(self.currsensordata) > 5 else None
+        return self.currsensordata[6] if len(self.currsensordata) > 5 else None
     
     @property
     def errsum(self):
-        return self.currsensordata[6] if len(self.currsensordata) > 6 else None
+        return self.currsensordata[7] if len(self.currsensordata) > 6 else None
     
     @property
     def currt(self):

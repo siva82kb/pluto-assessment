@@ -22,6 +22,18 @@ PROPASS_CTRL_TIMER_DELTA = 0.01
 # List of mechanisms to be used
 mechanisms = ["WFE", "FPS", "HOC"]
 
+# Data logging constants
+RAWDATA_HEADER = [
+    "systime", "devtime", "packno",  "status", "controltype", "error", "mechanism",
+    "angle", "hocdisp", "torque", "control", "target", "desired", 
+    "controlbound", "cotnroldir", "controlgain", "button",
+    "trialno", "assessmentstate"
+]
+# AROM/PROM/APROM SUMMARY HEADER
+ROM_SUMMARY_HEADER = [
+    "session", "trial", "startpos", "rommin", "rommax", "romrange", "torqmin", "torqmax"
+]
+
 # Mechanisms labels
 mech_labels = {
     "WFE": "Wrist Flexion/Extension",
