@@ -44,6 +44,7 @@ import plutofullassessdef as pfadef
 from plutofullassesssupport import PlutoFullAssessmentStateMachine
 from plutofullassesssupport import PlutoFullAssessEvents, PlutoFullAssessStates
 from plutofullassesssupport import PlutoAssessmentProtocolData
+from plutofullassesssupport import DataFrameModel
 
 
 DEBUG = True
@@ -137,6 +138,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Update UI
         # A flag to disable the main window when another window is open.
         self._maindisable = False
+        self._updatetable = True
         self.update_ui()
 
         # One time set up
@@ -407,7 +409,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._maindisable = False
 
     def _romwnd_close_event(self, event):
-        print(self._romwnd.data.rom)
         # Update AROM assessment data.
         self.assessdata["AROM"].append(
             {
@@ -421,6 +422,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Update the protocol data.
         self.protocoldata.set_mechanism_task_data(self._romwnd.data.rawfile,
                                                   self._romwnd.data.summaryfile)
+        # Update the Table.
+        self._updatetable = True
         
         #
         self._romwnd.close()
@@ -456,6 +459,15 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         
         # Set limb button
         self.pbSetLimb.setEnabled(self.cbLimb.currentText() != "" and self.cbSubjectType.currentText() != "")
+
+        # Update the table.
+        if self.protocoldata.summary_data is not None and self._updatetable: 
+            self.tableProtocolProgress.setModel(DataFrameModel(self.protocoldata.summary_data))
+            # Optional: also shrink rows to contents
+            self.tableProtocolProgress.resizeRowsToContents()
+            # Set fixed row height for uniformity
+            self.tableProtocolProgress.verticalHeader().setDefaultSectionSize(20)
+            self._updatetable = False
 
         # Mechanisms selection
         _mechflag = self._maindisable is False and self._smachine.state == PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT

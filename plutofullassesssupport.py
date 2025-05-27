@@ -31,6 +31,8 @@ from PyQt5.QtWidgets import (
     QInputDialog
 )
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import QAbstractTableModel, Qt, QVariant
+
 
 import plutofullassessdef as passdef
 
@@ -152,7 +154,6 @@ class PlutoAssessmentProtocolData(object):
         self._summary_data = pd.read_csv(self.summary_filename, header=0, index_col=None)
 
         # Set index to the row that is incomplete.
-        print(self._summary_data)
         self._index = self._summary_data[np.isnan(self._summary_data["session"])].index[0]
     
     def set_current_mechanism(self, mechname):
@@ -187,15 +188,24 @@ class PlutoAssessmentProtocolData(object):
             raise ValueError("Summary data not initialized or index not set.")
         
         # Set the session, rawfile and summaryfile in the summary data.
-        self._summary_data.at[self._index, "session"] = self.currsess
-        self._summary_data.at[self._index, "rawfile"] = rawfile
-        self._summary_data.at[self._index, "summaryfile"] = summaryfile
+        _updateindex = (
+            (self._summary_data["mechanism"] == self._current_mech) &
+            (self._summary_data["task"] == self._current_task)
+        )
+        self._summary_data.loc[_updateindex, "session"] = self.currsess
+        self._summary_data.loc[_updateindex, "rawfile"] = rawfile
+        self._summary_data.loc[_updateindex, "summaryfile"] = summaryfile
         
         # Write the updated summary data to the file.
         self._summary_data.to_csv(self.summary_filename, sep=",", index=None)
 
         # Update current index.
-        self._index = self._summary_data[np.isnan(self._summary_data["session"])].index[0]
+        # Update current index to first row where 'session' is still NaN
+        nan_rows = self._summary_data[self._summary_data["session"].isna()]
+        if not nan_rows.empty:
+            self._index = nan_rows.index[0]
+        else:
+            self._index = None
     
     #
     # Data logging functions
@@ -319,7 +329,6 @@ class PlutoFullAssessmentStateMachine():
         """
         if event == PlutoFullAssessEvents.SUBJECT_SET:
             # Set the subject ID.
-            print(data['subjid'])
             self._data.set_subjectid(data['subjid'])
             # We need to now select the limb.
             self._state = PlutoFullAssessStates.WAIT_FOR_LIMB_SELECT
@@ -336,7 +345,6 @@ class PlutoFullAssessmentStateMachine():
             self._pconsole.append(self._instruction)
             # Generated assessment protocol.
             self._data.create_assessment_protocol()
-            self.log(f"Protocol created.")
             # Set the current mechanism, and initialize the mechanism data.
             # self._data.set_current_mechanism()
             # self.log(f"Mechanism: {self._data.mech} | Task: {self._data.task}")
@@ -418,3 +426,39 @@ class PlutoFullAssessmentStateMachine():
         self._pconsole.clear()
         self._pconsole.append("\n".join(self._pconsolemsgs))
         self._pconsole.verticalScrollBar().setValue(self._pconsole.verticalScrollBar().maximum())
+
+
+
+class DataFrameModel(QAbstractTableModel):
+    def __init__(self, df, parent=None):
+        super().__init__(parent)
+        self._df = df
+
+    def rowCount(self, parent=None):
+        return len(self._df.index)
+
+    def columnCount(self, parent=None):
+        return len(self._df.columns)
+
+    def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid():
+            return QVariant()
+
+        if role == Qt.DisplayRole:
+            value = self._df.iloc[index.row(), index.column()]
+            return str(value)
+        return QVariant()
+        
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return str(self._df.columns[section])
+            else:
+                return str(self._df.index[section])
+
+        elif role == Qt.FontRole:
+            font = QtGui.QFont()
+            font.setBold(True)
+            return font
+
+        return QVariant()
