@@ -48,64 +48,161 @@ from ui_plutofullassessment import Ui_PlutoFullAssessor
 from misc import CSVBufferWriter
 
 
-class PlutoAssessmentProtocolData(object):
-    """Class to hold the data for the proprioception assessment.
-    """
+class PlutoAssessmentData(object):
+    
     def __init__(self):
         self.init_values()
     
-    def init_values(self):
-        self.subjid = None
-        self.type = None
-        self.limb = None
-        self._index = None
-        self.currsess = None
-        self.calib = False
-        self.basedir = None
-        self.sessdir = None
-        self._data = None
-        self._current_mech = None
-        self._calibrated = False
-        self._current_task = None
-
     @property
-    def current_mech(self):
-        return self._current_mech
+    def subjid(self):
+        return self._subjid
     
     @property
-    def current_task(self):
-        return self._current_task
+    def type(self):
+        return self._type
+    
+    @property
+    def limb(self):
+        return self._limb
+    
+    @property
+    def session(self):
+        return self._session
+    
+    @property
+    def basedir(self):
+        return self._basedir
+    
+    @property
+    def sessdir(self):
+        return self._sessdir
+    
+    @property
+    def protocol(self):
+        return self._protocol
+    
+    @property
+    def assess(self):
+        return self._assess
+
+    def init_values(self):
+        # Subject details
+        self._subjid = None
+        self._type = None
+        self._limb = None
+        self._session = None
+        self._basedir = None
+        self._sessdir = None
+        # Assessment protocol
+        self._protocol: PlutoAssessmentProtocolData = None
+        self._assess = None
+    
+    def set_subjectid(self, subjid):
+        self.init_values()
+        self._subjid = subjid
+    
+    def set_limbtype(self, slimb, stype):
+        # Subject ID cannot be None
+        if self._subjid is None:
+            raise ValueError(f"Subject ID has not been set. You cannot set anything else without a subject ID.")
+        self._type = slimb
+        self._limb = stype
+        self.create_session_folder()
+    
+    def create_session_folder(self):
+        # Create the data directory now.
+        # set data dirr and create if needed.
+        self._session = f"{self.type[0].lower()}{self.limb[0].lower()}_{dt.now().strftime('%Y%m%d_%H%M%S')}"
+        self._basedir = pathlib.Path(passdef.DATA_DIR, self.type, self.subjid)
+        self._sessdir = pathlib.Path(self.basedir, self.session)
+        self.sessdir.mkdir(exist_ok=True, parents=True)
+
+    def get_session_info(self):
+        _str = [
+            f"{'' if self.session is None else self.session:<12}",
+            f"{'' if self.subjid is None else self.subjid:<8}",
+            f"{self.type:<8}",
+            f"{self.limb:<6}",
+        ]
+        return ":".join(_str)
+    
+    def start_protocol(self):
+        self._protocol = PlutoAssessmentProtocolData(self._basedir, self._sessdir)
+
+
+class PlutoAssessmentProtocolData(object):
+    """Class to handle the full assessment protocol.
+    """
+    def __init__(self, basedir, sessdir):
+        self._basedir = basedir
+        self._sessdir = sessdir
+        
+        # Create the protocol summary file.
+        self.create_assessment_summary_file()
+        
+        # Read the summary file.
+        self._df = pd.read_csv(self.filename, header=0, index_col=None)
+        # Change session, rawfile, and summaryfile columns to strings
+        for col in ["session", "rawfile", "summaryfile"]:
+            if col in self._df.columns:
+                self._df[col] = self._df[col].astype("string")
+
+        # Set index to the row that is incomplete.
+        nan_rows = self._df[self._df["session"].isna()]
+        if not nan_rows.empty:
+            self._index = nan_rows.index[0]
+        else:
+            self._index = None
+
+        # Initialize current mechanism and task to None.
+        self._mech = None
+        self._calibrated = False
+        self._task = None
+        self._tasktime = None
+
+    @property
+    def mech(self):
+        return self._mech
+    
+    @property
+    def task(self):
+        return self._task
     
     @property
     def calibrated(self):
         return self._calibrated
     
     @property
-    def data(self):
-        return self._data
+    def df(self):
+        return self._df
+    
+    @property
+    def index(self):
+        return self._index
         
     @property
-    def protocol_filename(self):
-        return pathlib.Path(self.basedir, "pfa_summary.csv").as_posix()
-    
-    @property
-    def assess_filename(self):
-        return pathlib.Path(self.basedir, "pfa_assess.json").as_posix()
+    def filename(self):
+        return pathlib.Path(self._basedir, "pfa_protocol_summary.csv").as_posix()
 
     @property
-    def mech_enabled(self):
-        if self._data is None and self._index is None:
+    def mech_enabled(self) ->list[str]:
+        """Get the list of mechanisms that are to be enabled.
+        """
+        if self._df is None and self._index is None:
             return []
         # Get the list of mechanisms that have been assessed.
-        return list(self._data[self._data.index <= self._index]["mechanism"].unique())
+        return list(self._df[self._df.index <= self._index]["mechanism"].unique())
     
     @property
-    def task_enabled(self):
-        if self._data is None and self._index is None:
+    def task_enabled(self) -> list[str]:
+        """List of tasks that are to be enabled.
+        """
+        if self._df is None and self._index is None:
             return []
         # Get the list of mechanisms that have been assessed.
-        _inx = self._data.index[self._data["mechanism"] == self._current_mech]
-        return list(self._data[self._data.index <= self._index]["task"].unique())
+        _inx = ((self._df["mechanism"] == self._mech) &
+                (self._df.index <= self._index))
+        return list(self._df[_inx]["task"].unique())
     
     @property
     def is_mechanism_completed(self, mechname):
@@ -114,79 +211,63 @@ class PlutoAssessmentProtocolData(object):
     @property
     def index(self):
         return self._index
+    
+    @property
+    def rawfilename(self):
+        # Create the new file and handle.
+        return pathlib.Path(
+            self._sessdir, 
+            f"{self._mech}_{self._task}_raw.csv"
+        ).as_posix()
+    
+    @property
+    def summaryfilename(self):
+        # Create the new file and handle.
+        return pathlib.Path(
+            self._sessdir, 
+            f"{self._mech}_{self._task}_summary-{self._tasktime}.csv"
+        ).as_posix()
 
     #
     # Supporting functions
     #
-    def set_subjectid(self, subjid):
-        self.init_values()
-        self.subjid = subjid
-    
-    def set_limbtype(self, slimb, stype):
-        self.type = slimb
-        self.limb = stype
-        self.create_session_folder()
-
-    def get_curr_sess(self):
-        return (self.type[0].lower()
-                + self.limb[0].lower()
-                + "_"
-                + dt.now().strftime("%Y%m%d_%H%M%S"))
-    
-    def create_session_folder(self):
-        # Create the data directory now.
-        # set data dirr and create if needed.
-        self.currsess = self.get_curr_sess()
-        self.basedir = pathlib.Path(passdef.DATA_DIR,
-                                    self.subjid)
-        self.sessdir = pathlib.Path(self.basedir,
-                                    self.currsess)
-        self.sessdir.mkdir(exist_ok=True, parents=True)
-
-    def get_session_info(self):
-        _str = [
-            f"{'' if self.data.currsess is None else self.data.currsess:<12}",
-            f"{'' if self.data.subjid is None else self.data.subjid:<8}",
-            f"{self.data.type:<8}",
-            f"{self.data.limb:<6}",
-        ]
-        return ":".join(_str)
-
     def create_assessment_protocol(self):
         # Create the protocol summary file.
         self.create_assessment_summary_file()
         
         # Read the summary file.
-        self._data = pd.read_csv(self.protocol_filename, header=0, index_col=None)
+        self._df = pd.read_csv(self.filename, header=0, index_col=None)
         # Change session, rawfile, and summaryfile columns to strings
         for col in ["session", "rawfile", "summaryfile"]:
-            if col in self._data.columns:
-                self._data[col] = self._data[col].astype("string")
+            if col in self._df.columns:
+                self._df[col] = self._df[col].astype("string")
 
         # Set index to the row that is incomplete.
-        nan_rows = self._data[self._data["session"].isna()]
+        nan_rows = self._df[self._df["session"].isna()]
         if not nan_rows.empty:
             self._index = nan_rows.index[0]
         else:
             self._index = None
     
-    def set_current_mechanism(self, mechname):
+    def set_mechanism(self, mechname):
         # Sanity check. Make sure the set mechanism matches the mechnaism in the protocol.
-        if mechname != self._data.iloc[self._index]["mechanism"]:
-            raise ValueError(f"Mechanism [{mechname}] does not match the protocol mechanism [{self._data.iloc[self._index]['mechanism']}]")
-        self._current_mech = mechname
+        if mechname != self._df.iloc[self._index]["mechanism"]:
+            raise ValueError(f"Mechanism [{mechname}] does not match the protocol mechanism [{self._df.iloc[self._index]['mechanism']}]")
+        self._mech = mechname
         self._calibrated = False
-        self._current_task = None
+        self._task = None
+        self._tasktime = None
     
-    def set_current_task(self, taskname):
+    def set_task(self, taskname):
         # Sanity check. Make sure the set task matches the task in the protocol.
-        if taskname != self._data.iloc[self._index]["task"]:
-            raise ValueError(f"Task [{taskname}] does not match the protocol task [{self._data.iloc[self._index]['task']}]")
-        self._current_task = taskname
+        if taskname != self._df.iloc[self._index]["task"]:
+            raise ValueError(f"Task [{taskname}] does not match the protocol task [{self._df.iloc[self._index]['task']}]")
+        self._task = taskname
+        self._tasktime = dt.now().strftime('%Y%m%d_%H%M%S')
     
-    def mechanism_calibrated(self, mechname):
-        if self._current_mech is None and self.current_mech == mechname:
-            raise ValueError("Mechanism not set or W.")
+    def set_mechanism_calibrated(self, mechname):
+        if self._mech is None and self._mech != mechname:
+            raise ValueError("Mechanism not set or the mechanism name is wrong.")
         self._calibrated = True
     
     def is_mechanism_assessed(self, mechname):
@@ -195,27 +276,27 @@ class PlutoAssessmentProtocolData(object):
         # return False if len(_taskcompleted) == 0 else np.all(_taskcompleted)
         return False
     
-    def set_mechanism_task_data(self, rawfile, summaryfile):
+    def update_mechanism_task_data(self, session, rawfile, summaryfile):
         """Set the mechanism task data in the summary file.
         """
-        if self._data is None or self._index is None:
+        if self._df is None or self._index is None:
             raise ValueError("Summary data not initialized or index not set.")
         
         # Set the session, rawfile and summaryfile in the summary data.
         _updateindex = (
-            (self._data["mechanism"] == self._current_mech) &
-            (self._data["task"] == self._current_task)
+            (self._df["mechanism"] == self._mech) &
+            (self._df["task"] == self._task)
         )
-        self._data.loc[_updateindex, "session"] = self.currsess
-        self._data.loc[_updateindex, "rawfile"] = rawfile
-        self._data.loc[_updateindex, "summaryfile"] = summaryfile
+        self._df.loc[_updateindex, "session"] = session
+        self._df.loc[_updateindex, "rawfile"] = rawfile
+        self._df.loc[_updateindex, "summaryfile"] = summaryfile
         
         # Write the updated summary data to the file.
-        self._data.to_csv(self.protocol_filename, sep=",", index=None)
+        self._df.to_csv(self.filename, sep=",", index=None)
 
         # Update current index.
         # Update current index to first row where 'session' is still NaN
-        nan_rows = self._data[self._data["session"].isna()]
+        nan_rows = self._df[self._df["session"].isna()]
         if not nan_rows.empty:
             self._index = nan_rows.index[0]
         else:
@@ -225,7 +306,7 @@ class PlutoAssessmentProtocolData(object):
     # Data logging functions
     #
     def create_assessment_summary_file(self):
-        if pathlib.Path(self.protocol_filename).exists():
+        if pathlib.Path(self.filename).exists():
             return
         # Create the protocol summary file.
         _dframe = pd.DataFrame(columns=["session", "mechanism", "task", "trial", 
@@ -250,21 +331,9 @@ class PlutoAssessmentProtocolData(object):
                     })
                 ], ignore_index=True)
         # Write file to disk
-        _dframe.to_csv(self.protocol_filename, sep=",", index=None)
+        _dframe.to_csv(self.filename, sep=",", index=None)
     
-    def get_rawfilename(self):
-        # Create the new file and handle.
-        return pathlib.Path(
-            self.sessdir, 
-            f"{self.currsess}_{self.current_mech}_{self.current_task}_rawdata.csv"
-        ).as_posix()
-    
-    def get_task_summaryfilename(self):
-        # Create the new file and handle.
-        return pathlib.Path(
-            self.sessdir, 
-            f"{self.currsess}_{self.current_mech}_{self.current_task}_summary_{dt.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        ).as_posix()
+
 
 
 class PlutoFullAssessEvents(Enum):
@@ -299,9 +368,9 @@ class PlutoFullAssessStates(Enum):
 
 
 class PlutoFullAssessmentStateMachine():
-    def __init__(self, plutodev: QtPluto, data: PlutoAssessmentProtocolData, progconsole):
+    def __init__(self, plutodev: QtPluto, data: PlutoAssessmentData, progconsole):
         self._state = PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT
-        self._data = data
+        self._data: PlutoAssessmentData = data
         self._instruction = ""
         self._protocol = None
         self._pconsole = progconsole
@@ -358,9 +427,9 @@ class PlutoFullAssessmentStateMachine():
             self._state = PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT
             self._pconsole.append(self._instruction)
             # Generated assessment protocol.
-            self._data.create_assessment_protocol()
+            self._data.start_protocol()
             # Set the current mechanism, and initialize the mechanism data.
-            # self._data.set_current_mechanism()
+            # self._data.set_mechanism()
             # self.log(f"Mechanism: {self._data.mech} | Task: {self._data.task}")
 
     def _wait_for_mechanism_select(self, event, data):
@@ -375,17 +444,17 @@ class PlutoFullAssessmentStateMachine():
         if event not in _event_mech_map:
             return   
         # Set current mechanism.
-        self._data.set_current_mechanism(_event_mech_map[event])
+        self._data.protocol.set_mechanism(_event_mech_map[event])
         self._state = PlutoFullAssessStates.WAIT_FOR_CALIBRATE
-        self.log(f"Mechanism set to {self._data.current_mech}.")
+        self.log(f"Mechanism set to {self._data.protocol.mech}.")
 
     def _wait_for_calibrate(self, event, data):
         """
         """
         # Check if the calibration is done.
         if event == PlutoFullAssessEvents.CALIBRATED:
-            self._data.mechanism_calibrated(data["mech"])
-            self.log(f"Mechanism {self._data.current_mech} calibrated.")
+            self._data.protocol.set_mechanism_calibrated(data["mech"])
+            self.log(f"Mechanism {self._data.protocol.mech} calibrated.")
             # Next task is AROM.
             self._state = PlutoFullAssessStates.WAIT_FOR_AROM_ASSESS
 

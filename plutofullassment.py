@@ -43,6 +43,7 @@ import plutodefs as pdef
 import plutofullassessdef as pfadef
 from plutofullassesssupport import PlutoFullAssessmentStateMachine
 from plutofullassesssupport import PlutoFullAssessEvents, PlutoFullAssessStates
+from plutofullassesssupport import PlutoAssessmentData
 from plutofullassesssupport import PlutoAssessmentProtocolData
 from plutofullassesssupport import DataFrameModel
 
@@ -72,8 +73,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pluto.get_version()
         self.pluto.start_sensorstream()
 
-        # Assessment protocol data
-        self.protocoldata: PlutoAssessmentProtocolData = PlutoAssessmentProtocolData()
+        # Assessment data
+        self.data:PlutoAssessmentData  = PlutoAssessmentData()
 
         # Assessment data.
         self.assessdata = {_t: [] for _t in pfadef.tasks}
@@ -91,7 +92,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Initialize the state machine.
         self._smachine = PlutoFullAssessmentStateMachine(
             plutodev=self.pluto,
-            data=self.protocoldata,
+            data=self.data,
             progconsole=self.textProtocolDetails
         )
         if DEBUG:
@@ -214,7 +215,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._maindisable = True
         # Calibration window and open it as a modal window.
         self._calibwnd = PlutoCalibrationWindow(plutodev=self.pluto,
-                                                mechanism=self.protocoldata.current_mech,
+                                                mechanism=self.data.protocol.mech,
                                                 modal=True)
         self._calibwnd.closeEvent = self._calibwnd_close_event
         self._calibwnd.show()
@@ -229,18 +230,18 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
 
     def _callback_assess_arom(self):
         # Set the current task.
-        self.protocoldata.set_current_task("AROM")
+        self.data.protocol.set_task("AROM")
         # Disable main controls
         self._maindisable = True
         self._romwnd = PlutoAPRomAssessWindow(
             plutodev=self.pluto,
             assessinfo={
-                "mechanism": self.protocoldata.current_mech,
+                "mechanism": self.data.protocol.mech,
                 "romtype": "Active",
-                "session": self.protocoldata.currsess,
+                "session": self.data.session,
                 "ntrials": pfadef.protocol["AROM"]["N"],
-                "rawfile": self.protocoldata.get_rawfilename(),
-                "summaryfile": self.protocoldata.get_task_summaryfilename(),
+                "rawfile": self.data.protocol.rawfilename,
+                "summaryfile": self.data.protocol.summaryfilename,
             },
             modal=True
         )
@@ -250,18 +251,18 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
 
     def _callback_assess_prom(self):
         # Set the current task.
-        self.protocoldata.set_current_task("PROM")
+        self.data.protocol.set_task("PROM")
         # Disable main controls
         self._maindisable = True
         self._romwnd = PlutoAPRomAssessWindow(
             plutodev=self.pluto,
             assessinfo={
-                "mechanism": self.protocoldata.current_mech,
+                "mechanism": self.data.protocol.mech,
                 "romtype": "Passive",
-                "session": self.protocoldata.currsess,
+                "session": self.data.session,
                 "ntrials": pfadef.protocol["AROM"]["N"],
-                "rawfile": self.protocoldata.get_rawfilename(),
-                "summaryfile": self.protocoldata.get_task_summaryfilename(),
+                "rawfile": self.data.protocol.rawfilename,
+                "summaryfile": self.data.protocol.summaryfilename,
                 "arom": self.assessdata["AROM"][-1]["rom"]
             },
             modal=True
@@ -321,7 +322,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     def _callback_start_mech_assess(self):
         # Check if the chosen mechanism is already assessed.
         _mechchosen = self._get_chosen_mechanism()
-        if self.protocoldata.is_mechanism_assessed(_mechchosen):
+        if self.data.protocol.is_mechanism_assessed(_mechchosen):
             # Ask if the user wants to continue with this mechanism.
             reply = QMessageBox.question(
                 self,
@@ -363,7 +364,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 f"{self.apptime:5d}s",
                 _con if _con != "" else "Disconnected",
                 f"FR: {self.pluto.framerate():4.1f}Hz",
-                f"{self.protocoldata.subjid}",
+                f"{self.data.subjid}",
                 f"{self._smachine.state.name:<20}",
             ))
         )
@@ -403,7 +404,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Reenable main controls
         self._maindisable = False
         # Check of the calibration was successful.
-        if (pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism) == self.protocoldata.current_mech
+        if (pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism) == self.data.protocol.mech
             and self.pluto.calibration == 1):
             # Run the state machine.
             self._smachine.run_statemachine(
@@ -421,7 +422,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Update AROM assessment data.
         self.assessdata["AROM"].append(
             {
-                "session": self.protocoldata.currsess,
+                "session": self.data.session,
                 "values": self._romwnd.data.rom,
                 "rawfile": self._romwnd.data.rawfile,
                 "summaryfile": self._romwnd.data.summaryfile,
@@ -429,8 +430,11 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             }
         )
         # Update the protocol data.
-        self.protocoldata.set_mechanism_task_data(self._romwnd.data.rawfile,
-                                                  self._romwnd.data.summaryfile)
+        self.data.protocol.update_mechanism_task_data(
+            self.data.session,
+            self.data.protocol.rawfilename,
+            self.data.protocol.summaryfilename
+        )
         # Update the Table.
         self._updatetable = True
         
@@ -445,16 +449,19 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Update AROM assessment data.
         self.assessdata["PROM"].append(
             {
-                "session": self.protocoldata.currsess,
+                "session": self.data.session,
                 "values": self._romwnd.data.rom,
-                "rawfile": self._romwnd.data.rawfile,
-                "summaryfile": self._romwnd.data.summaryfile,
+                "rawfile": self.data.protocol.rawfile,
+                "summaryfile": self.data.protocol.summaryfile,
                 "rom": np.mean(np.array(self._romwnd.data.rom), axis=0).tolist(),
             }
         )
         # Update the protocol data.
-        self.protocoldata.set_mechanism_task_data(self._romwnd.data.rawfile,
-                                                  self._romwnd.data.summaryfile)
+        self.data.protocol.update_mechanism_task_data(
+            self.data.session,
+            self.data.protocol.rawfilename,
+            self.data.protocol.summaryfilename
+        )
         # Update the Table.
         self._updatetable = True
         
@@ -494,8 +501,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pbSetLimb.setEnabled(self.cbLimb.currentText() != "" and self.cbSubjectType.currentText() != "")
 
         # Update the table.
-        if self.protocoldata.data is not None and self._updatetable: 
-            self.tableProtocolProgress.setModel(DataFrameModel(self.protocoldata.data))
+        if self.data.protocol.df is not None and self._updatetable: 
+            self.tableProtocolProgress.setModel(DataFrameModel(self.data.protocol.df))
             # Optional: also shrink rows to contents
             self.tableProtocolProgress.resizeRowsToContents()
             # Set fixed row height for uniformity
@@ -514,10 +521,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pbStartMechAssessment.setEnabled(self._any_mechanism_selected())
 
         # Enable the calibration button.
-        self.pbCalibrate.setEnabled(self._maindisable is False and self.protocoldata.current_mech is not None)
+        self.pbCalibrate.setEnabled(self._maindisable is False and self.data.protocol.mech is not None)
         if self.pbCalibrate.isEnabled():
             self.pbCalibrate.setStyleSheet(
-                pfadef.SS_COMPLETE if self.protocoldata.calibrated 
+                pfadef.SS_COMPLETE if self.data.protocol.calibrated 
                 else pfadef.SS_INCOMPLETE
             )
         else:
@@ -534,11 +541,11 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
 
         # # Select limb
         # enbflag = (self._maindisable is False 
-        #            and self.protocoldata.subjid is not None 
+        #            and self.data.subjid is not None 
         #            and self._mech is not None
         #            and self._mechdata[self._mech] is not None)
         # # Disable buttons if needed.
-        # self.pbTestDevice.setEnabled(self._maindisable is False and self.protocoldata.subjid is None)
+        # self.pbTestDevice.setEnabled(self._maindisable is False and self.data.subjid is None)
         # self.pbCalibrate.setEnabled(self._maindisable is False)
         # self.cbSubjectType.setEnabled(enbflag)
         # self.cbLimb.setEnabled(enbflag and self.cbSubjectType.currentText() != "")
@@ -551,11 +558,11 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         #     self.pbCalibrate.setText("Recalibrate")
         
         # # Subject ID button
-        # if self.protocoldata.subjid is not None:
+        # if self.data.subjid is not None:
         #     if self._datadir is not None:
-        #         self.pbSubject.setText(f"Subject: {self.protocoldata.subjid} [{self._datadir.as_posix().split('/')[-1]}]")
+        #         self.pbSubject.setText(f"Subject: {self.data.subjid} [{self._datadir.as_posix().split('/')[-1]}]")
         #     else:
-        #         self.pbSubject.setText(f"Subject: {self.protocoldata.subjid} []")
+        #         self.pbSubject.setText(f"Subject: {self.data.subjid} []")
         # else:
         #     self.pbSubject.setText("Select Subject")
         
@@ -570,12 +577,12 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     #
     def _get_session_info(self):
         _str = [
-            f"{'' if self.protocoldata.currsess is None else self.protocoldata.currsess:<20}",
-            f"{'' if self.protocoldata.subjid is None else self.protocoldata.subjid:<8}",
-            f"{self.protocoldata.type if self.protocoldata.type is not None else '':<8}",
-            f"{self.protocoldata.limb if self.protocoldata.limb is not None else '':<8}",
-            # f"{self.protocoldata.mech if self.protocoldata.mech is not None else '':<8}",
-            # f"{self.protocoldata.task if self.protocoldata.task is not None else '':<8}",
+            f"{'' if self.data.session is None else self.data.session:<20}",
+            f"{'' if self.data.subjid is None else self.data.subjid:<8}",
+            f"{self.data.type if self.data.type is not None else '':<8}",
+            f"{self.data.limb if self.data.limb is not None else '':<8}",
+            # f"{self.data.mech if self.data.mech is not None else '':<8}",
+            # f"{self.data.task if self.data.task is not None else '':<8}",
         ]
         return ":".join(_str)
 
@@ -586,11 +593,11 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             "FPS": self.rbFPS,
             "HOC": self.rbHOC
         }
-        for i, _m in enumerate(self.protocoldata.mech_enabled):
+        for i, _m in enumerate(self.data.protocol.mech_enabled):
             _mctrl[_m].setEnabled(True)
-            _mctrl[_m].setText(f"{pfadef.mech_labels[_m]} {'[C]' if i < len(self.protocoldata.mech_enabled) - 1 else ''}")
+            _mctrl[_m].setText(f"{pfadef.mech_labels[_m]} {'[C]' if i < len(self.data.protocol.mech_enabled) - 1 else ''}")
             _mctrl[_m].setStyleSheet(
-                pfadef.SS_COMPLETE if i < len(self.protocoldata.mech_enabled) - 1 
+                pfadef.SS_COMPLETE if i < len(self.data.protocol.mech_enabled) - 1 
                 else pfadef.SS_INCOMPLETE
             )
         
@@ -603,11 +610,11 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             "PROP": self.pbProp,
             "FCTRL": self.pbForceCtrl,
         }
-        for i, _t in enumerate(self.protocoldata.task_enabled):
-            _tctrl[_t].setEnabled(self.protocoldata.calibrated)
-            if self.protocoldata.calibrated:
+        for i, _t in enumerate(self.data.protocol.task_enabled):
+            _tctrl[_t].setEnabled(self.data.protocol.calibrated)
+            if self.data.protocol.calibrated:
                 _tctrl[_t].setStyleSheet(
-                    pfadef.SS_COMPLETE if i < len(self.protocoldata.task_enabled) - 1 
+                    pfadef.SS_COMPLETE if i < len(self.data.protocol.task_enabled) - 1 
                     else pfadef.SS_INCOMPLETE
                 )
             else:
