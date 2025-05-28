@@ -278,6 +278,7 @@ class QtPluto(QObject):
         """
         if not self.is_connected():
             return
+        print(pdef.InDataType["CALIBRATE"], pdef.Mehcanisms[mech])
         self.dev.send_message([
             pdef.InDataType["CALIBRATE"],
             pdef.Mehcanisms[mech]

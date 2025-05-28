@@ -14,6 +14,7 @@ import pathlib
 import json
 import numpy as np
 import pandas as pd
+import json
 
 from enum import Enum
 
@@ -82,8 +83,8 @@ class PlutoAssessmentData(object):
         return self._protocol
     
     @property
-    def assess(self):
-        return self._assess
+    def romsumry(self):
+        return self._romsumry
 
     def init_values(self):
         # Subject details
@@ -95,7 +96,7 @@ class PlutoAssessmentData(object):
         self._sessdir = None
         # Assessment protocol
         self._protocol: PlutoAssessmentProtocolData = None
-        self._assess = None
+        self._romsumry: PlutoAssessmentROMData = None
     
     def set_subjectid(self, subjid):
         self.init_values()
@@ -105,15 +106,15 @@ class PlutoAssessmentData(object):
         # Subject ID cannot be None
         if self._subjid is None:
             raise ValueError(f"Subject ID has not been set. You cannot set anything else without a subject ID.")
-        self._type = slimb
-        self._limb = stype
+        self._type = stype
+        self._limb = slimb
         self.create_session_folder()
     
     def create_session_folder(self):
         # Create the data directory now.
         # set data dirr and create if needed.
         self._session = f"{self.type[0].lower()}{self.limb[0].lower()}_{dt.now().strftime('%Y%m%d_%H%M%S')}"
-        self._basedir = pathlib.Path(passdef.DATA_DIR, self.type, self.subjid)
+        self._basedir = pathlib.Path(passdef.DATA_DIR, self.type, self.subjid, self.limb)
         self._sessdir = pathlib.Path(self.basedir, self.session)
         self.sessdir.mkdir(exist_ok=True, parents=True)
 
@@ -127,13 +128,17 @@ class PlutoAssessmentData(object):
         return ":".join(_str)
     
     def start_protocol(self):
-        self._protocol = PlutoAssessmentProtocolData(self._basedir, self._sessdir)
+        self._protocol = PlutoAssessmentProtocolData(self.subjid, self.type, self.limb, self._basedir, self._sessdir)
+        self._romsumry = PlutoAssessmentROMData(self.subjid, self.type, self.limb, self._basedir)
 
 
 class PlutoAssessmentProtocolData(object):
     """Class to handle the full assessment protocol.
     """
-    def __init__(self, basedir, sessdir):
+    def __init__(self, subjid, stype, slimb, basedir, sessdir):
+        self._subjid = subjid
+        self._type = stype
+        self._limb = slimb
         self._basedir = basedir
         self._sessdir = sessdir
         
@@ -169,6 +174,10 @@ class PlutoAssessmentProtocolData(object):
         return self._task
     
     @property
+    def tasktime(self):
+        return self._tasktime
+    
+    @property
     def calibrated(self):
         return self._calibrated
     
@@ -179,10 +188,10 @@ class PlutoAssessmentProtocolData(object):
     @property
     def index(self):
         return self._index
-        
+    
     @property
     def filename(self):
-        return pathlib.Path(self._basedir, "pfa_protocol_summary.csv").as_posix()
+        return pathlib.Path(self._basedir, f"{self._subjid}_{self._type}_{self._limb}_protocol.csv").as_posix()
 
     @property
     def mech_enabled(self) ->list[str]:
@@ -217,7 +226,7 @@ class PlutoAssessmentProtocolData(object):
         # Create the new file and handle.
         return pathlib.Path(
             self._sessdir, 
-            f"{self._mech}_{self._task}_raw.csv"
+            f"{self._subjid}_{self._type}_{self._limb}_{self._mech}_{self._task}_raw-{self._tasktime}.csv"
         ).as_posix()
     
     @property
@@ -225,7 +234,7 @@ class PlutoAssessmentProtocolData(object):
         # Create the new file and handle.
         return pathlib.Path(
             self._sessdir, 
-            f"{self._mech}_{self._task}_summary-{self._tasktime}.csv"
+            f"{self._subjid}_{self._type}_{self._limb}_{self._mech}_{self._task}_summary-{self._tasktime}.csv"
         ).as_posix()
 
     #
@@ -276,7 +285,7 @@ class PlutoAssessmentProtocolData(object):
         # return False if len(_taskcompleted) == 0 else np.all(_taskcompleted)
         return False
     
-    def update_mechanism_task_data(self, session, rawfile, summaryfile):
+    def update(self, session, rawfile, summaryfile):
         """Set the mechanism task data in the summary file.
         """
         if self._df is None or self._index is None:
@@ -332,184 +341,107 @@ class PlutoAssessmentProtocolData(object):
                 ], ignore_index=True)
         # Write file to disk
         _dframe.to_csv(self.filename, sep=",", index=None)
-    
 
 
-
-class PlutoFullAssessEvents(Enum):
-    SUBJECT_SET = 0
-    TYPE_LIMB_SET = 1
-    WFE_MECHANISM_SET = 2
-    FPS_MECHANISM_SET = 3
-    HOC_MECHANISM_SET = 4
-    CALIBRATED = 5
-    AROM_SET = 6
-    PROM_SET = 7
-    APROM_SET = 8
-    DISCREACH_ASSESS = 9
-    PROP_ASSESS = 10
-    FCTRL_ASSESS = 11
-
-
-class PlutoFullAssessStates(Enum):
-    WAIT_FOR_SUBJECT_SELECT = 0
-    WAIT_FOR_LIMB_SELECT = 1
-    WAIT_FOR_MECHANISM_SELECT = 2
-    WAIT_FOR_CALIBRATE = 3
-    WAIT_FOR_AROM_ASSESS = 4
-    WAIT_FOR_PROM_ASSESS = 5
-    WAIT_FOR_APROM_ASSESS = 6
-    WAIT_FOR_DISCREACH_ASSESS = 7
-    WAIT_FOR_PROP_ASSESS = 8
-    WAIT_FOR_FCTRL_ASSESS = 9
-    TASK_DONE = 10
-    MECHANISM_DONE = 11
-    SUBJECT_LIMB_DONE = 12
-
-
-class PlutoFullAssessmentStateMachine():
-    def __init__(self, plutodev: QtPluto, data: PlutoAssessmentData, progconsole):
-        self._state = PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT
-        self._data: PlutoAssessmentData = data
-        self._instruction = ""
-        self._protocol = None
-        self._pconsole = progconsole
-        self._pconsolemsgs = []
-        # Indicates if both AROM and PROM have been done for this
-        # particular instance of the statemachine.
-        self._pluto = plutodev
-        self._stateactions = {
-            PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT: self._wait_for_subject_select,
-            PlutoFullAssessStates.WAIT_FOR_LIMB_SELECT: self._wait_for_limb_select,
-            PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT: self._wait_for_mechanism_select,
-            PlutoFullAssessStates.WAIT_FOR_CALIBRATE: self._wait_for_calibrate,
-            PlutoFullAssessStates.WAIT_FOR_AROM_ASSESS: self._wait_for_arom_assess,
-            PlutoFullAssessStates.WAIT_FOR_PROM_ASSESS: self._wait_for_prom_assess,
-            PlutoFullAssessStates.WAIT_FOR_APROM_ASSESS: self._wait_for_aprom_assess,
-            PlutoFullAssessStates.WAIT_FOR_DISCREACH_ASSESS: self._wait_for_discreach_assess,
-            PlutoFullAssessStates.WAIT_FOR_PROP_ASSESS: self._wait_for_prop_assess,
-            PlutoFullAssessStates.WAIT_FOR_FCTRL_ASSESS: self._wait_for_fctrl_assess,
-            PlutoFullAssessStates.TASK_DONE: self._task_done,
-            PlutoFullAssessStates.MECHANISM_DONE: self._wait_for_mechanism_done,
-            PlutoFullAssessStates.SUBJECT_LIMB_DONE: self._wait_for_subject_limb_done,
+class PlutoAssessmentROMData(object):
+    """Class to store the ROM data that will be used in the rest of the 
+    assessment.
+    """
+    def __init__(self, subjid, stype, slimb, basedir):
+        self._subjid = subjid
+        self._type = stype
+        self._limb = slimb
+        self._basedir = basedir
+        
+        # Read the summary file.
+        self._val = {
+            "subj": self._subjid,
+            "type": self._type,
+            "limb": self._limb,
+            "AROM": {},
+            "PROM": {},
+            "APROM": {}
         }
+        
+        # Create the protocol summary file.
+        self.create_rom_summary_file()
+
+        # Initialize the mechanism and task.
+        self._mech = None
+        self._task = None
+
+    @property
+    def mech(self):
+        return self._mech
+    
+    @mech.setter
+    def mech(self, value):
+        self._mech = value
+        for k in self._val.keys():
+            if self._mech not in self._val[k]:
+                self._val[k][self._mech] = []
     
     @property
-    def state(self):
-        return self._state
+    def task(self):
+        return self._task
     
     @property
-    def instruction(self):
-        return self._instruction
+    def val(self):
+        return self._val
+        
+    @property
+    def filename(self):
+        return pathlib.Path(self._basedir, f"{self._subjid}_{self._type}_{self._limb}_rom.json").as_posix()
     
-    def run_statemachine(self, event, data):
-        """Execute the state machine depending on the given even that has occured.
-        """
-        self._stateactions[self._state](event, data)
+    def __getitem__(self, key):
+        return self._val[key]
 
-    def _wait_for_subject_select(self, event, data):
-        """
-        """
-        if event == PlutoFullAssessEvents.SUBJECT_SET:
-            # Set the subject ID.
-            self._data.set_subjectid(data['subjid'])
-            # We need to now select the limb.
-            self._state = PlutoFullAssessStates.WAIT_FOR_LIMB_SELECT
-            self._pconsole.append(self._instruction)
+    #
+    # Supporting functions
+    #
+    def set_mechanism(self, value):
+        self._mech = value
+        for k in self._val.keys():
+            if k in pfadef.tasks and self._mech not in self._val[k]:
+                self._val[k][self._mech] = []
+        self.write_to_disk()
     
-    def _wait_for_limb_select(self, event, data):
-        """
-        """
-        if event == PlutoFullAssessEvents.TYPE_LIMB_SET:
-            # Set limb type and limb.
-            self._data.set_limbtype(slimb=data["limb"], stype=data["type"])
-            # We need to now select the mechanism.
-            self._state = PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT
-            self._pconsole.append(self._instruction)
-            # Generated assessment protocol.
-            self._data.start_protocol()
-            # Set the current mechanism, and initialize the mechanism data.
-            # self._data.set_mechanism()
-            # self.log(f"Mechanism: {self._data.mech} | Task: {self._data.task}")
+    def set_task(self, value):
+        self._task = value
 
-    def _wait_for_mechanism_select(self, event, data):
+    def update(self, romval: list, session: str, tasktime: str, rawfile: str, summaryfile: str):
+        """Update the ROM summary data.
         """
-        """
-        # Check which mechanism is selected.
-        _event_mech_map = {
-            PlutoFullAssessEvents.WFE_MECHANISM_SET: "WFE",
-            PlutoFullAssessEvents.FPS_MECHANISM_SET: "FPS",
-            PlutoFullAssessEvents.HOC_MECHANISM_SET: "HOC",
-        }
-        if event not in _event_mech_map:
-            return   
-        # Set current mechanism.
-        self._data.protocol.set_mechanism(_event_mech_map[event])
-        self._state = PlutoFullAssessStates.WAIT_FOR_CALIBRATE
-        self.log(f"Mechanism set to {self._data.protocol.mech}.")
+        if self._mech is None or self._task is None:
+            raise ValueError("Mechanism or task not set. Cannot update ROM data.")
+        # Update value
+        self._val[self._task][self._mech].append({
+            "session": session,
+            "tasktime": tasktime,
+            "rawfile": rawfile,
+            "summaryfile": summaryfile,
+            "romval": romval,
+            "rom": np.mean(np.array(romval), axis=0).tolist(),
+        })
 
-    def _wait_for_calibrate(self, event, data):
-        """
-        """
-        # Check if the calibration is done.
-        if event == PlutoFullAssessEvents.CALIBRATED:
-            self._data.protocol.set_mechanism_calibrated(data["mech"])
-            self.log(f"Mechanism {self._data.protocol.mech} calibrated.")
-            # Next task is AROM.
-            self._state = PlutoFullAssessStates.WAIT_FOR_AROM_ASSESS
-
-    def _wait_for_arom_assess(self, event, data):
-        pass
-
-    def _wait_for_prom_assess(self, event, data):
-        pass
-
-    def _wait_for_aprom_assess(self, event, data):
-        pass
-
-    def _wait_for_discreach_assess(self, event, data):
-        """
-        """
-        pass
-
-    def _wait_for_prop_assess(self, event, data):
-        """
-        """
-        pass
-
-    def _wait_for_fctrl_assess(self, event, data):
-        """
-        """
-        pass
-
-    def _task_done(self, event, data):
-        """
-        """
-        pass
-
-    def _wait_for_mechanism_done(self, event, data):
-        """
-        """
-        pass
-
-    def _wait_for_subject_limb_done(self, event, data):
-        """
-        """
-        pass
+        # Write to disk
+        self.write_to_disk()
     
     #
-    # Protocol console logging
+    # Data logging functions
     #
-    def log(self, msg):
-        """Log the message to the protocol console.
+    def create_rom_summary_file(self):
+        if pathlib.Path(self.filename).exists():
+            with open(self.filename, "r") as fh:
+                self._val = json.load(fh)
+        else:
+            self.write_to_disk()
+    
+    def write_to_disk(self):
+        """Write the ROM data to disk.
         """
-        if len(self._pconsolemsgs) > 100:
-            self._pconsolemsgs.pop(0)
-        self._pconsolemsgs.append(f"{dt.now().strftime('%m/%d %H:%M:%S'):<15} {msg}")
-        self._pconsole.clear()
-        self._pconsole.append("\n".join(self._pconsolemsgs))
-        self._pconsole.verticalScrollBar().setValue(self._pconsole.verticalScrollBar().maximum())
-
+        with open(self.filename, 'w') as f:
+            json.dump(self._val, f, indent=4)
 
 
 class DataFrameModel(QAbstractTableModel):

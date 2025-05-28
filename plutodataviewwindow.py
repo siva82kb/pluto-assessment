@@ -154,12 +154,9 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
         try:
             self.pluto.set_control_type("NONE")
             self.pluto.close()
-            print("PLUTO closed.")
         except Exception as e:
             print(f"Error during close: {e}")
-        
-        # Accept the close event.
-        event.accept()
+        return super().closeEvent(event)
 
     
 if __name__ == '__main__':

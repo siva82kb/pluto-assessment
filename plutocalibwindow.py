@@ -9,6 +9,7 @@ Email: siva82kb@gmail.com
 
 import sys
 import numpy as np
+from datetime import datetime as dt
 
 from qtpluto import QtPluto
 
@@ -99,7 +100,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO calibration window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None, mechanism: str=None, modal=False, dataviewer=False):
+    def __init__(self, parent=None, plutodev: QtPluto=None, mechanism: str=None, modal=False, dataviewer=False, onclosecb=None):
         """
         Constructor for the PlutoCalibrationWindow class.
         """
@@ -113,22 +114,22 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
         self._pluto = plutodev
         self._mechanism = mechanism
 
-        # Initialize the state machine.
-        self._smachine = PlutoCalibrationStateMachine(self._pluto)
-
-        # Set to NOMECH to start with
-        self._pluto.calibrate("NOMECH")
-        # self._pluto.reset_calibration("NOMECH")
-        # self._pluto.reset_calibration("NOMECH")
-
-        # Attach callbacks
-        self.pluto.newdata.connect(self._callback_pluto_newdata)
-        self.pluto.btnreleased.connect(self._callback_pluto_btn_released)
-
         # Heartbeat timer
         self.heartbeattimer = QTimer()
         self.heartbeattimer.timeout.connect(lambda: self.pluto.send_heartbeat())
         self.heartbeattimer.start(250)
+
+        # Set to NOMECH to start with
+        self.pluto.send_heartbeat()
+        self._pluto.calibrate("NOMECH")
+         # Pause for 0.5sec
+        QTimer.singleShot(500, lambda: None) 
+
+        # Initialize the state machine.
+        self._smachine = PlutoCalibrationStateMachine(self._pluto)
+
+        # Attach callbacks
+        self._attach_pluto_callbacks()
 
         # Update UI.
         self.update_ui()
@@ -143,6 +144,8 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
             # Open the device data viewer by default.
             self._open_devdata_viewer()
 
+        # Set the callback when the window is closed.
+        self.on_close_callback = onclosecb
 
     @property
     def pluto(self):
@@ -199,7 +202,15 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
     
     #
     # Signal Callbacks
-    # 
+    #
+    def _attach_pluto_callbacks(self):
+        self.pluto.newdata.connect(self._callback_pluto_newdata)
+        self.pluto.btnreleased.connect(self._callback_pluto_btn_released)
+    
+    def _detach_pluto_callbacks(self):
+        self.pluto.newdata.disconnect(self._callback_pluto_newdata)
+        self.pluto.btnreleased.disconnect(self._callback_pluto_btn_released)
+    
     def _callback_pluto_newdata(self):
         self._smachine.run_statemachine(
             pdef.PlutoEvents.NEWDATA,
@@ -209,7 +220,6 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 
     def _callback_pluto_btn_released(self):
         # Run the statemachine
-        print("Button released.", self._smachine.state)
         self._smachine.run_statemachine(
             pdef.PlutoEvents.RELEASED,
             self._mechanism
@@ -220,23 +230,18 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
     # Close event
     #
     def closeEvent(self, event):
-        try:
-            self.pluto.set_control_type("NONE")
-            self.pluto.close()
-        except Exception as e:
-            print(f"Error during close: {e}")
-        try:
-            self._devdatawnd.close()
-        except:
-            pass
-        # Accept the close event.
-        event.accept()
+        # Run the callback
+        if self.on_close_callback:
+            self.on_close_callback()
+        # Disconnect the PLUTO callbacks.
+        self._detach_pluto_callbacks()
+        return super().closeEvent(event)
 
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM12")
     pcalib = PlutoCalibrationWindow(plutodev=plutodev, mechanism="WFE",
-                                    dataviewer=True)
+                                    dataviewer=True, onclosecb=lambda: print(dt.now()))
     pcalib.show()
     sys.exit(app.exec_())

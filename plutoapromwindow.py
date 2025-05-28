@@ -398,7 +398,7 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
     Class for handling the operation of the PLUTO ROM assessment window.
     """
 
-    def __init__(self, parent=None, plutodev: QtPluto=None, assessinfo: dict=None, modal=False):
+    def __init__(self, parent=None, plutodev: QtPluto=None, assessinfo: dict=None, modal=False, onclosecb=None):
         """
         Constructor for the PlutoAPRomAssessWindow class.
         """
@@ -431,6 +431,9 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
 
         # Update UI.
         self.update_ui()
+
+        # Set the callback when the window is closed.
+        self.on_close_callback = onclosecb
 
     @property
     def pluto(self):
@@ -733,6 +736,12 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
             self.data.demodone = not self.ui.cbTrialRun.isChecked()
             # Retart ROM assessment statemachine
             self._smachine.reset_statemachine()
+    
+    
+    def closeEvent(self, event):
+        if self.on_close_callback:
+            self.on_close_callback()
+        return super().closeEvent(event)
 
 
 if __name__ == '__main__':

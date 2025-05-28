@@ -41,11 +41,11 @@ from ui_plutofullassessment import Ui_PlutoFullAssessor
 
 import plutodefs as pdef
 import plutofullassessdef as pfadef
-from plutofullassesssupport import PlutoFullAssessmentStateMachine
-from plutofullassesssupport import PlutoFullAssessEvents, PlutoFullAssessStates
-from plutofullassesssupport import PlutoAssessmentData
-from plutofullassesssupport import PlutoAssessmentProtocolData
-from plutofullassesssupport import DataFrameModel
+from plutofullassessstatemachine import PlutoFullAssessmentStateMachine
+from plutofullassessstatemachine import PlutoFullAssessEvents, PlutoFullAssessStates
+from plutofullassesssdata import PlutoAssessmentData
+from plutofullassesssdata import PlutoAssessmentProtocolData
+from plutofullassesssdata import DataFrameModel
 
 
 DEBUG = True
@@ -76,9 +76,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Assessment data
         self.data:PlutoAssessmentData  = PlutoAssessmentData()
 
-        # Assessment data.
-        self.assessdata = {_t: [] for _t in pfadef.tasks}
-        
         # Initialize timers.
         self.apptimer = QTimer()
         self.apptimer.timeout.connect(self._callback_app_timer)
@@ -124,6 +121,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._testdevwnd = None
         self._romwnd = None
         self._propwnd = None
+        self._currwndclosed = True
         self._wnddata = {}
 
         # State machines for new windows
@@ -216,9 +214,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Calibration window and open it as a modal window.
         self._calibwnd = PlutoCalibrationWindow(plutodev=self.pluto,
                                                 mechanism=self.data.protocol.mech,
-                                                modal=True)
-        self._calibwnd.closeEvent = self._calibwnd_close_event
+                                                modal=True,
+                                                onclosecb=self._calibwnd_close_event)
         self._calibwnd.show()
+        self._currwndclosed = False
     
     def _callback_test_device(self):
         # Disable main controls
@@ -229,8 +228,16 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._testdevwnd.show()
 
     def _callback_assess_arom(self):
-        # Set the current task.
-        self.data.protocol.set_task("AROM")
+        # Check if AROM has already been assessed and needs to be reassessed.
+        if self._reassess_requested("AROM") is False:
+            return
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            PlutoFullAssessEvents.AROM_ASSESS,
+            PlutoFullAssessEvents.AROM_ASSESS
+        )
+        # Update UI
+        self.update_ui()
         # Disable main controls
         self._maindisable = True
         self._romwnd = PlutoAPRomAssessWindow(
@@ -243,15 +250,20 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "rawfile": self.data.protocol.rawfilename,
                 "summaryfile": self.data.protocol.summaryfilename,
             },
-            modal=True
+            modal=True,
+            onclosecb=self._aromwnd_close_event
         )
         # Attach to the aromset and promset events.
-        self._romwnd.closeEvent = self._aromwnd_close_event
+        # self._romwnd.closeEvent = self._aromwnd_close_event
         self._romwnd.show()
+        self._currwndclosed = False
 
     def _callback_assess_prom(self):
-        # Set the current task.
-        self.data.protocol.set_task("PROM")
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            PlutoFullAssessEvents.PROM_ASSESS,
+            PlutoFullAssessEvents.PROM_ASSESS
+        )
         # Disable main controls
         self._maindisable = True
         self._romwnd = PlutoAPRomAssessWindow(
@@ -263,7 +275,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "ntrials": pfadef.protocol["AROM"]["N"],
                 "rawfile": self.data.protocol.rawfilename,
                 "summaryfile": self.data.protocol.summaryfilename,
-                "arom": self.assessdata["AROM"][-1]["rom"]
+                "arom": self.data.romsumry["AROM"][self.data.protocol.mech][-1]["rom"]
             },
             modal=True
         )
@@ -395,22 +407,25 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     #
     # Other callbacks
     #
-    def _calibwnd_close_event(self, event):
-        try:
-            self._calibwnd.close()
-        except:
-            pass
-        self._calibwnd = None
+    def _calibwnd_close_event(self, event=None):
+        # Check if the window is already closed.
+        if self._currwndclosed is True:
+            self._calibwnd = None
+            return
+        # Window not closed.
         # Reenable main controls
         self._maindisable = False
         # Check of the calibration was successful.
         if (pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism) == self.data.protocol.mech
             and self.pluto.calibration == 1):
             # Run the state machine.
+            print(self._smachine.state)
             self._smachine.run_statemachine(
                 PlutoFullAssessEvents.CALIBRATED,
                 {"mech": pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism)}
             )
+        # Set the window closed flag.
+        self._currwndclosed = True
         self.update_ui()
     
     def _testwnd_close_event(self, event):
@@ -419,48 +434,38 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._maindisable = False
 
     def _aromwnd_close_event(self, event):
-        # Update AROM assessment data.
-        self.assessdata["AROM"].append(
-            {
-                "session": self.data.session,
-                "values": self._romwnd.data.rom,
-                "rawfile": self._romwnd.data.rawfile,
-                "summaryfile": self._romwnd.data.summaryfile,
-                "rom": np.mean(np.array(self._romwnd.data.rom), axis=0).tolist(),
-            }
+        # Check if the window is already closed.
+        if self._currwndclosed is True:
+            self._romwnd = None
+            return
+        # Window not closed.
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            PlutoFullAssessEvents.AROM_SET,
+            {"romvals": self._romwnd.data.rom}
         )
-        # Update the protocol data.
-        self.data.protocol.update_mechanism_task_data(
-            self.data.session,
-            self.data.protocol.rawfilename,
-            self.data.protocol.summaryfilename
-        )
-        # Update the Table.
-        self._updatetable = True
-        
-        #
-        self._romwnd.close()
-        self._romwnd = None
-        self._wndui = None
         # Reenable main controls
         self._maindisable = False
+         # Update the Table.
+        self._updatetable = True
+        # Set the window closed flag.
+        self._currwndclosed = True
+        self.update_ui()
     
     def _promwnd_close_event(self, event):
-        # Update AROM assessment data.
-        self.assessdata["PROM"].append(
-            {
-                "session": self.data.session,
-                "values": self._romwnd.data.rom,
-                "rawfile": self.data.protocol.rawfile,
-                "summaryfile": self.data.protocol.summaryfile,
-                "rom": np.mean(np.array(self._romwnd.data.rom), axis=0).tolist(),
-            }
-        )
         # Update the protocol data.
-        self.data.protocol.update_mechanism_task_data(
+        self.data.protocol.update(
             self.data.session,
             self.data.protocol.rawfilename,
             self.data.protocol.summaryfilename
+        )
+        # Update AROM assessment data.
+        self.data.romsumry.update(
+            romval=self._romwnd.data.rom,
+            session=self.data.session,
+            tasktime=self.data.protocol.tasktime,
+            rawfile=self.data.protocol.rawfilename,
+            summaryfile=self.data.protocol.summaryfilename
         )
         # Update the Table.
         self._updatetable = True
@@ -585,6 +590,20 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             # f"{self.data.task if self.data.task is not None else '':<8}",
         ]
         return ":".join(_str)
+    
+    def _reassess_requested(self, task):
+        """
+        """
+        if task not in self.data.protocol.task_enabled[:-1]:
+            return True
+        # Ask the experimenter if this assessment is to be repeated.
+        reply = QMessageBox.question(
+            self,
+            "Reassessment Confirmation",
+            f"{task} has been assessed before.\nDo you want to reassess?",
+            QMessageBox.Ok | QMessageBox.Cancel
+        )
+        return reply == QMessageBox.Ok
 
     def _update_mech_controls(self):
         # Update the text of the radio buttons.
