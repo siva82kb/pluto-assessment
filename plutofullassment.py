@@ -234,17 +234,15 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Run the state machine.
         self._smachine.run_statemachine(
             PlutoFullAssessEvents.AROM_ASSESS,
-            PlutoFullAssessEvents.AROM_ASSESS
+            None
         )
-        # Update UI
-        self.update_ui()
         # Disable main controls
         self._maindisable = True
         self._romwnd = PlutoAPRomAssessWindow(
             plutodev=self.pluto,
             assessinfo={
                 "mechanism": self.data.protocol.mech,
-                "romtype": "Active",
+                "romtype": pfadef.ROMType.ACTIVE,
                 "session": self.data.session,
                 "ntrials": pfadef.protocol["AROM"]["N"],
                 "rawfile": self.data.protocol.rawfilename,
@@ -253,8 +251,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             modal=True,
             onclosecb=self._aromwnd_close_event
         )
-        # Attach to the aromset and promset events.
-        # self._romwnd.closeEvent = self._aromwnd_close_event
         self._romwnd.show()
         self._currwndclosed = False
 
@@ -270,18 +266,18 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             plutodev=self.pluto,
             assessinfo={
                 "mechanism": self.data.protocol.mech,
-                "romtype": "Passive",
+                "romtype": pfadef.ROMType.PASSIVE,
                 "session": self.data.session,
                 "ntrials": pfadef.protocol["AROM"]["N"],
                 "rawfile": self.data.protocol.rawfilename,
                 "summaryfile": self.data.protocol.summaryfilename,
                 "arom": self.data.romsumry["AROM"][self.data.protocol.mech][-1]["rom"]
             },
-            modal=True
+            modal=True,
+            onclosecb=self._promwnd_close_event
         )
-        # Attach to the aromset and promset events.
-        self._romwnd.closeEvent = self._promwnd_close_event
         self._romwnd.show()
+        self._currwndclosed = False
 
     def _callback_assess_aprom(self):
         # # Disable main controls
@@ -419,7 +415,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         if (pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism) == self.data.protocol.mech
             and self.pluto.calibration == 1):
             # Run the state machine.
-            print(self._smachine.state)
             self._smachine.run_statemachine(
                 PlutoFullAssessEvents.CALIBRATED,
                 {"mech": pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism)}
@@ -446,36 +441,30 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         )
         # Reenable main controls
         self._maindisable = False
-         # Update the Table.
+        # Update the Table.
         self._updatetable = True
         # Set the window closed flag.
         self._currwndclosed = True
         self.update_ui()
     
     def _promwnd_close_event(self, data):
-        # Update the protocol data.
-        self.data.protocol.update(
-            self.data.session,
-            self.data.protocol.rawfilename,
-            self.data.protocol.summaryfilename
+        # Check if the window is already closed.
+        if self._currwndclosed is True:
+            self._romwnd = None
+            return
+        # Window not closed.
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            PlutoFullAssessEvents.PROM_SET,
+            {"romval": data}
         )
-        # Update AROM assessment data.
-        self.data.romsumry.update(
-            romval=self._romwnd.data.rom,
-            session=self.data.session,
-            tasktime=self.data.protocol.tasktime,
-            rawfile=self.data.protocol.rawfilename,
-            summaryfile=self.data.protocol.summaryfilename
-        )
-        # Update the Table.
-        self._updatetable = True
-        
-        #
-        self._romwnd.close()
-        self._romwnd = None
-        self._wndui = None
         # Reenable main controls
         self._maindisable = False
+        # Update the Table.
+        self._updatetable = True
+        # Set the window closed flag.
+        self._currwndclosed = True
+        self.update_ui()
 
     def _propwnd_close_event(self, data):
         print("Proprioception assessment window closed.")

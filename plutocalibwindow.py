@@ -100,7 +100,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO calibration window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None, mechanism: str=None, modal=False, dataviewer=False, onclosecb=None):
+    def __init__(self, parent=None, plutodev: QtPluto=None, mechanism: str=None, modal=False, dataviewer=False, onclosecb=None, heartbeat=False):
         """
         Constructor for the PlutoCalibrationWindow class.
         """
@@ -115,9 +115,11 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
         self._mechanism = mechanism
 
         # Heartbeat timer
-        self.heartbeattimer = QTimer()
-        self.heartbeattimer.timeout.connect(lambda: self.pluto.send_heartbeat())
-        self.heartbeattimer.start(250)
+        self._heartbeat = heartbeat
+        if self._heartbeat:
+            self.heartbeattimer = QTimer()
+            self.heartbeattimer.timeout.connect(lambda: self.pluto.send_heartbeat())
+            self.heartbeattimer.start(250)
 
         # Set to NOMECH to start with
         self.pluto.send_heartbeat()
@@ -138,6 +140,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
             self.ui.lblPositionTitle.setText("Hand Aperture:")
         else:
             self.ui.lblPositionTitle.setText("Joint Position:")
+        self.ui.lblInstruction.setText(f"Calibration for {self._mechanism} mechanism.")
 
         # Open the PLUTO data viewer window for sanity
         if dataviewer:

@@ -278,7 +278,6 @@ class QtPluto(QObject):
         """
         if not self.is_connected():
             return
-        print(pdef.InDataType["CALIBRATE"], pdef.Mehcanisms[mech])
         self.dev.send_message([
             pdef.InDataType["CALIBRATE"],
             pdef.Mehcanisms[mech]
@@ -293,13 +292,20 @@ class QtPluto(QObject):
                     pdef.ControlType[control]]
         self.dev.send_message(_payload)
     
-    def set_control_target(self, target):
+    def set_control_target(self, target, target0=None, t0=None, dur=None):
         """Function to set the contoller target position.
         """
         if not self.is_connected():
             return
+        # Set default values
+        target0 = target0 if target0 is not None else self.target
+        t0 = t0 if t0 is not None else 0.0
+        dur = dur if dur is not None else 0.0
         _payload = [pdef.InDataType["SET_CONTROL_TARGET"]]
+        _payload += list(struct.pack('f', target0))
+        _payload += list(struct.pack('f', t0))
         _payload += list(struct.pack('f', target))
+        _payload += list(struct.pack('f', dur))
         self.dev.send_message(_payload)
 
     def start_sensorstream(self):
@@ -357,7 +363,7 @@ class QtPluto(QObject):
         # Limit the gain to the max and min value.
         gain = max(pdef.PlutoMinControlGain, min(gain, pdef.PlutoMaxControlGain))
         _payload = [pdef.InDataType["SET_CONTROL_GAIN"]]
-        _payload.append(int((gain -pdef.PlutoMinControlGain) * 255 / (pdef.PlutoMaxControlGain - pdef.PlutoMinControlGain)))
+        _payload.append(int((gain - pdef.PlutoMinControlGain) * 255 / (pdef.PlutoMaxControlGain - pdef.PlutoMinControlGain)))
         self.dev.send_message(_payload)
     
     def send_heartbeat(self):

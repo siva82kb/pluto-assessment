@@ -103,6 +103,7 @@ class Ui_PlutoTestControlWindow(object):
         self.lblControlGainValue.setObjectName("lblControlGainValue")
         self.verticalLayout.addWidget(self.lblControlGainValue)
         self.hSliderCtrlGainValue = QtWidgets.QSlider(self.verticalLayoutWidget)
+        self.hSliderCtrlGainValue.setMaximum(255)
         self.hSliderCtrlGainValue.setOrientation(QtCore.Qt.Horizontal)
         self.hSliderCtrlGainValue.setObjectName("hSliderCtrlGainValue")
         self.verticalLayout.addWidget(self.hSliderCtrlGainValue)

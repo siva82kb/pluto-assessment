@@ -108,6 +108,7 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
             f"Torque  : {self.pluto.torque:3.1f}Nm",
             f"Control : {self.pluto.control:3.1f}",
             f"Target  : {self.pluto.target:3.1f}",
+            f"Desired : {self.pluto.desired:3.1f}",
         ]
         # Check if in DIAGNOSTICS mode.
         if pdef.get_name(pdef.OutDataType, self.pluto.datatype) == "DIAGNOSTICS":

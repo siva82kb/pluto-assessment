@@ -50,7 +50,7 @@ INST_X_POSITION = 0.5
 INST_Y_POSITION = 2.75
 
 
-class AROMRawDataLoggingState(Enum):
+class APROMRawDataLoggingState(Enum):
     WAIT_FOR_LOG = 0
     LOG_DATA = 1
     LOGGING_DONE = 2
@@ -79,7 +79,7 @@ class PlutoAPRomData(object):
         # ROM data
         self._rom = [[] for _ in range(self.ntrials)]
         # Logging variables
-        self._logstate: AROMRawDataLoggingState = AROMRawDataLoggingState.WAIT_FOR_LOG
+        self._logstate: APROMRawDataLoggingState = APROMRawDataLoggingState.WAIT_FOR_LOG
         self._rawfilewriter: CSVBufferWriter = CSVBufferWriter(
             self.rawfile, 
             header=pfadef.RAWDATA_HEADER
@@ -118,7 +118,7 @@ class PlutoAPRomData(object):
     @property
     def arom(self):
         return (self._assessinfo["arom"] 
-                if (self._assessinfo["romtype"] != "Active"
+                if (self._assessinfo["romtype"] != pfadef.ROMType.ACTIVE
                     and "arom" in self._assessinfo 
                     and self._assessinfo["arom"]) 
                 else None)
@@ -222,14 +222,14 @@ class PlutoAPRomData(object):
     def set_startpos(self):
         """Sets the start position as the average of trial data.
         """
-        self._startpos = np.mean(self._trialdata['pos'])
+        self._startpos = float(np.mean(self._trialdata['pos']))
         self._trialrom = [self._startpos]
 
     def start_rawlogging(self):
-        self._logstate = AROMRawDataLoggingState.LOG_DATA
+        self._logstate = APROMRawDataLoggingState.LOG_DATA
     
     def terminate_rawlogging(self):
-        self._logstate = AROMRawDataLoggingState.LOGGING_DONE
+        self._logstate = APROMRawDataLoggingState.LOGGING_DONE
         self._rawfilewriter.close()
         self._rawfilewriter = None
     
@@ -411,6 +411,7 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
         # PLUTO device
         self._pluto = plutodev
 
+        # APROM assessment data
         self.data: PlutoAPRomData = PlutoAPRomData(assessinfo=assessinfo)
 
         # Set control to NONE
@@ -662,7 +663,6 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
         _pgobj.addItem(self.ui.strtZoneFill)
 
         # AROM lines when appropriate.
-        print(self.data.arom)
         if self.data.arom is not None:
             _pos = ([-self.data.arom[1], -self.data.arom[1]]
                     if self.data.mechanism == "HOC"
@@ -717,7 +717,7 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
             self.update_ui()
         #
         # Log data
-        if self.data.logstate == AROMRawDataLoggingState.LOG_DATA:        
+        if self.data.logstate == APROMRawDataLoggingState.LOG_DATA:        
             self.data.rawfilewriter.write_row([
                 self.pluto.systime, self.pluto.currt, self.pluto.packetnumber,
                 self.pluto.status, self.pluto.controltype, self.pluto.error, self.pluto.mechanism,
@@ -760,14 +760,14 @@ if __name__ == '__main__':
         plutodev=plutodev, 
         assessinfo={
             "mechanism": "HOC",
-            "romtype": "Passive",
+            "romtype": pfadef.ROMType.ACTIVE,
             "session": "testing",
             "ntrials": 3,
             "rawfile": "rawfiletest.csv",
             "summaryfile": "summaryfiletest.csv",
             "arom": [0, 5],
-        }
+        },
+        onclosecb=lambda data: print(f"ROM set: {data}"),
     )
-    pcalib.closeEvent = lambda : print(f"ROM set: {pcalib.data.rom}")
     pcalib.show()
     sys.exit(app.exec_())

@@ -20,7 +20,7 @@ PlutoMinControlBound = 0.0
 PlutoMaxControlBound = 1.0
 
 # Min, Max control gain
-PlutoMinControlGain = 10.0
+PlutoMinControlGain = 1.0
 PlutoMaxControlGain = 10.0
 
 class PlutoEvents(Enum):

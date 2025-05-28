@@ -34,6 +34,15 @@ ROM_SUMMARY_HEADER = [
     "session", "trial", "startpos", "rommin", "rommax", "romrange", "torqmin", "torqmax"
 ]
 
+class ROMType(Enum):
+    ACTIVE = "Active"
+    PASSIVE = "Passive"
+    ASSISTED_PASSIVE = "Assisted Passive"
+
+    def __str__(self):
+        return self.value
+
+
 # Mechanisms labels
 mech_labels = {
     "WFE": "Wrist Flexion/Extension",
