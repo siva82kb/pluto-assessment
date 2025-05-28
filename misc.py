@@ -24,6 +24,9 @@ def rangea_within_rangeb(rangea: tuple[float], rangeb: tuple[float]) -> bool:
     return rangea[0] >= rangeb[0] and rangea[1] <= rangeb[1]
 
 
+def is_out_of_range(val, minval, maxval, thres):
+    return (val < minval - thres) or (val > maxval + thres)
+
 #
 # CSV Buffered Writer
 #

@@ -298,7 +298,7 @@ class QtPluto(QObject):
         if not self.is_connected():
             return
         # Set default values
-        target0 = target0 if target0 is not None else self.target
+        target0 = target0 if target0 is not None else self.desired
         t0 = t0 if t0 is not None else 0.0
         dur = dur if dur is not None else 0.0
         _payload = [pdef.InDataType["SET_CONTROL_TARGET"]]

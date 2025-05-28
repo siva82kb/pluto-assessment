@@ -698,6 +698,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         _dispdata += [
             f"Control : {self.pluto.control:3.1f}",
             f"Target  : {self.pluto.target:3.1f}",
+            f"Desired : {self.pluto.desired:3.1f}",
         ]
         # Check if in DIAGNOSTICS mode.
         if pdef.get_name(pdef.OutDataType, self.pluto.datatype) == "DIAGNOSTICS":
