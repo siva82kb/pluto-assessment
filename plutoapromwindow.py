@@ -423,8 +423,7 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
         self._smachine = PlutoAPRomAssessmentStateMachine(self._pluto, self.data, self.ui.subjInst)
 
         # Attach callbacks
-        self.pluto.newdata.connect(self._callback_pluto_newdata)
-        self.pluto.btnreleased.connect(self._callback_pluto_btn_released)
+        self._attach_pluto_callbacks()
 
         # Attach control callbacks
         self.ui.cbTrialRun.clicked.connect(self._callback_trialrun_clicked)
@@ -693,7 +692,15 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
 
     #
     # Signal Callbacks
-    # 
+    #
+    def _attach_pluto_callbacks(self):
+        self.pluto.newdata.connect(self._callback_pluto_newdata)
+        self.pluto.btnreleased.connect(self._callback_pluto_btn_released)
+    
+    def _detach_pluto_callbacks(self):
+        self.pluto.newdata.disconnect(self._callback_pluto_newdata)
+        self.pluto.btnreleased.disconnect(self._callback_pluto_btn_released)
+    
     def _callback_pluto_newdata(self):
         # Update trial data.
         self.data.add_newdata(
@@ -740,7 +747,9 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
     
     def closeEvent(self, event):
         if self.on_close_callback:
-            self.on_close_callback()
+            self.on_close_callback(data=self.data.rom)
+        # Detach PLUTO callbacks.
+        self._detach_pluto_callbacks()
         return super().closeEvent(event)
 
 

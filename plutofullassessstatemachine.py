@@ -167,9 +167,7 @@ class PlutoFullAssessmentStateMachine():
             self._pconsole.append(self._instruction)
             # Generated assessment protocol.
             self._data.start_protocol()
-            # Set the current mechanism, and initialize the mechanism data.
-            # self._data.set_mechanism()
-            # self.log(f"Mechanism: {self._data.mech} | Task: {self._data.task}")
+            self.log(f"Protocol started.")
 
     def _wait_for_mechanism_select(self, event, data):
         """
@@ -203,12 +201,6 @@ class PlutoFullAssessmentStateMachine():
         """
         # Check if AROM is et.
         if event == PlutoFullAssessEvents.AROM_SET:
-            # Update the protocol data.
-            self._data.protocol.update(
-                self._data.session,
-                self._data.protocol.rawfilename,
-                self._data.protocol.summaryfilename
-            )
             # Update AROM assessment data.
             self._data.romsumry.update(
                 romval=data["romval"],
@@ -217,13 +209,22 @@ class PlutoFullAssessmentStateMachine():
                 rawfile=self._data.protocol.rawfilename,
                 summaryfile=self._data.protocol.summaryfilename
             )
+            # Update the protocol data.
+            self._data.protocol.update(
+                self._data.session,
+                self._data.protocol.rawfilename,
+                self._data.protocol.summaryfilename
+            )
             # Jumpy to the next task state.
             self._state = self._task_to_nextstate[self._data.protocol.task_enabled[-1]]
+            self.log(f"AROM Set: [{self._data.romsumry['AROM'][-1]['rom'][0]:+2.2f}, {self._data.romsumry['AROM'][-1]['rom'][1]:+2.2f}]")
         elif event != PlutoFullAssessEvents.AROM_ASSESS:
             self._state = self._event_to_nextstate[event]
         else:
             # Set the current task.
             self._data.protocol.set_task("AROM")
+            self._data.romsumry.set_task("AROM")
+            self.log(f"Task set to AROM.")
 
     def _wait_for_prom_assess(self, event, data):
         """
@@ -246,11 +247,14 @@ class PlutoFullAssessmentStateMachine():
             )
             # Jumpy to the next task state.
             self._state = self._task_to_nextstate[self._data.protocol.task_enabled[-1]]
+            self.log(f"PROM Set: [{self._data.romsumry['PROM'][-1]['rom'][0]:+2.2f}, {self._data.romsumry['PROM'][-1]['rom'][1]:+2.2f}]")
         elif event != PlutoFullAssessEvents.PROM_ASSESS:
             self._state = self._event_to_nextstate[event]
         else:
             # Set the current task.
             self._data.protocol.set_task("PROM")
+            self._data.romsumry.set_task("PROM")
+            self.log(f"Task set to AROM.")
 
     def _wait_for_aprom_assess(self, event, data):
         pass

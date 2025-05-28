@@ -407,7 +407,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     #
     # Other callbacks
     #
-    def _calibwnd_close_event(self, event=None):
+    def _calibwnd_close_event(self, data=None):
         # Check if the window is already closed.
         if self._currwndclosed is True:
             self._calibwnd = None
@@ -428,12 +428,12 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._currwndclosed = True
         self.update_ui()
     
-    def _testwnd_close_event(self, event):
+    def _testwnd_close_event(self, data=None):
         self._testdevwnd = None
         # Reenable main controls
         self._maindisable = False
 
-    def _aromwnd_close_event(self, event):
+    def _aromwnd_close_event(self, data=None):
         # Check if the window is already closed.
         if self._currwndclosed is True:
             self._romwnd = None
@@ -442,7 +442,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Run the state machine.
         self._smachine.run_statemachine(
             PlutoFullAssessEvents.AROM_SET,
-            {"romvals": self._romwnd.data.rom}
+            {"romval": data}
         )
         # Reenable main controls
         self._maindisable = False
@@ -452,7 +452,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._currwndclosed = True
         self.update_ui()
     
-    def _promwnd_close_event(self, event):
+    def _promwnd_close_event(self, data):
         # Update the protocol data.
         self.data.protocol.update(
             self.data.session,
@@ -477,7 +477,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Reenable main controls
         self._maindisable = False
 
-    def _propwnd_close_event(self, event):
+    def _propwnd_close_event(self, data):
         print("Proprioception assessment window closed.")
         # Set device to no control.
         self.pluto.set_control_type("NONE")
