@@ -749,10 +749,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     #
     # Device Data Viewer Functions 
     #
-    # def _open_devdata_viewer(self):
-    #     self._devdatawnd = PlutoDataViewWindow(plutodev=self.pluto,
-    #                                            pos=(50, 400))
-    #     self._devdatawnd.show()
+
 
     #
     # Main window close event

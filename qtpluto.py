@@ -18,6 +18,7 @@ import plutodefs as pdef
 
 # Frame rate estimation window
 FR_WINDOW_N = 100
+
 class QtPluto(QObject):
     """
     Class to handle PLUTO IO operations. 
@@ -25,19 +26,8 @@ class QtPluto(QObject):
     newdata = pyqtSignal()
     btnpressed = pyqtSignal()
     btnreleased = pyqtSignal()
-    datanames = (
-        "time",
-        "status",
-        "error",
-        "actuated",
-        "angle",
-        "torque",
-        "control",
-        "desired",
-        "button"
-    )
 
-    def __init__(self, port=None, baudrate=115200) -> None:
+    def __init__(self, port=None, baudrate=115200, limb="Right") -> None:
         super().__init__()
         self.dev = JediComm(port, baudrate)
         # Upacked data from PLUTO with time stamp.
@@ -57,6 +47,8 @@ class QtPluto(QObject):
         self._version = ""
         self._devname = ""
         self._compliedate = ""
+        # Limb being used with Pluto
+        self._limb = limb
         # Packet decoding functions.
         self._packet_type_handlers = {
             pdef.OutDataType["SENSORSTREAM"]: self._handle_stream,
@@ -109,6 +101,10 @@ class QtPluto(QObject):
     @property
     def mechanism(self):
         return self.currstatedata[3] >> 4 if len(self.currstatedata) > 0 else None
+    
+    @property
+    def limb(self):
+        return (self.currstatedata[3] >> 2) & 0x03 if len(self.currstatedata) > 0 else None
     
     @property
     def actuated(self):
@@ -312,10 +308,6 @@ class QtPluto(QObject):
         _payload += list(struct.pack('f', t0))
         _payload += list(struct.pack('f', target))
         _payload += list(struct.pack('f', dur))
-        # sys.stdout.write("Setting control target:")
-        # for v in _payload:
-        #     sys.stdout.write(f" {v}")
-        # sys.stdout.write("\n")
         self.dev.send_message(_payload)
 
     def start_sensorstream(self):
@@ -374,6 +366,15 @@ class QtPluto(QObject):
         gain = max(pdef.PlutoMinControlGain, min(gain, pdef.PlutoMaxControlGain))
         _payload = [pdef.InDataType["SET_CONTROL_GAIN"]]
         _payload.append(int((gain - pdef.PlutoMinControlGain) * 255 / (pdef.PlutoMaxControlGain - pdef.PlutoMinControlGain)))
+        self.dev.send_message(_payload)
+    
+    def set_limb(self, limb):
+        """Set the limb.
+        """
+        if not self.is_connected():
+            return
+        _payload = [pdef.InDataType["SET_LIMB"]]
+        _payload.append(struct.pack('b', pdef.LimbType[limb])[0])
         self.dev.send_message(_payload)
     
     def send_heartbeat(self):

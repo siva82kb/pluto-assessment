@@ -100,7 +100,8 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO calibration window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None, mechanism: str=None, modal=False, dataviewer=False, onclosecb=None, heartbeat=False):
+    def __init__(self, parent=None, plutodev: QtPluto=None, limb=None, mechanism: str=None, 
+                 modal=False, dataviewer=False, onclosecb=None, heartbeat=False):
         """
         Constructor for the PlutoCalibrationWindow class.
         """
@@ -112,6 +113,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
         
         # PLUTO device
         self._pluto = plutodev
+        self._limb = limb if limb else "NOLIMB"
         self._mechanism = mechanism
 
         # Heartbeat timer
@@ -123,6 +125,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 
         # Set to NOMECH to start with
         self.pluto.send_heartbeat()
+        self._pluto.set_limb(self._limb)
         self._pluto.calibrate("NOMECH")
          # Pause for 0.5sec
         QTimer.singleShot(500, lambda: None) 
@@ -242,9 +245,12 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 
 
 if __name__ == '__main__':
+    import qtjedi
+    qtjedi._OUTDEBUG = True
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM12")
-    pcalib = PlutoCalibrationWindow(plutodev=plutodev, mechanism="WFE",
-                                    dataviewer=True, onclosecb=lambda: print(dt.now()))
+    pcalib = PlutoCalibrationWindow(plutodev=plutodev, limb="LEFT", mechanism="WFE",
+                                    dataviewer=True, heartbeat=True, 
+                                    onclosecb=lambda: print(dt.now()))
     pcalib.show()
     sys.exit(app.exec_())

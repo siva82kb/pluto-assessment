@@ -28,6 +28,12 @@ class PlutoEvents(Enum):
     RELEASED = 1
     NEWDATA = 2
 
+LimbType = {
+    "NOLIMB":   0x00,
+    "RIGHT":    0x01,
+    "LEFT":     0x02,
+}
+
 ControlType = {
     "NONE":         0x00,
     "POSITION":     0x01,
@@ -67,6 +73,7 @@ InDataType = {
     "SET_AAN_TARGET":       0x0A,
     "RESET_AAN_TARGET":     0x0B,
     "SET_CONTROL_GAIN":     0x0C,
+    "SET_LIMB":             0x0D,
     "HEARTBEAT":            0x80,
 }
 

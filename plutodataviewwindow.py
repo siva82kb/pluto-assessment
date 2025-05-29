@@ -84,44 +84,44 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
         _dispdata = [
             f"PLUTO Data [fr: {self.pluto.framerate():4.1f}Hz]",
             "----------",
-            f"Dev Name: {self.pluto.devname}",
-            f"F/W Ver : {self.pluto.version} | Compile Date: {self.pluto.compliedate}",
-            f"Time    : {self.pluto.systime}",
-            f"Dev Time: {self.pluto.currt:6.3f}s | Pack No : {self.pluto.packetnumber:06d}",
+            f"Dev Name : {self.pluto.devname}",
+            f"F/W Ver  : {self.pluto.version} | Compile Date: {self.pluto.compliedate}",
+            f"Time     : {self.pluto.systime}",
+            f"Dev Time : {self.pluto.currt:6.3f}s | Pack No : {self.pluto.packetnumber:06d}",
         ]
         _statusstr = ' | '.join((pdef.get_name(pdef.OutDataType, self.pluto.datatype),
                                  pdef.get_name(pdef.ControlType, self.pluto.controltype),
                                  pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)))
         _dispdata += [
-            f"Status  : {_statusstr}",
-            f"Error   : {pdef.get_name(pdef.ErrorTypes, self.pluto.error)}",
-            f"Mech    : {pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<6s} | Calib   : {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
-            f"Actd    : {self.pluto.actuated:<6d} | Button  : {self.pluto.button}",
+            f"Status   : {_statusstr}",
+            f"Error    : {pdef.get_name(pdef.ErrorTypes, self.pluto.error)}",
+            f"Lmb-Mech : {pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<6s} | {pdef.get_name(pdef.LimbType, self.pluto.limb):<6s} | {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
+            f"Actd     : {self.pluto.actuated:<6d} | Button  : {self.pluto.button}",
             ""
         ]
         _dispdata += [
             "~ SENSOR DATA ~",
-            f"Angle   : {self.pluto.angle:-07.2f}deg"
+            f"Angle    : {self.pluto.angle:-07.2f}deg"
             + (f" [{self.pluto.hocdisp:05.2f}cm]" if self.pluto.calibration == 1 else "")
         ]
         _dispdata += [
-            f"Torque  : {self.pluto.torque:3.1f}Nm",
-            f"Control : {self.pluto.control:3.1f}",
-            f"Target  : {self.pluto.target:3.1f}",
-            f"Desired : {self.pluto.desired:3.1f}",
+            # f"Torque  : {self.pluto.torque:3.1f}Nm",
+            f"Control  : {self.pluto.control:3.1f}",
+            f"Target   : {self.pluto.target:3.1f}",
+            f"Desired  : {self.pluto.desired:3.1f}",
         ]
         # Check if in DIAGNOSTICS mode.
         if pdef.get_name(pdef.OutDataType, self.pluto.datatype) == "DIAGNOSTICS":
             _dispdata += [
-                f"Err     : {self.pluto.err:3.1f}",
-                f"ErrDiff : {self.pluto.errdiff:3.1f}",
-                f"ErrSum  : {self.pluto.errsum:3.1f}",
+                f"Err      : {self.pluto.err:3.1f}",
+                f"ErrDiff  : {self.pluto.errdiff:3.1f}",
+                f"ErrSum   : {self.pluto.errsum:3.1f}",
             ]
         # Control bound, dir and gain
         _dispdata += [
-            f"C Bound : {self.pluto.controlbound:1.2f}",
-            f"C Dir   : {self.pluto.controldir}",
-            f"C Gain  : {self.pluto.controlgain:02.2f}",
+            f"C Bound  : {self.pluto.controlbound:1.2f}",
+            f"C Dir    : {self.pluto.controldir}",
+            f"C Gain   : {self.pluto.controlgain:02.2f}",
         ]
         self.ui.textDevData.setText('\n'.join(_dispdata))
     
@@ -161,6 +161,8 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM12")
+    plutodev.send_heartbeat()
+    plutodev.set_limb("LEFT")
     pdataview = PlutoDataViewWindow(plutodev=plutodev,
                                     mode="DIAGNOSTICS")
     pdataview.show()

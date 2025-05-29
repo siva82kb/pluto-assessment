@@ -26,7 +26,7 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO test control window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None, mech=None, modal=False, 
+    def __init__(self, parent=None, plutodev: QtPluto=None, limb=None, mech=None, modal=False, 
                  dataviewer=False, onclosedb=None, heartbeat=False):
         """
         Constructor for the PTestControlViewWindow class.
@@ -39,6 +39,7 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
         
         # PLUTO device
         self._pluto = plutodev
+        self._limb = limb
         self._mech = mech
 
         # Heartbeat timer
