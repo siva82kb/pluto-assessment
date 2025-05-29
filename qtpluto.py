@@ -12,6 +12,7 @@ from qtjedi import JediComm
 from collections import deque
 from datetime import datetime
 import struct
+import sys
 
 import plutodefs as pdef
 
@@ -298,7 +299,12 @@ class QtPluto(QObject):
         if not self.is_connected():
             return
         # Set default values
-        target0 = target0 if target0 is not None else self.desired
+        # Assign the start position carefully.
+        if target0 is None:
+            _posctrlcond = (self.controltype == pdef.ControlType["POSITION"]
+                            or self.controltype == pdef.ControlType["POSITIONAAN"])
+            target0 = (self.angle if _posctrlcond 
+                       else (0 if self.desired == 999.0 else self.desired)) 
         t0 = t0 if t0 is not None else 0.0
         dur = dur if dur is not None else 0.0
         _payload = [pdef.InDataType["SET_CONTROL_TARGET"]]
@@ -306,6 +312,10 @@ class QtPluto(QObject):
         _payload += list(struct.pack('f', t0))
         _payload += list(struct.pack('f', target))
         _payload += list(struct.pack('f', dur))
+        # sys.stdout.write("Setting control target:")
+        # for v in _payload:
+        #     sys.stdout.write(f" {v}")
+        # sys.stdout.write("\n")
         self.dev.send_message(_payload)
 
     def start_sensorstream(self):

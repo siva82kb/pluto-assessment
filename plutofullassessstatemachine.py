@@ -19,35 +19,34 @@ import json
 from enum import Enum
 
 from qtpluto import QtPluto
-import plutodefs as pdef
-import plutofullassessdef as pfadef
+# import plutodefs as pdef
+# import plutofullassessdef as pfadef
 from datetime import datetime as dt
 
-from PyQt5 import (
-    QtWidgets,)
-from PyQt5.QtCore import (
-    QTimer,)
-from PyQt5.QtWidgets import (
-    QMessageBox,
-    QInputDialog
-)
-from PyQt5 import QtCore, QtGui, QtWidgets
+# from PyQt5 import (
+#     QtWidgets,)
+# from PyQt5.QtCore import (
+#     QTimer,)
+# from PyQt5.QtWidgets import (
+#     QMessageBox,
+#     QInputDialog
+# )
+# from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QAbstractTableModel, Qt, QVariant
 
+# import plutofullassessdef as passdef
 
-import plutofullassessdef as passdef
+# from plutodataviewwindow import PlutoDataViewWindow
+# from plutocalibwindow import PlutoCalibrationWindow
+# from plutotestwindow import PlutoTestControlWindow
+# from plutoapromwindow import PlutoAPRomAssessWindow
+# from plutoromwindow import PlutoRomAssessWindow
+# from plutopropassesswindow import PlutoPropAssessWindow
 
-from plutodataviewwindow import PlutoDataViewWindow
-from plutocalibwindow import PlutoCalibrationWindow
-from plutotestwindow import PlutoTestControlWindow
-from plutoapromwindow import PlutoAPRomAssessWindow
-from plutoromwindow import PlutoRomAssessWindow
-from plutopropassesswindow import PlutoPropAssessWindow
-
-from ui_plutofullassessment import Ui_PlutoFullAssessor
+# from ui_plutofullassessment import Ui_PlutoFullAssessor
 
 from plutofullassesssdata import PlutoAssessmentData
-from misc import CSVBufferWriter
+# from misc import CSVBufferWriter
 
 
 class PlutoFullAssessEvents(Enum):
@@ -258,7 +257,35 @@ class PlutoFullAssessmentStateMachine():
             self.log(f"Task set to PROM.")
 
     def _wait_for_aprom_assess(self, event, data):
-        pass
+        """
+        """
+        # Check if AROM is et.
+        if event == PlutoFullAssessEvents.APROM_SET:
+            # Update AROM assessment data.
+            self._data.romsumry.update(
+                romval=data["romval"],
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename
+            )
+            # Update the protocol data.
+            self._data.protocol.update(
+                self._data.session,
+                self._data.protocol.rawfilename,
+                self._data.protocol.summaryfilename
+            )
+            # Jumpy to the next task state.
+            self._state = self._task_to_nextstate[self._data.protocol.task_enabled[-1]]
+            _romval = self._data.romsumry['APROM'][self._data.protocol.mech][-1]['rom']
+            self.log(f"APROM Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
+        elif event != PlutoFullAssessEvents.APROM_ASSESS:
+            self._state = self._event_to_nextstate[event]
+        else:
+            # Set the current task.
+            self._data.protocol.set_task("APROM")
+            self._data.romsumry.set_task("APROM")
+            self.log(f"Task set to APROM.")
 
     def _wait_for_discreach_assess(self, event, data):
         """

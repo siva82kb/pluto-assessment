@@ -45,6 +45,7 @@ from plutofullassessstatemachine import PlutoFullAssessmentStateMachine
 from plutofullassessstatemachine import PlutoFullAssessEvents, PlutoFullAssessStates
 from plutofullassesssdata import PlutoAssessmentData
 from plutofullassesssdata import PlutoAssessmentProtocolData
+from plutoassistpromwindow import PlutoAssistPRomAssessWindow
 from plutofullassesssdata import DataFrameModel
 
 
@@ -255,10 +256,13 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._currwndclosed = False
 
     def _callback_assess_prom(self):
+        # Check if AROM has already been assessed and needs to be reassessed.
+        if self._reassess_requested("PROM") is False:
+            return
         # Run the state machine.
         self._smachine.run_statemachine(
             PlutoFullAssessEvents.PROM_ASSESS,
-            PlutoFullAssessEvents.PROM_ASSESS
+            None
         )
         # Disable main controls
         self._maindisable = True
@@ -268,7 +272,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "mechanism": self.data.protocol.mech,
                 "romtype": pfadef.ROMType.PASSIVE,
                 "session": self.data.session,
-                "ntrials": pfadef.protocol["AROM"]["N"],
+                "ntrials": pfadef.protocol["PROM"]["N"],
                 "rawfile": self.data.protocol.rawfilename,
                 "summaryfile": self.data.protocol.summaryfilename,
                 "arom": self.data.romsumry["AROM"][self.data.protocol.mech][-1]["rom"]
@@ -280,17 +284,31 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._currwndclosed = False
 
     def _callback_assess_aprom(self):
-        # # Disable main controls
-        # self._maindisable = True
-        # self._romwnd = PlutoRomAssessWindow(plutodev=self.pluto,
-        #                                     mechanism="HOC",
-        #                                     modal=True)
-        # # Attach to the aromset and promset events.
-        # self._romwnd.aromset.connect(self._callback_aromset)
-        # self._romwnd.promset.connect(self._callback_promset)
-        # self._romwnd.closeEvent = self._romwnd_close_event
-        # self._romwnd.show()
-        pass
+        # Check if AROM has already been assessed and needs to be reassessed.
+        if self._reassess_requested("APROM") is False:
+            return
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            PlutoFullAssessEvents.APROM_ASSESS,
+            None
+        )
+        # Disable main controls
+        self._maindisable = True
+        self._romwnd = PlutoAssistPRomAssessWindow(
+            plutodev=self.pluto,
+            assessinfo={
+                "mechanism": self.data.protocol.mech,
+                "session": self.data.session,
+                "ntrials": pfadef.protocol["APROM"]["N"],
+                "rawfile": self.data.protocol.rawfilename,
+                "summaryfile": self.data.protocol.summaryfilename,
+                "arom": self.data.romsumry["AROM"][self.data.protocol.mech][-1]["rom"]
+            },
+            modal=True,
+            onclosecb=self._apromwnd_close_event
+        )
+        self._romwnd.show()
+        self._currwndclosed = False
 
     def _callback_assess_prop(self):
         # Disable main controls
@@ -456,6 +474,25 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Run the state machine.
         self._smachine.run_statemachine(
             PlutoFullAssessEvents.PROM_SET,
+            {"romval": data}
+        )
+        # Reenable main controls
+        self._maindisable = False
+        # Update the Table.
+        self._updatetable = True
+        # Set the window closed flag.
+        self._currwndclosed = True
+        self.update_ui()
+    
+    def _apromwnd_close_event(self, data):
+        # Check if the window is already closed.
+        if self._currwndclosed is True:
+            self._romwnd = None
+            return
+        # Window not closed.
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            PlutoFullAssessEvents.APROM_SET,
             {"romval": data}
         )
         # Reenable main controls

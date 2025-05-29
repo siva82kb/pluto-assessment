@@ -71,7 +71,7 @@ class PlutoAPRomAssessStates(Enum):
 class PlutoAPRomData(object):
     def __init__(self, assessinfo: dict):
         self._assessinfo = assessinfo
-        self._demodone = None
+        self._demomode = None
         # Trial variables
         self._currtrial = 0
         self._startpos = None
@@ -142,16 +142,12 @@ class PlutoAPRomData(object):
         return self._trialdata
     
     @property
-    def demodone(self):
-        return self._demodone
+    def demomode(self):
+        return self._demomode
     
-    @demodone.setter
-    def demodone(self, value):
-        self._demodone = value
-    
-    @property
-    def in_demo_mode(self):
-        return self._demodone is False
+    @demomode.setter
+    def demomode(self, value):
+        self._demomode = value
     
     @property
     def logstate(self):
@@ -167,14 +163,14 @@ class PlutoAPRomData(object):
     def rawfilewriter(self):
         return self._rawfilewriter
     
-    def start_newtrial(self):
+    def start_newtrial(self, reset: bool = False):
         """Start a new trial.
         """
         if self._currtrial < self.ntrials:
             self._trialdata = {"dt": [], "pos": [], "vel": []}
             self._trialrom = []
             self._startpos = None
-            self._currtrial += 1
+            self._currtrial = 0 if reset else self._currtrial + 1
 
     def add_newdata(self, dt, pos):
         """Add new data to the trial data.
@@ -275,7 +271,7 @@ class PlutoAPRomAssessmentStateMachine():
         self._state = PlutoAPRomAssessStates.FREE_RUNNING
         self._statetimer = 0
         self._instruction = f""
-        self._data.start_newtrial()
+        self._data.start_newtrial(reset=True)
     
     def run_statemachine(self, event, dt):
         """Execute the state machine depending on the given even that has occured.
@@ -286,7 +282,7 @@ class PlutoAPRomAssessmentStateMachine():
 
     def _free_running(self, event, dt):
         # Check if all trials are done.
-        if not self._data.in_demo_mode and self._data.all_trials_done:
+        if not self._data.demomode and self._data.all_trials_done:
             # Set the logging state.
             if self._data.rawfilewriter is not None: 
                 self._data.terminate_rawlogging()
@@ -298,7 +294,7 @@ class PlutoAPRomAssessmentStateMachine():
             return
         
         # Wait for start.
-        if self._data.in_demo_mode:
+        if self._data.demomode:
             self._instruction = f"Hold and press PLUTO Button to demo trial."
         else:
             self._instruction = f"Hold and press PLUTO Button to start trial {self._data._currtrial+1}/{self._data.ntrials}."
@@ -310,7 +306,7 @@ class PlutoAPRomAssessmentStateMachine():
                 self._state = PlutoAPRomAssessStates.TRIAL_ACTIVE_WAIT_TO_MOVE
                 self._statetimer = 0
                 # Set the logging state.
-                if not self._data.in_demo_mode: self._data.start_rawlogging()
+                if not self._data.demomode: self._data.start_rawlogging()
     
     def _trial_active_wait_to_move(self, event, dt):
         self._instruction = f"Move an hold to record ROM."
@@ -356,7 +352,7 @@ class PlutoAPRomAssessmentStateMachine():
                     # Done with the trial.
                     self._state = PlutoAPRomAssessStates.FREE_RUNNING
                     # Set the ROM for the current trial.
-                    if not self._data.in_demo_mode:
+                    if not self._data.demomode:
                         self._data.set_rom()
                         self._data.start_newtrial()
             else:
@@ -450,11 +446,18 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
     #
     def update_ui(self):
         # Trial run checkbox
-        # Check if the assessment is started without clinical trial.
-        if self.data.demodone is not True:
-            self.data.demodone = (self._smachine.state == PlutoAPRomAssessStates.TRIAL_ACTIVE_WAIT_TO_MOVE
-                                  and self.ui.cbTrialRun.isChecked() is False) 
-        self.ui.cbTrialRun.setEnabled(self.data.demodone is not True)
+        if self.ui.cbTrialRun.isEnabled():
+            _cond1 = self.data.demomode is False
+            _cond2 = (self.data.demomode is None
+                      and self._smachine.state == PlutoAPRomAssessStates.TRIAL_ACTIVE_WAIT_TO_MOVE)
+            if _cond1 or _cond2:
+                self.ui.cbTrialRun.setEnabled(False)
+
+        # # Check if the assessment is started without clinical trial.
+        # if self.data.demodone is not True:
+        #     self.data.demodone = (self._smachine.state == PlutoAPRomAssessStates.TRIAL_ACTIVE_WAIT_TO_MOVE
+        #                           and self.ui.cbTrialRun.isChecked() is False) 
+        # self.ui.cbTrialRun.setEnabled(self.data.demodone is not True)
         # Update the graph display
         # Current position
         self._update_current_position_cursor()
@@ -741,9 +744,11 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
     # Control Callbacks
     #
     def _callback_trialrun_clicked(self):
-        if self.data.demodone is None or self.data.demodone is False:
-            self.data.demodone = not self.ui.cbTrialRun.isChecked()
-            # Retart ROM assessment statemachine
+        if self.data.demomode is None and self.ui.cbTrialRun.isChecked():
+            self.data.demomode = True
+        if self.data.demomode and not self.ui.cbTrialRun.isChecked():
+            self.data.demomode = False
+            # Restart ROM assessment statemachine
             self._smachine.reset_statemachine()
     
     

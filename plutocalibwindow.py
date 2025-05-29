@@ -119,7 +119,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
         if self._heartbeat:
             self.heartbeattimer = QTimer()
             self.heartbeattimer.timeout.connect(lambda: self.pluto.send_heartbeat())
-            self.heartbeattimer.start(250)
+            self.heartbeattimer.start(500)
 
         # Set to NOMECH to start with
         self.pluto.send_heartbeat()

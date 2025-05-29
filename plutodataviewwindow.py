@@ -137,9 +137,7 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
     # Signal Callbacks
     # ss
     def _callback_pluto_newdata(self):
-        self._dispcount += 1
-        self._dispcount %= 10
-        if self._dispcount == 0:
+        if np.random.rand() < 0.1:
             self.update_ui()
     
     def _callback_pluto_button_released(self):
