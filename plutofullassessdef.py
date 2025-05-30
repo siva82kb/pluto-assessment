@@ -35,6 +35,29 @@ ROM_SUMMARY_HEADER = [
     "session", "type", "limb", "mechanism", "trial", "startpos", "rommin", "rommax", "romrange", "torqmin", "torqmax"
 ]
 
+# APROM Assessment Constant.
+#
+# APROM Assessment Constants
+#
+POS_VEL_WINDOW_LENGHT = 50
+START_POS_HOC_THRESHOLD = 0.25      # cm
+START_POS_NOT_HOC_THRESHOLD = 2.5   # deg
+STOP_POS_HOC_THRESHOLD = 0.5        # cm
+STOP_POS_NOT_HOC_THRESHOLD = 5      # deg
+VEL_HOC_THRESHOLD = 1               # cm/sec
+VEL_NOT_HOC_THRESHOLD = 5           # deg/sec
+STOP_ZONE_DURATION_THRESHOLD = 1    # sec
+HOC_NEW_ROM_TH = 0.25               # cm
+NOT_HOC_NEW_ROM_TH = 2.5            # deg
+
+#
+# Display constants
+#
+CURSOR_LOWER_LIMIT = -30
+CURSOR_UPPER_LIMIT = 10
+INST_X_POSITION = 0.5
+INST_Y_POSITION = 2.75
+
 class ROMType(Enum):
     ACTIVE = "Active"
     PASSIVE = "Passive"
