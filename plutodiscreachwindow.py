@@ -73,6 +73,14 @@ class PlutoDiscReachData(object):
             flush_interval=0.0,
             max_rows=1
         )
+    
+    @property
+    def type(self):
+        return self._assessinfo['type']
+
+    @property
+    def limb(self):
+        return self._assessinfo['limb']
 
     @property
     def mechanism(self):
@@ -97,6 +105,18 @@ class PlutoDiscReachData(object):
     @property
     def arom(self):
         return self._assessinfo["arom"]
+    
+    @property
+    def aromrange(self):
+        return self.arom[1] - self.arom[0]
+
+    @property
+    def target1(self):
+        return pfadef.DiscReachConstant.TGT1_POSITION * self.aromrange + self.arom[0]
+    
+    @property
+    def target2(self):
+        return pfadef.DiscReachConstant.TGT2_POSITION * self.aromrange + self.arom[0]
 
     @property
     def currtrial(self):
@@ -181,6 +201,9 @@ class PlutoDiscReachData(object):
         # Update the summary file.
         self._summaryfilewriter.write_row([
             self.session,
+            self.type,
+            self.limb,
+            self.mechanism,
             self.currtrial,
             self._startpos,
             self._trialrom[0],
@@ -210,12 +233,14 @@ class PlutoDiscReachData(object):
 
 
 class PlutoAPRomAssessmentStateMachine():
-    def __init__(self, plutodev, data: PlutoDiscReachData, instdisp):
+    def __init__(self, plutodev, data: PlutoDiscReachData, instdisp, timerdisp):
         self._state = PlutoDiscReachAssessStates.FREE_RUNNING
         self._statetimer = 0
+        self._holdreachtimer = 0
         self._data = data
         self._instruction = f""
         self._instdisp = instdisp
+        self._timerdisp = timerdisp
         self._pluto = plutodev
         self._stateactions = {
             PlutoDiscReachAssessStates.FREE_RUNNING: self._free_running,
@@ -246,27 +271,87 @@ class PlutoAPRomAssessmentStateMachine():
         self._instruction = f""
         self._data.start_newtrial(reset=True)
     
-    def run_statemachine(self, event, dt):
+    def run_statemachine(self, event, dt) -> bool:
         """Execute the state machine depending on the given even that has occured.
+        Returns if the UI needs an immediate update.
         """
         retval = self._stateactions[self._state](event, dt)
         self._instdisp.setText(self._instruction)
+        self._timerdisp.setText(f"{self._holdreachtimer:+02.1f} | {self._statetimer:+02.1f}")
         return retval
 
     def _free_running(self, event, dt):
         """
         """
-        pass
+        # # Check if all trials are done.
+        # if not self._data.demomode and self._data.all_trials_done:
+        #     # Set the logging state.
+        #     if self._data.rawfilewriter is not None: 
+        #         self._data.terminate_rawlogging()
+        #         self._data.terminate_summarylogging()
+        #     self._instruction = f"{self._data.romtype} ROM Assessment Done. Press the PLUTO Button to exit."
+        #     if event == pdef.PlutoEvents.RELEASED:
+        #         self._state = PlutoAPRomAssessStates.ROM_DONE
+        #         self._statetimer = 0
+        #     return
+        
+        # Wait for start.
+        if self._data.demomode:
+            self._instruction = f"Press PLUTO Button to start demo trial."
+        else:
+            self._instruction = f"PLUTO Button to start assessment."
+        if event == pdef.PlutoEvents.RELEASED:
+            self._state = PlutoDiscReachAssessStates.GET_TO_TARGET1_START
+            self._holdreachtimer = pfadef.DiscReachConstant.START_TGT_MAX_DURATION
+            self._statetimer = 0
+            # Set the logging state.
+            if not self._data.demomode: self._data.start_rawlogging()
+            return True
+        return False
 
     def _get_to_target1_start(self, event, dt):
         """
         """
-        pass
+        if event == pdef.PlutoEvents.NEWDATA:
+            # Decrement the timer.
+            self._holdreachtimer -= dt
+            # Check if the timer has run out.
+            # if self._statetimer <= 0:
+            #     # Timer has run out.
+            #     return True
+            # Check if TARGET1 has been reached.
+            if not self.subj_in_target1() or not self.subj_is_holding():
+                return False
+            # Subject in TARGET1 and holding.
+            self._state = PlutoDiscReachAssessStates.HOLDING_AT_TARGET1_START
+            self._statetimer = pfadef.DiscReachConstant.START_HOLD_DURATION
+            return True
+        return False
 
     def _holding_at_target1_start(self, event, dt):
         """
         """
-        pass
+        if event == pdef.PlutoEvents.NEWDATA:
+            # Decrement the timer.
+            self._holdreachtimer -= dt
+            self._statetimer -= dt
+            # Check if the timer has run out.
+            # if self._statetimer <= 0:
+            #     # Timer has run out.
+            #     return True
+            # Check if TARGET1 has been reached.
+            if not self.subj_in_target1() or not self.subj_is_holding():
+                # Subject in TARGET1 and holding.
+                self._state = PlutoDiscReachAssessStates.GET_TO_TARGET1_START
+                self._statetimer = 0
+                return True
+            # Check if the state timer has run out.
+            if self._statetimer <= 0:
+                self._state = PlutoDiscReachAssessStates.MOVING_TO_TARGET2
+                self._holdreachtimer = pfadef.DiscReachConstant.REACH_TGT_MAX_DURATION
+                self._statetimer = 0
+            return True
+        return False
 
     def _moving_to_target2(self, event, dt):
         """
@@ -306,6 +391,12 @@ class PlutoAPRomAssessmentStateMachine():
     #
     # Supporting functions
     #
+    def subj_in_target1(self):
+        """Check if the subject is in target1s.
+        """
+        # print(self._pluto.angle, self._data.target1, )
+        return np.abs(self._pluto.angle - self._data.target1) < pfadef.DiscReachConstant.TGT_WIDTH * self._data.aromrange
+    
     def subj_is_holding(self):
         """Check if the subject is holding the position.
         """
@@ -372,7 +463,7 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
         self._romassess_add_graph()
 
         # Initialize the state machine.
-        self._smachine = PlutoAPRomAssessmentStateMachine(self._pluto, self.data, self.ui.subjInst)
+        self._smachine = PlutoAPRomAssessmentStateMachine(self._pluto, self.data, self.ui.subjInst, self.ui.timerText)
 
         # Attach callbacks
         self._attach_pluto_callbacks()
@@ -407,21 +498,20 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
                 self.ui.cbTrialRun.setEnabled(False)
 
         # # Check if the assessment is started without clinical trial.
-        # if self.data.demodone is not True:
-        #     self.data.demodone = (self._smachine.state == PlutoDiscReachAssessStates.TRIAL_ACTIVE_WAIT_TO_MOVE
-        #                           and self.ui.cbTrialRun.isChecked() is False) 
-        # self.ui.cbTrialRun.setEnabled(self.data.demodone is not True)
+ 
         # Update the graph display
         # Current position
         self._update_current_position_cursor()
-        # if self._smachine.state == PlutoDiscReachAssessStates.TRIAL_ACTIVE_WAIT_TO_MOVE:
-        if self._smachine.in_a_trial_state:
-            self._draw_stop_zone_lines()
-            self._highlight_start_zone()
-            self._update_arom_cursor_position()
-        elif self._smachine.state == PlutoDiscReachAssessStates.FREE_RUNNING:
-            # Reset arom cursor position.
-            self._reset_display()
+        # Update target display.
+        self._updat_targets_display()
+        # # if self._smachine.state == PlutoDiscReachAssessStates.TRIAL_ACTIVE_WAIT_TO_MOVE:
+        # if self._smachine.in_a_trial_state:
+        #     self._draw_stop_zone_lines()
+        #     self._highlight_start_zone()
+        #     self._update_arom_cursor_position()
+        # elif self._smachine.state == PlutoDiscReachAssessStates.FREE_RUNNING:
+        #     # Reset arom cursor position.
+        #     self._reset_display()
         
         # Update main text
         if self.pluto.angle is None: return
@@ -453,98 +543,148 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
         else:
             if self.pluto.angle is None:
                 return
-            self.ui.currPosLine1.setData([self.pluto.angle, self.pluto.angle], [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-            self.ui.currPosLine2.setData([self.pluto.angle, self.pluto.angle], [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
+            self.ui.currPosLine1.setData(
+                [self._dispsign * self.pluto.angle,
+                 self._dispsign * self.pluto.angle],
+                [pfadef.CURSOR_LOWER_LIMIT,
+                 pfadef.CURSOR_UPPER_LIMIT]
+            )
+            self.ui.currPosLine2.setData(
+                [self._dispsign * self.pluto.angle,
+                 self._dispsign * self.pluto.angle],
+                [pfadef.CURSOR_LOWER_LIMIT,
+                 pfadef.CURSOR_UPPER_LIMIT]
+            )
+    
+    def _updat_targets_display(self):
+        # Display depending on the state.
+        if self._smachine.state == PlutoDiscReachAssessStates.FREE_RUNNING:
+            # Hide both targets.
+            self.ui.tgt1.setBrush(pfadef.DiscReachConstant.HIDE_COLOR)
+            self.ui.tgt2.setBrush(pfadef.DiscReachConstant.HIDE_COLOR)
+        elif self._smachine.state == PlutoDiscReachAssessStates.GET_TO_TARGET1_START:
+            # Show Target 1
+            self.ui.tgt1.setBrush(pfadef.DiscReachConstant.START_WAIT_COLOR)
+            # self.ui.tgt2.setBrush(pfadef.DiscReachConstant.HIDE_COLOR)
+        elif self._smachine.state == PlutoDiscReachAssessStates.HOLDING_AT_TARGET1_START:
+            # Show Target 1
+            self.ui.tgt1.setBrush(pfadef.DiscReachConstant.START_HOLD_COLOR)
+            # self.ui.tgt2.setBrush(pfadef.DiscReachConstant.HIDE_COLOR)
+        elif self._smachine.state == PlutoDiscReachAssessStates.MOVING_TO_TARGET2:
+            # Hide both targets.
+            self.ui.tgt1.setBrush(pfadef.DiscReachConstant.START_HOLD_COLOR)
+            self.ui.tgt2.setBrush(pfadef.DiscReachConstant.TARGET_DISPLAY_COLOR)
 
-    def _draw_stop_zone_lines(self):
-        _th = (pfadef.STOP_POS_HOC_THRESHOLD
-               if self.data.mechanism == "HOC"
-               else pfadef.STOP_POS_NOT_HOC_THRESHOLD)
-        if self.data.mechanism == "HOC":
-            self.ui.stopLine1.setData(
-                [self.data.startpos + _th, self.data.startpos + _th],
-                [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-            )
-            self.ui.stopLine2.setData(
-                [-self.data.startpos - _th, -self.data.startpos - _th],
-                [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-            )
-        else:
-            self.ui.stopLine1.setData(
-                [self.data.startpos - _th, self.data.startpos - _th],
-                [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-            )
-            self.ui.stopLine2.setData(
-                [self.data.startpos + _th, self.data.startpos + _th],
-                [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-            )
+
+    # def _draw_stop_zone_lines(self):
+    #     _th = (pfadef.STOP_POS_HOC_THRESHOLD
+    #            if self.data.mechanism == "HOC"
+    #            else pfadef.STOP_POS_NOT_HOC_THRESHOLD)
+    #     if self.data.mechanism == "HOC":
+    #         self.ui.stopLine1.setData(
+    #             [self.data.startpos + _th,
+    #              self.data.startpos + _th],
+    #             [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
+    #         )
+    #         self.ui.stopLine2.setData(
+    #             [-self.data.startpos - _th,
+    #              -self.data.startpos - _th],
+    #             [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
+    #         )
+    #     else:
+    #         self.ui.stopLine1.setData(
+    #             [self._dispsign * (self.data.startpos - _th),
+    #              self._dispsign * (self.data.startpos - _th)],
+    #             [pfadef.CURSOR_LOWER_LIMIT,
+    #              pfadef.CURSOR_UPPER_LIMIT]
+    #         )
+    #         self.ui.stopLine2.setData(
+    #             [self._dispsign * (self.data.startpos + _th),
+    #              self._dispsign * (self.data.startpos + _th)],
+    #             [pfadef.CURSOR_LOWER_LIMIT,
+    #              pfadef.CURSOR_UPPER_LIMIT]
+    #         )
     
-    def _update_arom_cursor_position(self):
-        if len(self.data._trialrom) == 0: return
-        if self.data.mechanism == "HOC":
-            if len(self.data._trialrom) > 1:
-                self.ui.romLine1.setData([-self.data._trialrom[-1], -self.data._trialrom[-1]],
-                                         [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-                self.ui.romLine2.setData([self.data._trialrom[-1], self.data._trialrom[-1]],
-                                         [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-                self.ui.romFill.setRect(-self.data._trialrom[-1], pfadef.CURSOR_LOWER_LIMIT,
-                                        2 * self.data._trialrom[-1], pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
-            else:
-                self.ui.romLine1.setData([0, 0], [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-                self.ui.romLine2.setData([0, 0], [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-                self.ui.romFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT, 0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
-        else:
-            self.ui.romLine1.setData([self.data._trialrom[0], self.data._trialrom[0]],
-                                     [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-            self.ui.romLine2.setData([self.data._trialrom[-1], self.data._trialrom[-1]],
-                                     [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-            # Fill between the two AROM lines
-            self.ui.romFill.setRect(self.data._trialrom[0], pfadef.CURSOR_LOWER_LIMIT,
-                                    self.data._trialrom[-1] - self.data._trialrom[0],
-                                    pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
+    # def _update_arom_cursor_position(self):
+    #     if len(self.data._trialrom) == 0: return
+    #     if self.data.mechanism == "HOC":
+    #         if len(self.data._trialrom) > 1:
+    #             self.ui.romLine1.setData([-self.data._trialrom[-1], -self.data._trialrom[-1]],
+    #                                      [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
+    #             self.ui.romLine2.setData([self.data._trialrom[-1], self.data._trialrom[-1]],
+    #                                      [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
+    #             self.ui.romFill.setRect(-self.data._trialrom[-1], pfadef.CURSOR_LOWER_LIMIT,
+    #                                     2 * self.data._trialrom[-1], pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
+    #         else:
+    #             self.ui.romLine1.setData([0, 0], [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
+    #             self.ui.romLine2.setData([0, 0], [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
+    #             self.ui.romFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT, 0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
+    #     else:
+    #         _romdisp = list(map(lambda x: self._dispsign * x, self.data._trialrom))
+    #         _romdisp.sort()
+    #         self.ui.romLine1.setData(
+    #             [_romdisp[0], _romdisp[0]],
+    #             [pfadef.CURSOR_LOWER_LIMIT,
+    #              pfadef.CURSOR_UPPER_LIMIT]
+    #         )
+    #         self.ui.romLine2.setData(
+    #             [_romdisp[-1], _romdisp[-1]],
+    #             [pfadef.CURSOR_LOWER_LIMIT,
+    #              pfadef.CURSOR_UPPER_LIMIT]
+    #         )
+    #         # Fill between the two AROM lines
+    #         self.ui.romFill.setRect(
+    #             _romdisp[0], pfadef.CURSOR_LOWER_LIMIT,
+    #             (_romdisp[-1] - _romdisp[0]),
+    #             pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT
+    #         )
     
-    def _highlight_start_zone(self):
-        if len(self.data._trialrom) == 0: return
-        # Fill the start zone
-        if self._smachine.state == PlutoDiscReachAssessStates.TRIAL_ACTIVE_HOLDING_IN_STOP_ZONE:
-            if self.data.mechanism == "HOC":
-                self.ui.strtZoneFill.setRect(-self.data.startpos - pfadef.STOP_POS_HOC_THRESHOLD,
-                                             pfadef.CURSOR_LOWER_LIMIT,
-                                             2 * (self.data.startpos + pfadef.STOP_POS_HOC_THRESHOLD),
-                                             pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
-            else:
-                self.ui.strtZoneFill.setRect(self.data.startpos - pfadef.STOP_POS_NOT_HOC_THRESHOLD,
-                                             pfadef.CURSOR_LOWER_LIMIT,
-                                             2 * pfadef.STOP_POS_NOT_HOC_THRESHOLD,
-                                             pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
-        else:
-            self.ui.strtZoneFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT,
-                                         0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
+    # def _highlight_start_zone(self):
+    #     if len(self.data._trialrom) == 0: return
+    #     # Fill the start zone
+    #     if self._smachine.state == PlutoAPRomAssessStates.TRIAL_ACTIVE_HOLDING_IN_STOP_ZONE:
+    #         if self.data.mechanism == "HOC":
+    #             self.ui.strtZoneFill.setRect(
+    #                 -self.data.startpos - pfadef.STOP_POS_HOC_THRESHOLD,
+    #                 pfadef.CURSOR_LOWER_LIMIT,
+    #                 2 * (self.data.startpos + pfadef.STOP_POS_HOC_THRESHOLD),
+    #                 pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT
+    #             )
+    #         else:
+    #             self.ui.strtZoneFill.setRect(
+    #                 self._dispsign * self.data.startpos - pfadef.STOP_POS_NOT_HOC_THRESHOLD,
+    #                 pfadef.CURSOR_LOWER_LIMIT,
+    #                 2 * pfadef.STOP_POS_NOT_HOC_THRESHOLD,
+    #                 pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT
+    #             )
+    #     else:
+    #         self.ui.strtZoneFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT,
+    #                                      0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
     
-    def _reset_display(self):
-        # Reset ROM display
-        self.ui.romLine1.setData(
-            [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-        )
-        self.ui.romLine2.setData(
-            [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-        )
-        # Fill between the two AROM lines
-        self.ui.romFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT,
-                                0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
-        # Reset stop zone.
-        self.ui.stopLine1.setData(
-            [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-        )
-        self.ui.stopLine2.setData(
-            [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-        )
-        self.ui.strtZoneFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT,
-                                     0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
+    # def _reset_display(self):
+    #     # Reset ROM display
+    #     self.ui.romLine1.setData(
+    #         [0, 0],
+    #         [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
+    #     )
+    #     self.ui.romLine2.setData(
+    #         [0, 0],
+    #         [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
+    #     )
+    #     # Fill between the two AROM lines
+    #     self.ui.romFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT,
+    #                             0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
+    #     # Reset stop zone.
+    #     self.ui.stopLine1.setData(
+    #         [0, 0],
+    #         [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
+    #     )
+    #     self.ui.stopLine2.setData(
+    #         [0, 0],
+    #         [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
+    #     )
+    #     self.ui.strtZoneFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT,
+    #                                  0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
 
     #
     # Graph plot initialization
@@ -552,19 +692,45 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
     def _romassess_add_graph(self):
         """Function to add graph and other objects for displaying HOC movements.
         """
+        # Angle display sign for the limb.
+        self._dispsign = 1.0 if self.data.limb.upper() == "RIGHT" else -1.0
+        
         _pgobj = pg.PlotWidget()
         _templayout = QtWidgets.QGridLayout()
         _templayout.addWidget(_pgobj)
         _pen = pg.mkPen(color=(255, 0, 0))
         self.ui.hocGraph.setLayout(_templayout)
-        _pgobj.setYRange(-20, 20)
-        if self.data.mechanism == "HOC":
-            _pgobj.setXRange(-10, 10)
-        else:
-            _pgobj.setXRange(pdef.PlutoAngleRanges[self.data.mechanism][0],
-                             pdef.PlutoAngleRanges[self.data.mechanism][1])
+        _aromdisp = list(map(lambda x: self._dispsign * x, self.data.arom))
+        _aromdisp.sort()
+        _pgobj.setYRange(-30, 30)
+        _pgobj.setXRange(_aromdisp[0], _aromdisp[1])
         _pgobj.getAxis('bottom').setStyle(showValues=False)
         _pgobj.getAxis('left').setStyle(showValues=False)
+        
+        # Target1 box
+        self.ui.tgt1 = QGraphicsRectItem()
+        self.ui.tgt1.setBrush(pfadef.DiscReachConstant.HIDE_COLOR)
+        self.ui.tgt1.setPen(pg.mkPen(None))
+        # print(self.data.arom, self.data.aromrange, self.data.target1, self.data.target2)
+        self.ui.tgt1.setRect(
+            self._dispsign * self.data.target1 - 0.5 * pfadef.DiscReachConstant.TGT_WIDTH * self.data.aromrange,
+            pfadef.CURSOR_LOWER_LIMIT,
+            pfadef.DiscReachConstant.TGT_WIDTH * self.data.aromrange,
+            pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT
+        )
+        _pgobj.addItem(self.ui.tgt1)
+        
+        # Target2 box
+        self.ui.tgt2 = QGraphicsRectItem()
+        self.ui.tgt2.setBrush(pfadef.DiscReachConstant.HIDE_COLOR)
+        self.ui.tgt2.setPen(pg.mkPen(None))
+        self.ui.tgt2.setRect(
+            self._dispsign * self.data.target2 - 0.5 * pfadef.DiscReachConstant.TGT_WIDTH * self.data.aromrange,
+            pfadef.CURSOR_LOWER_LIMIT,
+            pfadef.DiscReachConstant.TGT_WIDTH * self.data.aromrange,
+            pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT
+        )
+        _pgobj.addItem(self.ui.tgt2)
         
         # Current position lines
         self.ui.currPosLine1 = pg.PlotDataItem(
@@ -579,74 +745,24 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
         )
         _pgobj.addItem(self.ui.currPosLine1)
         _pgobj.addItem(self.ui.currPosLine2)
-        
-        # ROM Lines
-        self.ui.romLine1 = pg.PlotDataItem(
-            [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
-            pen=pg.mkPen(color = '#FF8888',width=2)
-        )
-        self.ui.romLine2 = pg.PlotDataItem(
-            [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
-            pen=pg.mkPen(color = '#FF8888',width=2)
-        )
-        _pgobj.addItem(self.ui.romLine1)
-        _pgobj.addItem(self.ui.romLine2)
-
-        # ROM Fill
-        self.ui.romFill = QGraphicsRectItem()
-        self.ui.romFill.setBrush(QColor(255, 136, 136, 80))  # match AROM color, alpha=80
-        self.ui.romFill.setPen(pg.mkPen(None))  # No border
-        _pgobj.addItem(self.ui.romFill)
-        
-        # Stop zone Lines
-        self.ui.stopLine1 = pg.PlotDataItem(
-            [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
-            pen=pg.mkPen(color = '#FFFFFF', width=1, style=QtCore.Qt.PenStyle.DotLine)
-        )
-        self.ui.stopLine2 = pg.PlotDataItem(
-            [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
-            pen=pg.mkPen(color = '#FFFFFF', width=1, style=QtCore.Qt.PenStyle.DotLine)
-        )
-        _pgobj.addItem(self.ui.stopLine1)
-        _pgobj.addItem(self.ui.stopLine2)
-        
-        # Start zone Fill
-        self.ui.strtZoneFill = QGraphicsRectItem()
-        self.ui.strtZoneFill.setBrush(QColor(136, 255, 136, 80))
-        self.ui.strtZoneFill.setPen(pg.mkPen(None))  # No border
-        _pgobj.addItem(self.ui.strtZoneFill)
-
-        # AROM lines when appropriate.
-        if self.data.arom is not None:
-            _pos = ([-self.data.arom[1], -self.data.arom[1]]
-                    if self.data.mechanism == "HOC"
-                    else [self.data.arom[0], self.data.arom[0]])
-            self.ui.aromPosLine1 = pg.PlotDataItem(
-                _pos,
-                [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
-                pen=pg.mkPen(color = "#1EFF00", width=1, style=QtCore.Qt.PenStyle.DotLine)
-            )
-            _pos = ([self.data.arom[1], self.data.arom[1]]
-                    if self.data.mechanism == "HOC"
-                    else [self.data.arom[1], self.data.arom[1]])
-            self.ui.aromPosLine2 = pg.PlotDataItem(
-                _pos,
-                [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
-                pen=pg.mkPen(color = '#1EFF00', width=1, style=QtCore.Qt.PenStyle.DotLine)
-            )
-            _pgobj.addItem(self.ui.aromPosLine1)
-            _pgobj.addItem(self.ui.aromPosLine2)
-        
+       
         # Instruction text
-        self.ui.subjInst = pg.TextItem(text='', color='w', anchor=(pfadef.INST_X_POSITION, pfadef.INST_Y_POSITION))
-        self.ui.subjInst.setPos(0, 0)  # Set position (x, y)
-        # Set font and size
+        self.ui.subjInst = pg.TextItem(text='', color='w', anchor=(0, 0))
+        self.ui.subjInst.setPos(_aromdisp[0], 20)  # Set position (x, y)
+        # self.ui.subjInst.setPos(self._dispsign * self.data.arom[0] + self.data.aromrange / 2, 20)  # Set position (x, y)
+        # Set font and sizex
         self.ui.subjInst.setFont(QtGui.QFont("Bahnschrift Light", 18))
-        _pgobj.addItem(self.ui.subjInst)
+        
+        # Timer text
+        self.ui.timerText = pg.TextItem(
+            text='', color='w', 
+            anchor=(0.5, 0.5)
+        )
+        self.ui.timerText.setPos(_aromdisp[0] + 0.5 * self.data.aromrange, 15)  # Set position (x, y)
+        # self.ui.timerText.setPos(self._dispsign * self.data.arom[0] + self.data.aromrange / 2, 15)  # Set position (x, y)
+        # Set font and size
+        self.ui.timerText.setFont(QtGui.QFont("Cascadia Mono", 10))
+        _pgobj.addItem(self.ui.timerText)
 
     #
     # Signal Callbacks
@@ -666,19 +782,19 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
             pos=self.pluto.hocdisp if self.data.mechanism == "HOC" else self.pluto.angle
         )
         # Run the statemachine
-        self._smachine.run_statemachine(
+        _uiupdate = self._smachine.run_statemachine(
             pdef.PlutoEvents.NEWDATA,
             dt=self.pluto.delt()
         )
         # Update the GUI only at 1/10 the data rate
-        if np.random.rand() < 0.1:
+        if _uiupdate or np.random.rand() < 0.1:
             self.update_ui()
         #
         # Log data
         if self.data.logstate == DiscReachRawDataLoggingState.LOG_DATA:        
             self.data.rawfilewriter.write_row([
                 self.pluto.systime, self.pluto.currt, self.pluto.packetnumber,
-                self.pluto.status, self.pluto.controltype, self.pluto.error, self.pluto.mechanism,
+                self.pluto.status, self.pluto.controltype, self.pluto.error, self.pluto.limb, self.pluto.mechanism,
                 self.pluto.angle, self.pluto.hocdisp, self.pluto.torque, self.pluto.control, self.pluto.target, self.pluto.desired,
                 self.pluto.controlbound, self.pluto.controldir, self.pluto.controlgain, self.pluto.button,
                 self.data.currtrial,

@@ -12,6 +12,9 @@ import numpy as np
 from enum import Enum
 import misc
 
+from PyQt5.QtGui import QColor
+
+
 # Module level constants.
 DATA_DIR = "fullassessment"
 PROTOCOL_FILE = f"{DATA_DIR}/fullassess_protocol.json"
@@ -49,6 +52,26 @@ VEL_NOT_HOC_THRESHOLD = 5           # deg/sec
 STOP_ZONE_DURATION_THRESHOLD = 1    # sec
 HOC_NEW_ROM_TH = 0.25               # cm
 NOT_HOC_NEW_ROM_TH = 2.5            # deg
+
+#
+# Discrete Reaching Constants
+#
+class DiscReachConstant:
+    TGT1_POSITION = 0.20           # Fraction of AROM range
+    TGT2_POSITION = 0.80           # Fraction of AROM range
+    TGT_WIDTH = 0.05                # Fraction of AROM range
+    START_HOLD_DURATION = 1.0       # seconds
+    TGT_HOLD_DURATION = 2.0         # seconds
+    START_TGT_MAX_DURATION = 10.0   # seconds
+    REACH_TGT_MAX_DURATION = 10.0   # seconds
+
+    # Display color constant
+    START_WAIT_COLOR = QColor(128, 128, 128, 64)
+    START_HOLD_COLOR = QColor(255, 255, 255, 128)
+    TARGET_DISPLAY_COLOR = QColor(255, 0, 0, 128)
+    TARGET_REACHED_COLOR = QColor(255, 255, 0, 128)
+    HIDE_COLOR = QColor(0, 0, 0, 0)
+
 
 #
 # Display constants
