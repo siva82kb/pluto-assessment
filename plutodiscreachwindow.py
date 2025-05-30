@@ -40,13 +40,15 @@ class PlutoDiscReachAssessStates(Enum):
     FREE_RUNNING = 0
     GET_TO_TARGET1_START = 1
     HOLDING_AT_TARGET1_START = 2
-    MOVING_TO_TARGET2 = 3
-    HOLDING_AT_TARGET2_STOP = 4
-    GET_TO_TARGET2_START = 5
-    HOLDING_AT_TARGET2_START = 6
-    MOVING_TO_TARGET1 = 7
-    HOLDING_AT_TARGET1_STOP = 8
-    DISC_REACH_DONE = 9
+    WAIT_TO_START_REACH_TO_TARGET2 = 3
+    MOVING_TO_TARGET2 = 4
+    HOLDING_AT_TARGET2_STOP = 5
+    GET_TO_TARGET2_START = 6
+    HOLDING_AT_TARGET2_START = 7
+    WAIT_TO_START_REACH_TO_TARGET1 = 8
+    MOVING_TO_TARGET1 = 9
+    HOLDING_AT_TARGET1_STOP = 10
+    DISC_REACH_DONE = 11
 
 
 class PlutoDiscReachData(object):
@@ -246,10 +248,12 @@ class PlutoAPRomAssessmentStateMachine():
             PlutoDiscReachAssessStates.FREE_RUNNING: self._free_running,
             PlutoDiscReachAssessStates.GET_TO_TARGET1_START: self._get_to_target1_start,
             PlutoDiscReachAssessStates.HOLDING_AT_TARGET1_START: self._holding_at_target1_start,
+            PlutoDiscReachAssessStates.WAIT_TO_START_REACH_TO_TARGET2: self._wait_to_start_reach_to_target2,
             PlutoDiscReachAssessStates.MOVING_TO_TARGET2: self._moving_to_target2,
             PlutoDiscReachAssessStates.HOLDING_AT_TARGET2_STOP: self._holding_at_target2_stop,
             PlutoDiscReachAssessStates.GET_TO_TARGET2_START: self._get_to_target2_start,
             PlutoDiscReachAssessStates.HOLDING_AT_TARGET2_START: self._holding_at_target2_start,
+            PlutoDiscReachAssessStates.WAIT_TO_START_REACH_TO_TARGET1: self._wait_to_start_reach_to_target1,
             PlutoDiscReachAssessStates.MOVING_TO_TARGET1: self._moving_to_target1,
             PlutoDiscReachAssessStates.HOLDING_AT_TARGET1_STOP: self._holding_at_target1_stop,
             PlutoDiscReachAssessStates.DISC_REACH_DONE: self._disc_reach_done,
@@ -347,16 +351,36 @@ class PlutoAPRomAssessmentStateMachine():
                 return True
             # Check if the state timer has run out.
             if self._statetimer <= 0:
-                self._state = PlutoDiscReachAssessStates.MOVING_TO_TARGET2
+                self._state = PlutoDiscReachAssessStates.WAIT_TO_START_REACH_TO_TARGET2
                 self._holdreachtimer = pfadef.DiscReachConstant.REACH_TGT_MAX_DURATION
                 self._statetimer = 0
             return True
+        return False
+    
+    def _wait_to_start_reach_to_target2(self, event, dt):
+        """
+        """
+        if event == pdef.PlutoEvents.NEWDATA:
+            self._holdreachtimer -= dt
+            # Check if the subject has moved out of target 1.
+            if not self.subj_in_target1():
+                self._state = PlutoDiscReachAssessStates.MOVING_TO_TARGET2
+                return True
         return False
 
     def _moving_to_target2(self, event, dt):
         """
         """
-        pass
+        if event == pdef.PlutoEvents.NEWDATA:
+            # Decrement the timer
+            self._holdreachtimer -= dt
+            if not self.subj_in_target2() or not self.subj_is_holding():
+                return False
+            # Check subject has reched target 2 and holding there.
+            self._state = PlutoDiscReachAssessStates.HOLDING_AT_TARGET2_STOP
+            self._statetimer = pfadef.DiscReachConstant.START_HOLD_DURATION
+            return True
+        return False
 
     def _holding_at_target2_stop(self, event, dt):
         """
@@ -369,6 +393,11 @@ class PlutoAPRomAssessmentStateMachine():
         pass
 
     def _holding_at_target2_start(self, event, dt):
+        """
+        """
+        pass
+    
+    def _wait_to_start_reach_to_target1(self, event, dt):
         """
         """
         pass
@@ -392,9 +421,14 @@ class PlutoAPRomAssessmentStateMachine():
     # Supporting functions
     #
     def subj_in_target1(self):
-        """Check if the subject is in target1s.
+        """Check if the subject is in target1.
         """
         # print(self._pluto.angle, self._data.target1, )
+        return np.abs(self._pluto.angle - self._data.target1) < pfadef.DiscReachConstant.TGT_WIDTH * self._data.aromrange
+    
+    def subj_in_target2(self):
+        """Check if the subject is in target2.
+        """
         return np.abs(self._pluto.angle - self._data.target1) < pfadef.DiscReachConstant.TGT_WIDTH * self._data.aromrange
     
     def subj_is_holding(self):
@@ -570,9 +604,16 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
             # Show Target 1
             self.ui.tgt1.setBrush(pfadef.DiscReachConstant.START_HOLD_COLOR)
             # self.ui.tgt2.setBrush(pfadef.DiscReachConstant.HIDE_COLOR)
-        elif self._smachine.state == PlutoDiscReachAssessStates.MOVING_TO_TARGET2:
-            # Hide both targets.
+        elif self._smachine.state == PlutoDiscReachAssessStates.WAIT_TO_START_REACH_TO_TARGET2:
+            # Show Target 2
             self.ui.tgt1.setBrush(pfadef.DiscReachConstant.START_HOLD_COLOR)
+            self.ui.tgt2.setBrush(pfadef.DiscReachConstant.TARGET_DISPLAY_COLOR)
+        elif self._smachine.state == PlutoDiscReachAssessStates.MOVING_TO_TARGET2:
+            # Hide Target 1.
+            self.ui.tgt1.setBrush(pfadef.DiscReachConstant.HIDE_COLOR)
+            self.ui.tgt2.setBrush(pfadef.DiscReachConstant.TARGET_DISPLAY_COLOR)
+        elif self._smachine.state == PlutoDiscReachAssessStates.HOLDING_AT_TARGET2_STOP:
+            # Highlight target 2.
             self.ui.tgt2.setBrush(pfadef.DiscReachConstant.TARGET_DISPLAY_COLOR)
 
 

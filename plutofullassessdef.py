@@ -57,8 +57,8 @@ NOT_HOC_NEW_ROM_TH = 2.5            # deg
 # Discrete Reaching Constants
 #
 class DiscReachConstant:
-    TGT1_POSITION = 0.20           # Fraction of AROM range
-    TGT2_POSITION = 0.80           # Fraction of AROM range
+    TGT1_POSITION = 0.20            # Fraction of AROM range
+    TGT2_POSITION = 0.80            # Fraction of AROM range
     TGT_WIDTH = 0.05                # Fraction of AROM range
     START_HOLD_DURATION = 1.0       # seconds
     TGT_HOLD_DURATION = 2.0         # seconds
