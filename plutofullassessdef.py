@@ -24,14 +24,15 @@ mechanisms = ["WFE", "FPS", "HOC"]
 
 # Data logging constants
 RAWDATA_HEADER = [
-    "systime", "devtime", "packno",  "status", "controltype", "error", "mechanism",
+    "systime", "devtime", "packno",  "status", "controltype", "error",
+    "limb", "mechanism",
     "angle", "hocdisp", "torque", "control", "target", "desired", 
     "controlbound", "cotnroldir", "controlgain", "button",
     "trialno", "assessmentstate"
 ]
 # AROM/PROM/APROM SUMMARY HEADER
 ROM_SUMMARY_HEADER = [
-    "session", "trial", "startpos", "rommin", "rommax", "romrange", "torqmin", "torqmax"
+    "session", "type", "limb", "mechanism", "trial", "startpos", "rommin", "rommax", "romrange", "torqmin", "torqmax"
 ]
 
 class ROMType(Enum):

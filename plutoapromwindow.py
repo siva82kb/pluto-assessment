@@ -18,6 +18,7 @@ from PyQt5 import (
     QtWidgets,
     QtGui)
 from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QGraphicsRectItem
 from PyQt5.QtCore import pyqtSignal
 import pyqtgraph as pg
@@ -27,7 +28,8 @@ import plutodefs as pdef
 import plutofullassessdef as pfadef
 from ui_plutoapromassess import Ui_APRomAssessWindow
 
-from misc import CSVBufferWriter 
+import misc
+
 
 #
 # APROM Assessment Constants
@@ -82,17 +84,25 @@ class PlutoAPRomData(object):
         self._rom = [[] for _ in range(self.ntrials)]
         # Logging variables
         self._logstate: APROMRawDataLoggingState = APROMRawDataLoggingState.WAIT_FOR_LOG
-        self._rawfilewriter: CSVBufferWriter = CSVBufferWriter(
+        self._rawfilewriter: misc.CSVBufferWriter = misc.CSVBufferWriter(
             self.rawfile, 
             header=pfadef.RAWDATA_HEADER
         )
-        self._summaryfilewriter: CSVBufferWriter = CSVBufferWriter(
+        self._summaryfilewriter: misc.CSVBufferWriter = misc.CSVBufferWriter(
             self.summaryfile, 
             header=pfadef.ROM_SUMMARY_HEADER,
             flush_interval=0.0,
             max_rows=1
         )
 
+    @property
+    def type(self):
+        return self._assessinfo['type']
+
+    @property
+    def limb(self):
+        return self._assessinfo['limb']
+    
     @property
     def mechanism(self):
         return self._assessinfo['mechanism']
@@ -186,19 +196,59 @@ class PlutoAPRomData(object):
             self._trialdata['vel'].pop(0)
     
     def add_new_trialrom_data(self) -> bool:
-        """Add new value to trial ROM.
+        """Add new value to trial ROM only if its different from existing ROM,
+        and outside AROM if AROM is given.
         """
         _pos = float(np.mean(self._trialdata['pos']))
+        # Check of the _pos is well outside the current limits of trialrom
+        _th = (HOC_NEW_ROM_TH 
+               if self.mechanism == "HOC"
+               else NOT_HOC_NEW_ROM_TH)
+        _out_of_rom = misc.is_out_of_range(
+            val=_pos,
+            minval=self._trialrom[0],
+            maxval=self._trialrom[-1],
+            thres=_th
+        )
+        # AROM is not given
         if self.arom is None:
+            if _out_of_rom:
+                self._trialrom.append(_pos)
+                self._trialrom.sort()
+                self._trialrom[:] = [self._trialrom[0], self._trialrom[-1]]
+                return True
+            else:
+                return False
+        # AROM is given
+        _out_of_arom = misc.is_out_of_range(
+            val=_pos, 
+            minval=self.arom[0],
+            maxval=self.arom[1],
+            thres=0
+        )
+        if _out_of_rom and _out_of_arom:
             self._trialrom.append(_pos)
             self._trialrom.sort()
-            return True
-        # Check if the rom value is outside AROM
-        if _pos <= self.arom[0] or _pos >= self.arom[1]:
-            self._trialrom.append(_pos)
-            self._trialrom.sort()
+            self._trialrom[:] = [self._trialrom[0], self._trialrom[-1]]
             return True
         return False
+    
+    # def add_new_trialrom_data(self) -> bool:
+    #     """Add new value to trial ROM.
+    #     """
+    #     _pos = float(np.mean(self._trialdata['pos']))
+    #     if self.arom is None:
+    #         self._trialrom.append(_pos)
+    #         self._trialrom.sort()
+    #         print(self._trialrom)
+    #         return True
+    #     # Check if the rom value is outside AROM
+    #     if _pos <= self.arom[0] or _pos >= self.arom[1]:
+    #         self._trialrom.append(_pos)
+    #         self._trialrom.sort()
+    #         print(self._trialrom)
+    #         return True
+    #     return False
     
     def set_rom(self):
         """Set the ROM value for the given trial.
@@ -208,6 +258,9 @@ class PlutoAPRomData(object):
         # Update the summary file.
         self._summaryfilewriter.write_row([
             self.session,
+            self.type,
+            self.limb,
+            self.mechanism,
             self.currtrial,
             self._startpos,
             self._trialrom[0],
@@ -408,6 +461,9 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
         
         # PLUTO device
         self._pluto = plutodev
+        self._pluto.send_heartbeat()
+        self._pluto.start_sensorstream()
+        QTimer.singleShot(500, lambda: None)
 
         # APROM assessment data
         self.data: PlutoAPRomData = PlutoAPRomData(assessinfo=assessinfo)
@@ -453,11 +509,6 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
             if _cond1 or _cond2:
                 self.ui.cbTrialRun.setEnabled(False)
 
-        # # Check if the assessment is started without clinical trial.
-        # if self.data.demodone is not True:
-        #     self.data.demodone = (self._smachine.state == PlutoAPRomAssessStates.TRIAL_ACTIVE_WAIT_TO_MOVE
-        #                           and self.ui.cbTrialRun.isChecked() is False) 
-        # self.ui.cbTrialRun.setEnabled(self.data.demodone is not True)
         # Update the graph display
         # Current position
         self._update_current_position_cursor()
@@ -500,8 +551,18 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
         else:
             if self.pluto.angle is None:
                 return
-            self.ui.currPosLine1.setData([self.pluto.angle, self.pluto.angle], [CURSOR_LOWER_LIMIT, CURSOR_UPPER_LIMIT])
-            self.ui.currPosLine2.setData([self.pluto.angle, self.pluto.angle], [CURSOR_LOWER_LIMIT, CURSOR_UPPER_LIMIT])
+            self.ui.currPosLine1.setData(
+                [self._dispsign * self.pluto.angle,
+                 self._dispsign * self.pluto.angle],
+                [CURSOR_LOWER_LIMIT,
+                 CURSOR_UPPER_LIMIT]
+            )
+            self.ui.currPosLine2.setData(
+                [self._dispsign * self.pluto.angle,
+                 self._dispsign * self.pluto.angle],
+                [CURSOR_LOWER_LIMIT,
+                 CURSOR_UPPER_LIMIT]
+            )
 
     def _draw_stop_zone_lines(self):
         _th = (STOP_POS_HOC_THRESHOLD
@@ -509,21 +570,27 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
                else STOP_POS_NOT_HOC_THRESHOLD)
         if self.data.mechanism == "HOC":
             self.ui.stopLine1.setData(
-                [self.data.startpos + _th, self.data.startpos + _th],
+                [self.data.startpos + _th,
+                 self.data.startpos + _th],
                 [CURSOR_LOWER_LIMIT, CURSOR_UPPER_LIMIT]
             )
             self.ui.stopLine2.setData(
-                [-self.data.startpos - _th, -self.data.startpos - _th],
+                [-self.data.startpos - _th,
+                 -self.data.startpos - _th],
                 [CURSOR_LOWER_LIMIT, CURSOR_UPPER_LIMIT]
             )
         else:
             self.ui.stopLine1.setData(
-                [self.data.startpos - _th, self.data.startpos - _th],
-                [CURSOR_LOWER_LIMIT, CURSOR_UPPER_LIMIT]
+                [self._dispsign * (self.data.startpos - _th),
+                 self._dispsign * (self.data.startpos - _th)],
+                [CURSOR_LOWER_LIMIT,
+                 CURSOR_UPPER_LIMIT]
             )
             self.ui.stopLine2.setData(
-                [self.data.startpos + _th, self.data.startpos + _th],
-                [CURSOR_LOWER_LIMIT, CURSOR_UPPER_LIMIT]
+                [self._dispsign * (self.data.startpos + _th),
+                 self._dispsign * (self.data.startpos + _th)],
+                [CURSOR_LOWER_LIMIT,
+                 CURSOR_UPPER_LIMIT]
             )
     
     def _update_arom_cursor_position(self):
@@ -541,29 +608,43 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
                 self.ui.romLine2.setData([0, 0], [CURSOR_LOWER_LIMIT, CURSOR_UPPER_LIMIT])
                 self.ui.romFill.setRect(0, CURSOR_LOWER_LIMIT, 0, CURSOR_UPPER_LIMIT - CURSOR_LOWER_LIMIT)
         else:
-            self.ui.romLine1.setData([self.data._trialrom[0], self.data._trialrom[0]],
-                                     [CURSOR_LOWER_LIMIT, CURSOR_UPPER_LIMIT])
-            self.ui.romLine2.setData([self.data._trialrom[-1], self.data._trialrom[-1]],
-                                     [CURSOR_LOWER_LIMIT, CURSOR_UPPER_LIMIT])
+            _romdisp = list(map(lambda x: self._dispsign * x, self.data._trialrom))
+            _romdisp.sort()
+            self.ui.romLine1.setData(
+                [_romdisp[0], _romdisp[0]],
+                [CURSOR_LOWER_LIMIT,
+                 CURSOR_UPPER_LIMIT]
+            )
+            self.ui.romLine2.setData(
+                [_romdisp[-1], _romdisp[-1]],
+                [CURSOR_LOWER_LIMIT,
+                 CURSOR_UPPER_LIMIT]
+            )
             # Fill between the two AROM lines
-            self.ui.romFill.setRect(self.data._trialrom[0], CURSOR_LOWER_LIMIT,
-                                    self.data._trialrom[-1] - self.data._trialrom[0],
-                                    CURSOR_UPPER_LIMIT - CURSOR_LOWER_LIMIT)
+            self.ui.romFill.setRect(
+                _romdisp[0], CURSOR_LOWER_LIMIT,
+                (_romdisp[-1] - _romdisp[0]),
+                CURSOR_UPPER_LIMIT - CURSOR_LOWER_LIMIT
+            )
     
     def _highlight_start_zone(self):
         if len(self.data._trialrom) == 0: return
         # Fill the start zone
         if self._smachine.state == PlutoAPRomAssessStates.TRIAL_ACTIVE_HOLDING_IN_STOP_ZONE:
             if self.data.mechanism == "HOC":
-                self.ui.strtZoneFill.setRect(-self.data.startpos - STOP_POS_HOC_THRESHOLD,
-                                             CURSOR_LOWER_LIMIT,
-                                             2 * (self.data.startpos + STOP_POS_HOC_THRESHOLD),
-                                             CURSOR_UPPER_LIMIT - CURSOR_LOWER_LIMIT)
+                self.ui.strtZoneFill.setRect(
+                    -self.data.startpos - STOP_POS_HOC_THRESHOLD,
+                    CURSOR_LOWER_LIMIT,
+                    2 * (self.data.startpos + STOP_POS_HOC_THRESHOLD),
+                    CURSOR_UPPER_LIMIT - CURSOR_LOWER_LIMIT
+                )
             else:
-                self.ui.strtZoneFill.setRect(self.data.startpos - STOP_POS_NOT_HOC_THRESHOLD,
-                                             CURSOR_LOWER_LIMIT,
-                                             2 * STOP_POS_NOT_HOC_THRESHOLD,
-                                             CURSOR_UPPER_LIMIT - CURSOR_LOWER_LIMIT)
+                self.ui.strtZoneFill.setRect(
+                    self._dispsign * self.data.startpos - STOP_POS_NOT_HOC_THRESHOLD,
+                    CURSOR_LOWER_LIMIT,
+                    2 * STOP_POS_NOT_HOC_THRESHOLD,
+                    CURSOR_UPPER_LIMIT - CURSOR_LOWER_LIMIT
+                )
         else:
             self.ui.strtZoneFill.setRect(0, CURSOR_LOWER_LIMIT,
                                          0, CURSOR_UPPER_LIMIT - CURSOR_LOWER_LIMIT)
@@ -666,12 +747,15 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
         self.ui.strtZoneFill.setBrush(QColor(136, 255, 136, 80))
         self.ui.strtZoneFill.setPen(pg.mkPen(None))  # No border
         _pgobj.addItem(self.ui.strtZoneFill)
+        
+        # Angle display sign for the limb.
+        self._dispsign = 1.0 if self.data.limb.upper() == "RIGHT" else -1.0
 
         # AROM lines when appropriate.
         if self.data.arom is not None:
             _pos = ([-self.data.arom[1], -self.data.arom[1]]
                     if self.data.mechanism == "HOC"
-                    else [self.data.arom[0], self.data.arom[0]])
+                    else [self._dispsign * self.data.arom[0], self._dispsign * self.data.arom[0]])
             self.ui.aromPosLine1 = pg.PlotDataItem(
                 _pos,
                 [CURSOR_LOWER_LIMIT, CURSOR_UPPER_LIMIT],
@@ -679,7 +763,7 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
             )
             _pos = ([self.data.arom[1], self.data.arom[1]]
                     if self.data.mechanism == "HOC"
-                    else [self.data.arom[1], self.data.arom[1]])
+                    else [self._dispsign * self.data.arom[1], self._dispsign * self.data.arom[1]])
             self.ui.aromPosLine2 = pg.PlotDataItem(
                 _pos,
                 [CURSOR_LOWER_LIMIT, CURSOR_UPPER_LIMIT],
@@ -725,7 +809,7 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
         if self.data.logstate == APROMRawDataLoggingState.LOG_DATA:        
             self.data.rawfilewriter.write_row([
                 self.pluto.systime, self.pluto.currt, self.pluto.packetnumber,
-                self.pluto.status, self.pluto.controltype, self.pluto.error, self.pluto.mechanism,
+                self.pluto.status, self.pluto.controltype, self.pluto.error, self.pluto.limb, self.pluto.mechanism,
                 self.pluto.angle, self.pluto.hocdisp, self.pluto.torque, self.pluto.control, self.pluto.target, self.pluto.desired,
                 self.pluto.controlbound, self.pluto.controldir, self.pluto.controlgain, self.pluto.button,
                 self.data.currtrial,
@@ -751,7 +835,6 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
             # Restart ROM assessment statemachine
             self._smachine.reset_statemachine()
     
-    
     def closeEvent(self, event):
         if self.on_close_callback:
             self.on_close_callback(data=self.data.rom)
@@ -763,16 +846,20 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM12")
+    plutodev.start_sensorstream()
+    plutodev.send_heartbeat()
     pcalib = PlutoAPRomAssessWindow(
         plutodev=plutodev, 
         assessinfo={
-            "mechanism": "HOC",
-            "romtype": pfadef.ROMType.ACTIVE,
+            "type": "Stroke",
+            "limb": "LEFT",
+            "mechanism": "FPS",
+            "romtype": pfadef.ROMType.PASSIVE,
             "session": "testing",
             "ntrials": 3,
             "rawfile": "rawfiletest.csv",
             "summaryfile": "summaryfiletest.csv",
-            "arom": [0, 5],
+            "arom": [-20, 30],
         },
         onclosecb=lambda data: print(f"ROM set: {data}"),
     )

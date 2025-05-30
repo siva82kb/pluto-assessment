@@ -107,7 +107,7 @@ class PlutoAssessmentData(object):
         if self._subjid is None:
             raise ValueError(f"Subject ID has not been set. You cannot set anything else without a subject ID.")
         self._type = stype
-        self._limb = slimb
+        self._limb = slimb.upper()
         self.create_session_folder()
     
     def create_session_folder(self):

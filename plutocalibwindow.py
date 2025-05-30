@@ -143,7 +143,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
             self.ui.lblPositionTitle.setText("Hand Aperture:")
         else:
             self.ui.lblPositionTitle.setText("Joint Position:")
-        self.ui.lblInstruction.setText(f"Calibration for {self._mechanism} mechanism.")
+        self.ui.lblInstruction.setText(f"Calibration for {self._mechanism} mechanism for {self._limb} limb.")
 
         # Open the PLUTO data viewer window for sanity
         if dataviewer:
@@ -246,10 +246,10 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     import qtjedi
-    qtjedi._OUTDEBUG = True
+    qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM12")
-    pcalib = PlutoCalibrationWindow(plutodev=plutodev, limb="RIGHT", mechanism="FPS",
+    pcalib = PlutoCalibrationWindow(plutodev=plutodev, limb="LEFT", mechanism="FPS",
                                     dataviewer=True, heartbeat=True, 
                                     onclosecb=lambda: print(dt.now()))
     pcalib.show()
