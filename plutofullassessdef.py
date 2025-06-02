@@ -37,6 +37,10 @@ RAWDATA_HEADER = [
 ROM_SUMMARY_HEADER = [
     "session", "type", "limb", "mechanism", "trial", "startpos", "rommin", "rommax", "romrange", "torqmin", "torqmax"
 ]
+# PROPRIOCEPTIVE ASSESSMENT SUMMARY HEADER
+PROP_SUMMARY_HEADER = [
+    "session", "type", "limb", "mechanism", "trial", "startpos", "target", "shown", "sensed", "torque"
+]
 
 # APROM Assessment Constant.
 #

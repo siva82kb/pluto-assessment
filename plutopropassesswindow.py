@@ -32,8 +32,12 @@ import winsound
 
 import plutodefs as pdef
 from ui_plutopropassessctrl import Ui_ProprioceptionAssessWindow
+from ui_plutoapromassess import Ui_APRomAssessWindow
 from plutodataviewwindow import PlutoDataViewWindow
 import plutoassessdef as passdef
+import plutofullassessdef as pfadef
+import plutoapromwindow as apromwnd
+import misc 
 
 
 # Module level constants
@@ -76,6 +80,200 @@ class PlutoPropAssessStates(Enum):
     PROTOCOL_PAUSE = 8
     PROTOCOL_STOP = 9
 
+
+class PlutoPropAssessData():
+    def __init__(self, assessinfo: dict):
+        self._assessinfo = assessinfo
+        self._demomode = None
+        # Trial variables
+        self._currtrial = 0
+        self._startpos = None
+        self._trialpos = []
+        self._trialdata = {"dt": [], "pos": [], "vel": []}
+        self._currtrial = -1
+        # Propprioceptive assessment position
+        self._proppostorq = [[] for _ in range(self.ntrials)]
+        # Logging variables
+        self._logstate: apromwnd.APROMRawDataLoggingState = apromwnd.APROMRawDataLoggingState.WAIT_FOR_LOG
+        self._rawfilewriter: misc.CSVBufferWriter = misc.CSVBufferWriter(
+            self.rawfile, 
+            header=pfadef.RAWDATA_HEADER
+        )
+        self._summaryfilewriter: misc.CSVBufferWriter = misc.CSVBufferWriter(
+            self.summaryfile, 
+            header=pfadef.PROP_SUMMARY_HEADER,
+            flush_interval=0.0,
+            max_rows=1
+        )
+
+    @property
+    def type(self):
+        return self._assessinfo["type"]
+    
+    @property
+    def limb(self):
+        return self._assessinfo["limb"]
+    
+    @property
+    def mechanism(self):
+        return self._assessinfo['mechanism']
+    
+    @property
+    def session(self):
+        return self._assessinfo['session']
+
+    @property
+    def ntrials(self):
+        return self._assessinfo['ntrials']
+    
+    @property
+    def rawfile(self):
+        return self._assessinfo['rawfile']
+    
+    @property
+    def summaryfile(self):
+        return self._assessinfo['summaryfile']
+    
+    @property
+    def arom(self):
+        return self._assessinfo["arom"]
+
+    @property
+    def prom(self):
+        return self._assessinfo["prom"]
+
+    @property
+    def currtrial(self):
+        return self._currtrial
+    
+    @property
+    def prop_pos_torq(self):
+        return self._proppostorq
+    
+    @property
+    def startpos(self):
+        return self._startpos
+    
+    @property
+    def trialdata(self):
+        return self._trialdata
+    
+    @property
+    def demomode(self):
+        return self._demomode
+    
+    @demomode.setter
+    def demomode(self, value):
+        self._demomode = value
+
+    @property
+    def logstate(self):
+        return self._logstate
+        
+    @property
+    def all_trials_done(self):
+        """Check if all trials are done.
+        """
+        return self._currtrial >= self.ntrials
+    
+    @property
+    def rawfilewriter(self):
+        return self._rawfilewriter
+    
+    def start_newtrial(self, reset: bool = False):
+        """Start a new trial.
+        """
+        if self._currtrial < self.ntrials:
+            self._startpos = None
+            self._trialpos = []
+            self._trialdata = {"dt": [], "pos": [], "vel": []}
+            self._currtrial = 0 if reset else self._currtrial + 1
+
+    def add_newdata(self, dt, pos):
+        """Add new data to the trial data.
+        """
+        self._trialdata['dt'].append(dt)
+        self._trialdata['pos'].append(pos)
+        self._trialdata['vel'].append((pos - self._trialdata['pos'][-2]) / dt
+                                      if len(self._trialdata['pos']) > 1
+                                      else 0)
+        if len(self._trialdata['dt']) > pfadef.POS_VEL_WINDOW_LENGHT:
+            self._trialdata['dt'].pop(0)
+            self._trialdata['pos'].pop(0)
+            self._trialdata['vel'].pop(0)
+    
+    # def add_new_trialrom_data(self) -> bool:
+    #     """Add new value to trial ROM only if its different from existing ROM,
+    #     and outside AROM if AROM is given.
+    #     """
+    #     _pos = float(np.mean(self._trialdata['pos']))
+    #     # Check of the _pos is well outside the current limits of trialrom
+    #     _th = (pfadef.HOC_NEW_ROM_TH 
+    #            if self.mechanism == "HOC"
+    #            else pfadef.NOT_HOC_NEW_ROM_TH)
+    #     _out_of_rom = misc.is_out_of_range(
+    #         val=_pos,
+    #         minval=self._trialrom[0],
+    #         maxval=self._trialrom[-1],
+    #         thres=_th
+    #     )
+    #     # AROM is not given
+    #     if self.arom is None and _out_of_rom:
+    #         self._trialrom.append(_pos)
+    #         self._trialrom.sort()
+    #         self._trialrom[:] = [self._trialrom[0], self._trialrom[-1]]
+    #         return True
+    #     # AROM is given
+    #     _out_of_arom = misc.is_out_of_range(
+    #         val=_pos, 
+    #         minval=self.arom[0],
+    #         maxval=self.arom[1],
+    #         thres=0
+    #     )
+    #     if _out_of_rom and _out_of_arom:
+    #         self._trialrom.append(_pos)
+    #         self._trialrom.sort()
+    #         self._trialrom[:] = [self._trialrom[0], self._trialrom[-1]]
+    #         return True
+    #     return False
+    
+    def set_prop_assessment(self):
+        """Set the proprioceptive assessment value for the given trial.
+        """
+        # Update ROM 
+        self._rom[self._currtrial] = [self._trialrom[0], self._trialrom[-1]]
+        # Update the summary file.
+        self._summaryfilewriter.write_row([
+            self.session,
+            self.type,
+            self.limb,
+            self.mechanism,
+            self.currtrial,
+            self._startpos,
+            self._trialrom[0],
+            self._trialrom[-1],
+            self._trialrom[-1] - self._trialrom[0],
+            0,
+            0
+        ])
+        
+    def set_startpos(self):
+        """Sets the start position as the average of trial data.
+        """
+        self._startpos = float(np.mean(self._trialdata['pos']))
+        self._trialrom = [self._startpos]
+
+    def start_rawlogging(self):
+        self._logstate = apromwnd.APROMRawDataLoggingState.LOG_DATA
+    
+    def terminate_rawlogging(self):
+        self._logstate = apromwnd.APROMRawDataLoggingState.LOGGING_DONE
+        self._rawfilewriter.close()
+        self._rawfilewriter = None
+    
+    def terminate_summarylogging(self):
+        self._summaryfilewriter.close()
+        self._summaryfilewriter = None
 
 class PlutoPropAssessmentStateMachine():
     def __init__(self, plutodev, protocol):
@@ -246,28 +444,42 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
     Class for handling the operation of the PLUTO proprioceptive assessment window.
     """
 
-    def __init__(self, parent=None, plutodev: QtPluto=None, subjtype: str="",
-                 limb: str="", griptype: str="", arom: float=0.0,
-                 prom: float=0.0, promtorq: float=0.0, outdir="", modal=False,
-                 dataviewer=False):
+    def __init__(self, parent=None, plutodev: QtPluto=None, assessinfo: dict=None,
+                 modal=False, dataviewer=False, onclosecb=None, heartbeat=False):
         """
         Constructor for the PlutoPropAssessWindow class.
         """
         super(PlutoPropAssessWindow, self).__init__(parent)
-        self.ui = Ui_ProprioceptionAssessWindow()
+        self.ui = Ui_APRomAssessWindow()
         self.ui.setupUi(self)
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         
+        # Set the title of the window.
+        self.setWindowTitle(
+            " | ".join((
+                "PLUTO Full Assessment",
+                "Hand Proprioception",
+                f"{assessinfo['subjid'] if 'subjid' in assessinfo else ''}",
+                f"{assessinfo['type'] if 'type' in assessinfo else ''}",
+                f"{assessinfo['limb'] if 'limb' in assessinfo else ''}",
+                f"{assessinfo['mechanism'] if 'mechanism' in assessinfo else ''}",
+                f"{assessinfo['session'] if 'session' in assessinfo else ''}",
+            ))
+        )
+
         # PLUTO device
         self._pluto = plutodev
-        self._subjtype = subjtype
-        self._limb = limb
-        self._griptype = griptype
-        self._arom = arom
-        self._prom = prom
-        self._promtorq = promtorq
-        self._outdir = outdir
+
+        # Heartbeat timer
+        self._heartbeat = heartbeat
+        if self._heartbeat:
+            self.heartbeattimer = QTimer()
+            self.heartbeattimer.timeout.connect(lambda: self.pluto.send_heartbeat())
+            self.heartbeattimer.start(250)
+        
+        # Prioprioceptive assessment data
+        self.data: PlutoPropAssessData = PlutoPropAssessData(assessinfo=assessinfo)
 
         # Assessment time
         self._time = -1
@@ -748,7 +960,7 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
                     f"{self._data['trialno']+1}",
                     f"{self._data['targets'][self._data['trialno']]}",
                     f"{np.mean(self._summary['shownpos']):0.3f}",
-                    f"{np.mean(self._summary['sensedpos']) if len(self._summary['sensedpos']) >0 else -1:0.3f}",
+                    f"{np.mean(self._summary['sensedpos']) if len(self._summary['sensedpos']) > 0 else -1:0.3f}",
                 )))
                 fh.write("\n")
             # Reset summary position data
@@ -892,7 +1104,6 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         # Send command to the robot.
         self.pluto.set_control_target(-self._tgtctrl["curr"] / pdef.HOCScale)
 
-    
     def _set_position_torque_target_information(self, initpos, finalpos):
         self._tgtctrl["time"] = 0
         # Position
@@ -1055,9 +1266,13 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM4")
-    pcalib = PlutoPropAssessWindow(plutodev=plutodev, arom=5.0, prom=7.5, promtorq=0.0,
-                                   outdir=f"{passdef.DATA_DIR}/test/slg_2024-09-11-09-03-21",
-                                   dataviewer=True)
+    plutodev = QtPluto("COM13")
+    pcalib = PlutoPropAssessWindow(
+        plutodev=plutodev, 
+        arom=5.0, 
+        prom=7.5, 
+        promtorq=0.0,
+        outdir=f"{passdef.DATA_DIR}/test/slg_2024-09-11-09-03-21",
+        dataviewer=True)
     pcalib.show()
     sys.exit(app.exec_())

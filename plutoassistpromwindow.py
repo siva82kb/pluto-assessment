@@ -491,7 +491,7 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
-
+        
         # Set the title of the window.
         self.setWindowTitle(
             " | ".join((
