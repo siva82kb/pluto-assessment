@@ -903,23 +903,19 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
             if self.pluto.controltype != pdef.ControlType["NONE"]:
                 self.pluto.set_control_type("NONE")
         elif action == PlutoAssistPRomAssessAction.SET_CONTROL_TO_TORQUE:
-            print(f"State: {self._smachine.state}, Action: {action}")
             # Check if the current control type is not TORQUE.
             if self.pluto.controltype != pdef.ControlType["TORQUE"]:
                 self.pluto.set_control_type("TORQUE")
             self.pluto.set_control_target(target=0, dur=2.0)
         elif action == PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_ZERO:
-            print(f"State: {self._smachine.state}, Action: {action}")
             if self.pluto.controltype != pdef.ControlType["TORQUE"]:
                 self.pluto.set_control_type("TORQUE")
             self.pluto.set_control_target(target=0, dur=2.0)
         elif action == PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_DIR:
-            print(f"State: {self._smachine.state}, Action: {action}")
             if self.pluto.controltype != pdef.ControlType["TORQUE"]:
                 self.pluto.set_control_type("TORQUE")
             self.pluto.set_control_target(target=1.0, dur=2.0)
         elif action == PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_OTHER_DIR:
-            print(f"State: {self._smachine.state}, Action: {action}")
             if self.pluto.controltype != pdef.ControlType["TORQUE"]:
                 self.pluto.set_control_type("TORQUE")
             self.pluto.set_control_target(target=-1.0, dur=2.0)
@@ -951,7 +947,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM12")
+    plutodev = QtPluto("COM13")
     pcalib = PlutoAssistPRomAssessWindow(
         plutodev=plutodev, 
         assessinfo={
@@ -960,7 +956,7 @@ if __name__ == '__main__':
             "limb": "Left",
             "mechanism": "WFE",
             "session": "testing",
-            "ntrials": 3,
+            "ntrials": 1,
             "rawfile": "rawfiletest.csv",
             "summaryfile": "summaryfiletest.csv",
             "arom": [-20, 30],

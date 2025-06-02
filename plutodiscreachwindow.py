@@ -21,7 +21,7 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QGraphicsRectItem
 from PyQt5.QtCore import pyqtSignal
 import pyqtgraph as pg
-from enum import Enum
+from enum import Enum, auto
 
 import plutodefs as pdef
 import plutofullassessdef as pfadef
@@ -37,18 +37,21 @@ class DiscReachRawDataLoggingState(Enum):
 
 
 class PlutoDiscReachAssessStates(Enum):
-    FREE_RUNNING = 0
-    GET_TO_TARGET1_START = 1
-    HOLDING_AT_TARGET1_START = 2
-    WAIT_TO_START_REACH_TO_TARGET2 = 3
-    MOVING_TO_TARGET2 = 4
-    HOLDING_AT_TARGET2_STOP = 5
-    GET_TO_TARGET2_START = 6
-    HOLDING_AT_TARGET2_START = 7
-    WAIT_TO_START_REACH_TO_TARGET1 = 8
-    MOVING_TO_TARGET1 = 9
-    HOLDING_AT_TARGET1_STOP = 10
-    DISC_REACH_DONE = 11
+    FREE_RUNNING = auto()
+    GET_TO_TARGET1_START = auto()
+    HOLDING_AT_TARGET1_START = auto()
+    WAIT_TO_START_REACH_TO_TARGET2 = auto()
+    MOVING_TO_TARGET2 = auto()
+    HOLDING_AT_TARGET2_STOP = auto()
+    TGT1_TO_TGT2_DONE = auto()
+    GET_TO_TARGET2_START = auto()
+    HOLDING_AT_TARGET2_START = auto()
+    WAIT_TO_START_REACH_TO_TARGET1 = auto()
+    MOVING_TO_TARGET1 = auto()
+    HOLDING_AT_TARGET1_STOP = auto()
+    TRIAL_DONE = auto()
+    TRIAL_FAILED = auto()
+    DISC_REACH_DONE = auto()
 
 
 class PlutoDiscReachData(object):
@@ -68,12 +71,6 @@ class PlutoDiscReachData(object):
         self._rawfilewriter: CSVBufferWriter = CSVBufferWriter(
             self.rawfile, 
             header=pfadef.RAWDATA_HEADER
-        )
-        self._summaryfilewriter: CSVBufferWriter = CSVBufferWriter(
-            self.summaryfile, 
-            header=pfadef.ROM_SUMMARY_HEADER,
-            flush_interval=0.0,
-            max_rows=1
         )
     
     @property
@@ -235,14 +232,15 @@ class PlutoDiscReachData(object):
 
 
 class PlutoAPRomAssessmentStateMachine():
-    def __init__(self, plutodev, data: PlutoDiscReachData, instdisp, timerdisp):
+    def __init__(self, plutodev, data: PlutoDiscReachData, dispctrls):
         self._state = PlutoDiscReachAssessStates.FREE_RUNNING
         self._statetimer = 0
         self._holdreachtimer = 0
         self._data = data
         self._instruction = f""
-        self._instdisp = instdisp
-        self._timerdisp = timerdisp
+        self._tgt1inst = ""
+        self._tgt2inst = ""
+        self._dispctrls = dispctrls
         self._pluto = plutodev
         self._stateactions = {
             PlutoDiscReachAssessStates.FREE_RUNNING: self._free_running,
@@ -251,11 +249,14 @@ class PlutoAPRomAssessmentStateMachine():
             PlutoDiscReachAssessStates.WAIT_TO_START_REACH_TO_TARGET2: self._wait_to_start_reach_to_target2,
             PlutoDiscReachAssessStates.MOVING_TO_TARGET2: self._moving_to_target2,
             PlutoDiscReachAssessStates.HOLDING_AT_TARGET2_STOP: self._holding_at_target2_stop,
+            PlutoDiscReachAssessStates.TGT1_TO_TGT2_DONE: self._tgt1_to_tgt2_done,
             PlutoDiscReachAssessStates.GET_TO_TARGET2_START: self._get_to_target2_start,
             PlutoDiscReachAssessStates.HOLDING_AT_TARGET2_START: self._holding_at_target2_start,
             PlutoDiscReachAssessStates.WAIT_TO_START_REACH_TO_TARGET1: self._wait_to_start_reach_to_target1,
             PlutoDiscReachAssessStates.MOVING_TO_TARGET1: self._moving_to_target1,
             PlutoDiscReachAssessStates.HOLDING_AT_TARGET1_STOP: self._holding_at_target1_stop,
+            PlutoDiscReachAssessStates.TRIAL_DONE: self._trial_done,
+            PlutoDiscReachAssessStates.TRIAL_FAILED: self._trial_failed,
             PlutoDiscReachAssessStates.DISC_REACH_DONE: self._disc_reach_done,
         }
         # Start a new trial.
@@ -280,30 +281,24 @@ class PlutoAPRomAssessmentStateMachine():
         Returns if the UI needs an immediate update.
         """
         retval = self._stateactions[self._state](event, dt)
-        self._instdisp.setText(self._instruction)
-        self._timerdisp.setText(f"{self._holdreachtimer:+02.1f} | {self._statetimer:+02.1f}")
+        # Update instruction display.
+        self._udpate_instructions()
         return retval
 
     def _free_running(self, event, dt):
         """
         """
-        # # Check if all trials are done.
-        # if not self._data.demomode and self._data.all_trials_done:
-        #     # Set the logging state.
-        #     if self._data.rawfilewriter is not None: 
-        #         self._data.terminate_rawlogging()
-        #         self._data.terminate_summarylogging()
-        #     self._instruction = f"{self._data.romtype} ROM Assessment Done. Press the PLUTO Button to exit."
-        #     if event == pdef.PlutoEvents.RELEASED:
-        #         self._state = PlutoAPRomAssessStates.ROM_DONE
-        #         self._statetimer = 0
-        #     return
+        # Check if all trials are done.
+        if not self._data.demomode and self._data.all_trials_done:
+            # Set the logging state.
+            if self._data.rawfilewriter is not None: 
+                self._data.terminate_rawlogging()
+            if event == pdef.PlutoEvents.RELEASED:
+                self._state = PlutoDiscReachAssessStates.DISC_REACH_DONE
+                self._statetimer = 0
+            return
         
         # Wait for start.
-        if self._data.demomode:
-            self._instruction = f"Press PLUTO Button to start demo trial."
-        else:
-            self._instruction = f"PLUTO Button to start assessment."
         if event == pdef.PlutoEvents.RELEASED:
             self._state = PlutoDiscReachAssessStates.GET_TO_TARGET1_START
             self._holdreachtimer = pfadef.DiscReachConstant.START_TGT_MAX_DURATION
@@ -320,11 +315,14 @@ class PlutoAPRomAssessmentStateMachine():
             # Decrement the timer.
             self._holdreachtimer -= dt
             # Check if the timer has run out.
-            # if self._statetimer <= 0:
-            #     # Timer has run out.
-            #     return True
+            if self._holdreachtimer <= 0:
+                # Failed trial.
+                self._state = PlutoDiscReachAssessStates.TRIAL_FAILED
+                self._statetimer = pfadef.DiscReachConstant.RETURN_WAIT_DURATION
+                return True
             # Check if TARGET1 has been reached.
-            if not self.subj_in_target1() or not self.subj_is_holding():
+            if not self.subj_in_target1():
+                # Update instructions
                 return False
             # Subject in TARGET1 and holding.
             self._state = PlutoDiscReachAssessStates.HOLDING_AT_TARGET1_START
@@ -340,15 +338,20 @@ class PlutoAPRomAssessmentStateMachine():
             self._holdreachtimer -= dt
             self._statetimer -= dt
             # Check if the timer has run out.
-            # if self._statetimer <= 0:
-            #     # Timer has run out.
-            #     return True
+            if self._holdreachtimer <= 0:
+                # Failed trial.
+                self._state = PlutoDiscReachAssessStates.TRIAL_FAILED
+                self._statetimer = pfadef.DiscReachConstant.RETURN_WAIT_DURATION
+                return True
             # Check if TARGET1 has been reached.
-            if not self.subj_in_target1() or not self.subj_is_holding():
+            if not self.subj_in_target1():
                 # Subject in TARGET1 and holding.
                 self._state = PlutoDiscReachAssessStates.GET_TO_TARGET1_START
                 self._statetimer = 0
                 return True
+            if  not self.subj_is_holding():
+                # Just reset the holding timer.
+                self._statetimer = pfadef.DiscReachConstant.START_HOLD_DURATION
             # Check if the state timer has run out.
             if self._statetimer <= 0:
                 self._state = PlutoDiscReachAssessStates.WAIT_TO_START_REACH_TO_TARGET2
@@ -362,6 +365,12 @@ class PlutoAPRomAssessmentStateMachine():
         """
         if event == pdef.PlutoEvents.NEWDATA:
             self._holdreachtimer -= dt
+            # Check if the timer has run out.
+            if self._holdreachtimer <= 0:
+                # Failed trial.
+                self._state = PlutoDiscReachAssessStates.TRIAL_FAILED
+                self._statetimer = pfadef.DiscReachConstant.RETURN_WAIT_DURATION
+                return True
             # Check if the subject has moved out of target 1.
             if not self.subj_in_target1():
                 self._state = PlutoDiscReachAssessStates.MOVING_TO_TARGET2
@@ -374,48 +383,280 @@ class PlutoAPRomAssessmentStateMachine():
         if event == pdef.PlutoEvents.NEWDATA:
             # Decrement the timer
             self._holdreachtimer -= dt
-            if not self.subj_in_target2() or not self.subj_is_holding():
+            # Check if the timer has run out.
+            if self._holdreachtimer <= 0:
+                # Failed trial.
+                self._state = PlutoDiscReachAssessStates.TRIAL_FAILED
+                self._statetimer = pfadef.DiscReachConstant.RETURN_WAIT_DURATION
+                return True
+            if not self.subj_in_target2():
                 return False
             # Check subject has reched target 2 and holding there.
             self._state = PlutoDiscReachAssessStates.HOLDING_AT_TARGET2_STOP
-            self._statetimer = pfadef.DiscReachConstant.START_HOLD_DURATION
+            self._statetimer = pfadef.DiscReachConstant.TGT_HOLD_DURATION
             return True
         return False
 
     def _holding_at_target2_stop(self, event, dt):
         """
         """
-        pass
+        if event == pdef.PlutoEvents.NEWDATA:
+            self._holdreachtimer -= dt
+            self._statetimer -= dt
+            # Check if the timer has run out.
+            if self._holdreachtimer <= 0:
+                # Failed trial.
+                self._state = PlutoDiscReachAssessStates.TRIAL_FAILED
+                self._statetimer = pfadef.DiscReachConstant.RETURN_WAIT_DURATION
+                return True
+            if not self.subj_in_target2():
+                self._state = PlutoDiscReachAssessStates.MOVING_TO_TARGET2
+                self._statetimer = 0
+                return True
+            if not self.subj_is_holding():
+                self._statetimer = pfadef.DiscReachConstant.TGT_HOLD_DURATION
+                return True
+            if self._statetimer <= 0:
+                self._state = PlutoDiscReachAssessStates.TGT1_TO_TGT2_DONE
+                self._statetimer = pfadef.DiscReachConstant.RETURN_WAIT_DURATION
+                return True
+        return False
+
+    def _tgt1_to_tgt2_done(self, event, dt):
+        if event == pdef.PlutoEvents.NEWDATA:
+            self._statetimer -= dt
+            if self._statetimer <= 0:
+                self._state = PlutoDiscReachAssessStates.GET_TO_TARGET2_START
+                self._holdreachtimer = pfadef.DiscReachConstant.START_TGT_MAX_DURATION
+                return True
+        return False
 
     def _get_to_target2_start(self, event, dt):
         """
         """
-        pass
+        if event == pdef.PlutoEvents.NEWDATA:
+            # Decrement the timer.
+            self._holdreachtimer -= dt
+            # Check if the timer has run out.
+            if self._holdreachtimer <= 0:
+                # Failed trial.
+                self._state = PlutoDiscReachAssessStates.TRIAL_FAILED
+                self._statetimer = pfadef.DiscReachConstant.RETURN_WAIT_DURATION
+                return True
+            # Check if TARGET1 has been reached.
+            if not self.subj_in_target2():# or not self.subj_is_holding():
+                return False
+            # Subject in TARGET2.
+            self._state = PlutoDiscReachAssessStates.HOLDING_AT_TARGET2_START
+            self._statetimer = pfadef.DiscReachConstant.START_HOLD_DURATION
+            return True
+        return False
 
     def _holding_at_target2_start(self, event, dt):
         """
         """
-        pass
+        if event == pdef.PlutoEvents.NEWDATA:
+            # Decrement the timer.
+            self._holdreachtimer -= dt
+            self._statetimer -= dt
+            # Check if the timer has run out.
+            if self._holdreachtimer <= 0:
+                # Failed trial.
+                self._state = PlutoDiscReachAssessStates.TRIAL_FAILED
+                self._statetimer = pfadef.DiscReachConstant.RETURN_WAIT_DURATION
+                return True
+            # Check if TARGET2 has been reached.
+            if not self.subj_in_target2():
+                # Subject in TARGET2.
+                self._state = PlutoDiscReachAssessStates.GET_TO_TARGET2_START
+                self._statetimer = 0
+                return True
+            if  not self.subj_is_holding():
+                # Just reset the holding timer.
+                self._statetimer = pfadef.DiscReachConstant.START_HOLD_DURATION
+            # Check if the state timer has run out.
+            if self._statetimer <= 0:
+                self._state = PlutoDiscReachAssessStates.WAIT_TO_START_REACH_TO_TARGET1
+                self._holdreachtimer = pfadef.DiscReachConstant.REACH_TGT_MAX_DURATION
+                self._statetimer = 0
+            return True
+        return False
     
     def _wait_to_start_reach_to_target1(self, event, dt):
         """
         """
-        pass
+        if event == pdef.PlutoEvents.NEWDATA:
+            self._holdreachtimer -= dt
+            # Check if the timer has run out.
+            if self._holdreachtimer <= 0:
+                # Failed trial.
+                self._state = PlutoDiscReachAssessStates.TRIAL_FAILED
+                self._statetimer = pfadef.DiscReachConstant.RETURN_WAIT_DURATION
+                return True
+            # Check if the subject has moved out of target 1.
+            if not self.subj_in_target2():
+                self._state = PlutoDiscReachAssessStates.MOVING_TO_TARGET1
+                return True
+        return False
 
     def _moving_to_target1(self, event, dt):
         """
         """
-        pass
+        if event == pdef.PlutoEvents.NEWDATA:
+            # Decrement the timer
+            self._holdreachtimer -= dt
+            # Check if the timer has run out.
+            if self._holdreachtimer <= 0:
+                # Failed trial.
+                self._state = PlutoDiscReachAssessStates.TRIAL_FAILED
+                self._statetimer = pfadef.DiscReachConstant.RETURN_WAIT_DURATION
+                return True
+            if not self.subj_in_target1():
+                return False
+            # Check subject has reched target 1 and holding there.
+            self._state = PlutoDiscReachAssessStates.HOLDING_AT_TARGET1_STOP
+            self._statetimer = pfadef.DiscReachConstant.TGT_HOLD_DURATION
+            return True
+        return False
 
     def _holding_at_target1_stop(self, event, dt):
         """
         """
-        pass
+        if event == pdef.PlutoEvents.NEWDATA:
+            self._holdreachtimer -= dt
+            self._statetimer -= dt
+            # Check if the timer has run out.
+            if self._holdreachtimer <= 0:
+                # Failed trial.
+                self._state = PlutoDiscReachAssessStates.TRIAL_FAILED
+                self._statetimer = pfadef.DiscReachConstant.RETURN_WAIT_DURATION
+                return True
+            if not self.subj_in_target1():
+                self._state = PlutoDiscReachAssessStates.MOVING_TO_TARGET1
+                self._statetimer = 0
+                return True
+            if not self.subj_is_holding():
+                self._statetimer = pfadef.DiscReachConstant.TGT_HOLD_DURATION
+                return True
+            if self._statetimer <= 0:
+                self._state = PlutoDiscReachAssessStates.TRIAL_DONE
+                self._statetimer = pfadef.DiscReachConstant.RETURN_WAIT_DURATION
+                return True
+        return False
+
+    def _trial_done(self, event, dt):
+        """
+        """
+        if event == pdef.PlutoEvents.NEWDATA:
+            self._statetimer -= dt
+            if self._statetimer <= 0:
+                self._data.start_newtrial()
+                self._state = PlutoDiscReachAssessStates.FREE_RUNNING
+                return True
+        return False
+    
+    def _trial_failed(self, event, dt):
+        """
+        """
+        if event == pdef.PlutoEvents.NEWDATA:
+            self._statetimer -= dt
+            if self._statetimer <= 0:
+                self._data.start_newtrial()
+                self._state = PlutoDiscReachAssessStates.FREE_RUNNING
+                return True
+        return False
 
     def _disc_reach_done(self, event, dt):
         """
         """
         pass
+
+    def _udpate_instructions(self):
+        """Update instructions for the task.
+        """
+        if self._state == PlutoDiscReachAssessStates.FREE_RUNNING:
+            if self._data.all_trials_done:
+                self._instruction = f"Discrete Reaching Assessment Done. Press the PLUTO Button to exit."
+            else:
+                if self._data.demomode:
+                    self._instruction = f"Press PLUTO Button to start demo trial."
+                else:
+                    self._instruction = f"PLUTO Button to start assessment Trial {self._data.currtrial} / {self._data.ntrials}."
+            self._tgt1inst = ""
+            self._tgt2inst = ""
+        elif self._state == PlutoDiscReachAssessStates.GET_TO_TARGET1_START:
+            if not self.subj_in_target1():
+                # Update instructions
+                self._instruction = f"Go to target 1 to start trial [{self._holdreachtimer:+1.1f}]."
+                self._tgt1inst = ""
+                self._tgt2inst = ""
+        elif self._state == PlutoDiscReachAssessStates.HOLDING_AT_TARGET1_START:
+            # Update instructions
+            self._instruction = f"Hold at target 1 [{self._holdreachtimer:+1.1f}]."
+            self._tgt1inst = f"Hold [{self._statetimer:+1.1f}]"
+            self._tgt2inst = ""
+        elif self._state == PlutoDiscReachAssessStates.WAIT_TO_START_REACH_TO_TARGET2:
+            # Update instructions
+            self._instruction = f"Reach [{self._holdreachtimer:+1.1f}]."
+            self._tgt1inst = ""
+            self._tgt2inst = ""
+        elif self._state == PlutoDiscReachAssessStates.MOVING_TO_TARGET2:
+            # Update instructions
+            self._instruction = f"Reach [{self._holdreachtimer:+1.1f}]."
+            self._tgt1inst = ""
+            self._tgt2inst = ""
+        elif self._state == PlutoDiscReachAssessStates.HOLDING_AT_TARGET2_STOP:
+            # Update instructions
+            self._instruction = f"Hold at target [{self._holdreachtimer:+1.1f}]."
+            self._tgt1inst = ""
+            self._tgt2inst = f"Hold [{self._statetimer:+1.1f}]"
+        elif self._state == PlutoDiscReachAssessStates.TGT1_TO_TGT2_DONE:
+            # Update instructions
+            self._instruction = f"Hold at target."
+            self._tgt1inst = ""
+            self._tgt2inst = f"Hold [{self._statetimer:+1.1f}]"
+        elif self._state == PlutoDiscReachAssessStates.GET_TO_TARGET2_START:
+            # Update instructions
+            self._instruction = f"Go to target 2 to start return [{self._holdreachtimer:+1.1f}]."
+            self._tgt1inst = ""
+            self._tgt2inst = ""
+        elif self._state == PlutoDiscReachAssessStates.HOLDING_AT_TARGET2_START:
+            # Update instructions
+            self._instruction = f"Hold at target 2 [{self._holdreachtimer:+1.1f}]."
+            self._tgt2inst = f"Hold [{self._statetimer:+1.1f}]"
+            self._tgt1inst = ""
+        elif self._state == PlutoDiscReachAssessStates.WAIT_TO_START_REACH_TO_TARGET1:
+            # Update instructions
+            self._instruction = f"Reach [{self._holdreachtimer:+1.1f}]."
+            self._tgt1inst = ""
+            self._tgt2inst = ""
+        elif self._state == PlutoDiscReachAssessStates.MOVING_TO_TARGET1:
+            # Update instructions
+            self._instruction = f"Reach [{self._holdreachtimer:+1.1f}]."
+            self._tgt1inst = ""
+            self._tgt2inst = ""
+        elif self._state == PlutoDiscReachAssessStates.HOLDING_AT_TARGET1_STOP:
+            # Update instructions
+            self._instruction = f"Hold at target 1 [{self._holdreachtimer:+1.1f}]."
+            self._tgt1inst = f"Hold [{self._statetimer:+1.1f}]"
+            self._tgt2inst = ""
+        elif self._state == PlutoDiscReachAssessStates.TRIAL_DONE:
+            # Update instructions
+            self._instruction = f"Trial complete. Relax."
+            self._tgt1inst = ""
+            self._tgt2inst = ""
+        elif self._state == PlutoDiscReachAssessStates.TRIAL_FAILED:
+            # Trial
+            # Update instructions
+            self._instruction = f"Trial Failed. Relax."
+            self._tgt1inst = ""
+            self._tgt2inst = ""
+        elif self._state == PlutoDiscReachAssessStates.DISC_REACH_DONE:
+            pass
+        # Update
+        self._dispctrls["inst"].setText(self._instruction)
+        self._dispctrls["tgt1"].setText(self._tgt1inst)
+        self._dispctrls["tgt2"].setText(self._tgt2inst)
 
     #
     # Supporting functions
@@ -424,12 +665,12 @@ class PlutoAPRomAssessmentStateMachine():
         """Check if the subject is in target1.
         """
         # print(self._pluto.angle, self._data.target1, )
-        return np.abs(self._pluto.angle - self._data.target1) < pfadef.DiscReachConstant.TGT_WIDTH * self._data.aromrange
+        return np.abs(self._pluto.angle - self._data.target1) < 0.5 * pfadef.DiscReachConstant.TGT_WIDTH * self._data.aromrange
     
     def subj_in_target2(self):
         """Check if the subject is in target2.
         """
-        return np.abs(self._pluto.angle - self._data.target1) < pfadef.DiscReachConstant.TGT_WIDTH * self._data.aromrange
+        return np.abs(self._pluto.angle - self._data.target2) < 0.5 * pfadef.DiscReachConstant.TGT_WIDTH * self._data.aromrange
     
     def subj_is_holding(self):
         """Check if the subject is holding the position.
@@ -497,7 +738,14 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
         self._romassess_add_graph()
 
         # Initialize the state machine.
-        self._smachine = PlutoAPRomAssessmentStateMachine(self._pluto, self.data, self.ui.subjInst, self.ui.timerText)
+        self._smachine = PlutoAPRomAssessmentStateMachine(
+            self._pluto, 
+            self.data, 
+            {"inst": self.ui.subjInst, 
+             "timer": self.ui.timerText,
+             "tgt1": self.ui.tgt1Text,
+             "tgt2": self.ui.tgt2Text,}
+        )
 
         # Attach callbacks
         self._attach_pluto_callbacks()
@@ -538,14 +786,6 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
         self._update_current_position_cursor()
         # Update target display.
         self._updat_targets_display()
-        # # if self._smachine.state == PlutoDiscReachAssessStates.TRIAL_ACTIVE_WAIT_TO_MOVE:
-        # if self._smachine.in_a_trial_state:
-        #     self._draw_stop_zone_lines()
-        #     self._highlight_start_zone()
-        #     self._update_arom_cursor_position()
-        # elif self._smachine.state == PlutoDiscReachAssessStates.FREE_RUNNING:
-        #     # Reset arom cursor position.
-        #     self._reset_display()
         
         # Update main text
         if self.pluto.angle is None: return
@@ -614,118 +854,30 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
             self.ui.tgt2.setBrush(pfadef.DiscReachConstant.TARGET_DISPLAY_COLOR)
         elif self._smachine.state == PlutoDiscReachAssessStates.HOLDING_AT_TARGET2_STOP:
             # Highlight target 2.
-            self.ui.tgt2.setBrush(pfadef.DiscReachConstant.TARGET_DISPLAY_COLOR)
-
-
-    # def _draw_stop_zone_lines(self):
-    #     _th = (pfadef.STOP_POS_HOC_THRESHOLD
-    #            if self.data.mechanism == "HOC"
-    #            else pfadef.STOP_POS_NOT_HOC_THRESHOLD)
-    #     if self.data.mechanism == "HOC":
-    #         self.ui.stopLine1.setData(
-    #             [self.data.startpos + _th,
-    #              self.data.startpos + _th],
-    #             [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-    #         )
-    #         self.ui.stopLine2.setData(
-    #             [-self.data.startpos - _th,
-    #              -self.data.startpos - _th],
-    #             [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-    #         )
-    #     else:
-    #         self.ui.stopLine1.setData(
-    #             [self._dispsign * (self.data.startpos - _th),
-    #              self._dispsign * (self.data.startpos - _th)],
-    #             [pfadef.CURSOR_LOWER_LIMIT,
-    #              pfadef.CURSOR_UPPER_LIMIT]
-    #         )
-    #         self.ui.stopLine2.setData(
-    #             [self._dispsign * (self.data.startpos + _th),
-    #              self._dispsign * (self.data.startpos + _th)],
-    #             [pfadef.CURSOR_LOWER_LIMIT,
-    #              pfadef.CURSOR_UPPER_LIMIT]
-    #         )
-    
-    # def _update_arom_cursor_position(self):
-    #     if len(self.data._trialrom) == 0: return
-    #     if self.data.mechanism == "HOC":
-    #         if len(self.data._trialrom) > 1:
-    #             self.ui.romLine1.setData([-self.data._trialrom[-1], -self.data._trialrom[-1]],
-    #                                      [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-    #             self.ui.romLine2.setData([self.data._trialrom[-1], self.data._trialrom[-1]],
-    #                                      [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-    #             self.ui.romFill.setRect(-self.data._trialrom[-1], pfadef.CURSOR_LOWER_LIMIT,
-    #                                     2 * self.data._trialrom[-1], pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
-    #         else:
-    #             self.ui.romLine1.setData([0, 0], [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-    #             self.ui.romLine2.setData([0, 0], [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-    #             self.ui.romFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT, 0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
-    #     else:
-    #         _romdisp = list(map(lambda x: self._dispsign * x, self.data._trialrom))
-    #         _romdisp.sort()
-    #         self.ui.romLine1.setData(
-    #             [_romdisp[0], _romdisp[0]],
-    #             [pfadef.CURSOR_LOWER_LIMIT,
-    #              pfadef.CURSOR_UPPER_LIMIT]
-    #         )
-    #         self.ui.romLine2.setData(
-    #             [_romdisp[-1], _romdisp[-1]],
-    #             [pfadef.CURSOR_LOWER_LIMIT,
-    #              pfadef.CURSOR_UPPER_LIMIT]
-    #         )
-    #         # Fill between the two AROM lines
-    #         self.ui.romFill.setRect(
-    #             _romdisp[0], pfadef.CURSOR_LOWER_LIMIT,
-    #             (_romdisp[-1] - _romdisp[0]),
-    #             pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT
-    #         )
-    
-    # def _highlight_start_zone(self):
-    #     if len(self.data._trialrom) == 0: return
-    #     # Fill the start zone
-    #     if self._smachine.state == PlutoAPRomAssessStates.TRIAL_ACTIVE_HOLDING_IN_STOP_ZONE:
-    #         if self.data.mechanism == "HOC":
-    #             self.ui.strtZoneFill.setRect(
-    #                 -self.data.startpos - pfadef.STOP_POS_HOC_THRESHOLD,
-    #                 pfadef.CURSOR_LOWER_LIMIT,
-    #                 2 * (self.data.startpos + pfadef.STOP_POS_HOC_THRESHOLD),
-    #                 pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT
-    #             )
-    #         else:
-    #             self.ui.strtZoneFill.setRect(
-    #                 self._dispsign * self.data.startpos - pfadef.STOP_POS_NOT_HOC_THRESHOLD,
-    #                 pfadef.CURSOR_LOWER_LIMIT,
-    #                 2 * pfadef.STOP_POS_NOT_HOC_THRESHOLD,
-    #                 pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT
-    #             )
-    #     else:
-    #         self.ui.strtZoneFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT,
-    #                                      0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
-    
-    # def _reset_display(self):
-    #     # Reset ROM display
-    #     self.ui.romLine1.setData(
-    #         [0, 0],
-    #         [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-    #     )
-    #     self.ui.romLine2.setData(
-    #         [0, 0],
-    #         [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-    #     )
-    #     # Fill between the two AROM lines
-    #     self.ui.romFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT,
-    #                             0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
-    #     # Reset stop zone.
-    #     self.ui.stopLine1.setData(
-    #         [0, 0],
-    #         [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-    #     )
-    #     self.ui.stopLine2.setData(
-    #         [0, 0],
-    #         [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
-    #     )
-    #     self.ui.strtZoneFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT,
-    #                                  0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
+            self.ui.tgt2.setBrush(pfadef.DiscReachConstant.TARGET_REACHED_COLOR)
+        elif self._smachine.state == PlutoDiscReachAssessStates.TGT1_TO_TGT2_DONE:
+            # Hide both targets.
+            self.ui.tgt2.setBrush(pfadef.DiscReachConstant.START_WAIT_COLOR)
+        elif self._smachine.state == PlutoDiscReachAssessStates.GET_TO_TARGET2_START:
+            # Show Target 2
+            self.ui.tgt2.setBrush(pfadef.DiscReachConstant.START_WAIT_COLOR)
+        elif self._smachine.state == PlutoDiscReachAssessStates.HOLDING_AT_TARGET2_START:
+            # Show Target 2
+            self.ui.tgt2.setBrush(pfadef.DiscReachConstant.START_HOLD_COLOR)
+        elif self._smachine.state == PlutoDiscReachAssessStates.WAIT_TO_START_REACH_TO_TARGET1:
+            # Show Target 1
+            self.ui.tgt2.setBrush(pfadef.DiscReachConstant.START_HOLD_COLOR)
+            self.ui.tgt1.setBrush(pfadef.DiscReachConstant.TARGET_DISPLAY_COLOR)
+        elif self._smachine.state == PlutoDiscReachAssessStates.MOVING_TO_TARGET1:
+            # Hide Target 2.
+            self.ui.tgt2.setBrush(pfadef.DiscReachConstant.HIDE_COLOR)
+            self.ui.tgt1.setBrush(pfadef.DiscReachConstant.TARGET_DISPLAY_COLOR)
+        elif self._smachine.state == PlutoDiscReachAssessStates.HOLDING_AT_TARGET1_STOP:
+            # Highlight target 1.
+            self.ui.tgt1.setBrush(pfadef.DiscReachConstant.TARGET_REACHED_COLOR)
+        elif self._smachine.state == PlutoDiscReachAssessStates.TRIAL_DONE:
+            # Hide both targets.
+            self.ui.tgt1.setBrush(pfadef.DiscReachConstant.START_WAIT_COLOR)
 
     #
     # Graph plot initialization
@@ -752,7 +904,6 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
         self.ui.tgt1 = QGraphicsRectItem()
         self.ui.tgt1.setBrush(pfadef.DiscReachConstant.HIDE_COLOR)
         self.ui.tgt1.setPen(pg.mkPen(None))
-        # print(self.data.arom, self.data.aromrange, self.data.target1, self.data.target2)
         self.ui.tgt1.setRect(
             self._dispsign * self.data.target1 - 0.5 * pfadef.DiscReachConstant.TGT_WIDTH * self.data.aromrange,
             pfadef.CURSOR_LOWER_LIMIT,
@@ -788,11 +939,10 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
         _pgobj.addItem(self.ui.currPosLine2)
        
         # Instruction text
-        self.ui.subjInst = pg.TextItem(text='', color='w', anchor=(0, 0))
-        self.ui.subjInst.setPos(_aromdisp[0], 20)  # Set position (x, y)
-        # self.ui.subjInst.setPos(self._dispsign * self.data.arom[0] + self.data.aromrange / 2, 20)  # Set position (x, y)
-        # Set font and sizex
-        self.ui.subjInst.setFont(QtGui.QFont("Bahnschrift Light", 18))
+        self.ui.subjInst = pg.TextItem(text='', color='w', anchor=(0.5, 0.5))
+        self.ui.subjInst.setPos(_aromdisp[0] + 0.5 * self.data.aromrange, 25)  # Set position (x, y)
+        self.ui.subjInst.setFont(QtGui.QFont("Cascadia Mono", 12))
+        _pgobj.addItem(self.ui.subjInst)
         
         # Timer text
         self.ui.timerText = pg.TextItem(
@@ -800,10 +950,26 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
             anchor=(0.5, 0.5)
         )
         self.ui.timerText.setPos(_aromdisp[0] + 0.5 * self.data.aromrange, 15)  # Set position (x, y)
-        # self.ui.timerText.setPos(self._dispsign * self.data.arom[0] + self.data.aromrange / 2, 15)  # Set position (x, y)
-        # Set font and size
         self.ui.timerText.setFont(QtGui.QFont("Cascadia Mono", 10))
         _pgobj.addItem(self.ui.timerText)
+
+        # Target 1 and Target 2 instructions.
+        # Target 1
+        self.ui.tgt1Text = pg.TextItem(
+            text='', color='w', 
+            anchor=(0.5, 0.5)
+        )
+        self.ui.tgt1Text.setPos(self._dispsign * self.data.target1, 14)  # Set position (x, y)
+        self.ui.tgt1Text.setFont(QtGui.QFont("Cascadia Mono", 10))
+        _pgobj.addItem(self.ui.tgt1Text)
+        # Target 2
+        self.ui.tgt2Text = pg.TextItem(
+            text='', color='w', 
+            anchor=(0.5, 0.5)
+        )
+        self.ui.tgt2Text.setPos(self._dispsign * self.data.target2, 14)  # Set position (x, y)
+        self.ui.tgt2Text.setFont(QtGui.QFont("Cascadia Mono", 10))
+        _pgobj.addItem(self.ui.tgt2Text)
 
     #
     # Signal Callbacks
@@ -861,7 +1027,6 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
             # Restart ROM assessment statemachine
             self._smachine.reset_statemachine()
     
-    
     def closeEvent(self, event):
         if self.on_close_callback:
             self.on_close_callback(data=self.data.rom)
@@ -872,7 +1037,7 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM12")
+    plutodev = QtPluto("COM13")
     pcalib = PlutoDiscReachAssessWindow(
         plutodev=plutodev, 
         assessinfo={

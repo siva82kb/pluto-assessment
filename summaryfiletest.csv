@@ -1,1 +1,2 @@
 session,type,limb,mechanism,trial,startpos,rommin,rommax,romrange,torqmin,torqmax
+testing,Stroke,Left,WFE,0,-2.2265625,-75.61931259155273,75.06571762084961,150.68503021240235,0,0

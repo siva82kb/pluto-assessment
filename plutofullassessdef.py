@@ -60,9 +60,10 @@ class DiscReachConstant:
     TGT1_POSITION = 0.20            # Fraction of AROM range
     TGT2_POSITION = 0.80            # Fraction of AROM range
     TGT_WIDTH = 0.05                # Fraction of AROM range
-    START_HOLD_DURATION = 1.0       # seconds
-    TGT_HOLD_DURATION = 2.0         # seconds
+    START_HOLD_DURATION = 0.5       # seconds
+    TGT_HOLD_DURATION = 1.0         # seconds
     START_TGT_MAX_DURATION = 10.0   # seconds
+    RETURN_WAIT_DURATION = 0.0      # seconds
     REACH_TGT_MAX_DURATION = 10.0   # seconds
 
     # Display color constant

@@ -192,6 +192,25 @@ class PlutoAssessmentProtocolData(object):
     @property
     def filename(self):
         return pathlib.Path(self._basedir, f"{self._subjid}_{self._type}_{self._limb}_protocol.csv").as_posix()
+    
+    @property
+    def mech_completed(self) -> list[str]:
+        """List of mechanisms for which assessment has been completed.
+        """
+        if self._df is None or self._index is None:
+            return None
+        # Get the list of mechanisms that have been assessed.
+        _mechleft = self._df[self._df["session"].isna()]['mechanism'].unique().tolist()
+        return list(set(pfadef.mechanisms) - set(_mechleft))
+    
+    @property
+    def mech_not_completed(self) -> list[str]:
+        """List of mechanisms for which assessment has been completed.
+        """
+        if self._df is None or self._index is None:
+            return None
+        # Get the list of mechanisms that have been assessed.
+        return self._df[self._df["session"].isna()]['mechanism'].unique().tolist()
 
     @property
     def mech_enabled(self) ->list[str]:
@@ -202,6 +221,40 @@ class PlutoAssessmentProtocolData(object):
         # Get the list of mechanisms that have been assessed.
         return list(self._df[self._df.index <= self._index]["mechanism"].unique())
     
+    @property
+    def all_tasks_for_mechanism(self) -> list[str]:
+        """Get the list of all tasks for the current mechanism.
+        """
+        if self._df is None or self._index is None or self._mech is None:
+            return []
+        # Get the list of mechanisms that have been assessed.
+        _mechdf = self._df[self._df["mechanism"] == self._mech]
+        return _mechdf["task"].unique().tolist()
+    
+    @property
+    def task_completed(self) -> list[str]:
+        """List of tasks that have been completed.
+        """
+        if self._df is None or self._index is None or self._mech is None:
+            return []
+        # Get the list of mechanisms that have been assessed.
+        _mechdf = self._df[self._df["mechanism"] == self._mech]
+        _mechdf_nanrows = _mechdf[_mechdf["session"].isna()]
+        _mechleft = _mechdf_nanrows["task"].unique().tolist()
+        _mechall = _mechdf["task"].unique().tolist()
+        return list(set(_mechall) - set(_mechleft))
+    
+    @property
+    def task_not_completed(self) -> list[str]:
+        """List of tasks that have not been completed.
+        """
+        if self._df is None or self._index is None or self._mech is None:
+            return []
+        # Get the list of mechanisms that have been assessed.
+        _mechdf = self._df[self._df["mechanism"] == self._mech]
+        _mechdf_nanrows = _mechdf[_mechdf["session"].isna()]
+        return _mechdf_nanrows["task"].unique().tolist()
+
     @property
     def task_enabled(self) -> list[str]:
         """List of tasks that are to be enabled.
@@ -215,7 +268,11 @@ class PlutoAssessmentProtocolData(object):
     
     @property
     def is_mechanism_completed(self, mechname):
-        return mechname in self.mech_enabled[:-1] 
+        return mechname in self.mech_enabled[:-1]
+
+    @property
+    def current_mech_completed(self):
+        return self.mech in self.mech_completed
     
     @property
     def index(self):
@@ -232,6 +289,7 @@ class PlutoAssessmentProtocolData(object):
     @property
     def summaryfilename(self):
         # Create the new file and handle.
+        if self._task == "DISC": return ""
         return pathlib.Path(
             self._sessdir, 
             f"{self._subjid}_{self._type}_{self._limb}_{self._mech}_{self._task}_summary-{self._tasktime}.csv"
