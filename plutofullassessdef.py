@@ -90,7 +90,7 @@ class ProprioceptionConstants:
     ON_OFF_TGT_DURATION = 1             # Duration for deciding the hand is on or off target (seconds).
     TGT_ERR_TH = 0.25                   # Target error threshold (cm).
     DEMO_DURATION = 5                   # Duration for haptic demonstration (seconds).
-    INTRA_TRIAL_REST_DUURATION = 3      # Intra-Trial Rest Duration (seconds).
+    INTRA_TRIAL_REST_DURATION = 3       # Intra-Trial Rest Duration (seconds).
     INTER_TRIAL_REST_DURATION = 5       # Inter-Trial Rest Duration (seconds).
     DEMO_TGT_REACH_DURATION = 2.0       # Duration for the position controller to reach the target.
 

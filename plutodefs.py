@@ -35,11 +35,12 @@ LimbType = {
 }
 
 ControlType = {
-    "NONE":         0x00,
-    "POSITION":     0x01,
-    "RESIST":       0x02,
-    "TORQUE":       0x03,
-    "POSITIONAAN":  0x04,
+    "NONE":             0x00,
+    "POSITION":         0x01,
+    "RESIST":           0x02,
+    "TORQUE":           0x03,
+    "POSITIONAAN":      0x04,
+    "POSITIONLINEAR":   0x05,
 }
 
 Mehcanisms = {

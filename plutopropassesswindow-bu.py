@@ -72,11 +72,9 @@ class PlutoPropAssessEvents(Enum):
 class PlutoPropAssessAction(Enum):
     SET_CONTROl_TO_NONE = 0
     SET_CONTROL_TO_POSITION = auto()
-    SET_CONTROL_TO_TORQUE = auto()
     SET_HAPTIC_DEMO_TARGET_POSITION = auto()
-    SET_HAPTIC_DEMO_HOME_POSITION = auto()
-    SET_ASSESSMENT_TORQUE_TARGET = auto()
-    SET_TORQUE_TARGET_TO_ZERO = auto()
+    SET_HOME_POSITION = auto()
+    SET_ASSESSMENT_TARGET_POSITION = auto()
     DO_NOTHING = auto()
 
 
@@ -921,58 +919,58 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
 
         self.update_ui()
     
-    # def _callback_ctrl_timer(self):
-    #     # Check state and act accordingly.
-    #     self._tgtctrl['time'] = increment_time(self._tgtctrl['time'])
-    #     self._time = increment_time(self._time)
-    #     _strans = False
-    #     if self._smachine.state == PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY_MOVING:
-    #         # Update target position.
-    #         self._update_target_position()
+    def _callback_ctrl_timer(self):
+        # Check state and act accordingly.
+        self._tgtctrl['time'] = increment_time(self._tgtctrl['time'])
+        self._time = increment_time(self._time)
+        _strans = False
+        if self._smachine.state == PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY_MOVING:
+            # Update target position.
+            self._update_target_position()
 
-    #         # Check if the target has been reached, and target demo time has lapsed.
-    #         _strans = self._check_target_display_timeout()
-    #     elif self._smachine.state == PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY:
-    #         # Check if the statemachine timer has reached the required duration.
-    #         if self._time >= self._protocol['demo_dur']:
-    #             # Demo duration reached. Move to next state.
-    #             _strans = self._smachine.run_statemachine(
-    #                 PlutoPropAssessEvents.HAPTIC_DEMO_ON_TARGET_TIMEOUT,    
-    #                 0
-    #             )
-    #     elif self._smachine.state == PlutoPropAssessStates.INTRA_TRIAL_REST:
-    #         # Update target position.
-    #         self._update_target_position_mjt()
-    #         # Check if hand has been clopsed, and target intra-trial duration 
-    #         # has lapsed.
-    #         _strans = self._check_intratrial_timeout()
-    #     elif self._smachine.state == PlutoPropAssessStates.TRIAL_ASSESSMENT_MOVING:
-    #         # Update target position.
-    #         self._update_target_position()
-    #         # Check if PROM is reached, and if time has run out.
-    #         _strans = self._check_trial_no_respose_timeout()
-    #     elif self._smachine.state == PlutoPropAssessStates.TRIAL_ASSESSMENT_RESPONSE_HOLD:
-    #         # Check if the statemachine timer has reached the required duration.
-    #         _strans = self._check_trial_hold_timeout()
-    #     elif self._smachine.state == PlutoPropAssessStates.TRIAL_ASSESSMENT_NO_RESPONSE_HOLD:
-    #         # Check if the statemachine timer has reached the required duration.
-    #         _strans = self._check_trial_hold_timeout()
-    #     elif self._smachine.state == PlutoPropAssessStates.INTER_TRIAL_REST:
-    #         # Update target position.
-    #         self._update_target_position_mjt()
-    #         # Check if the target has been reached, and target demo time has lapsed.
-    #         _strans = self._check_inter_trial_timeout()
-    #     elif self._smachine.state == PlutoPropAssessStates.PROTOCOL_STOP:
-    #         # Update target position.
-    #         self._update_target_position_mjt()
-    #         # Check if the target has been reached, and target demo time has lapsed.
-    #         _strans = self._check_protocol_stop_timeout()
+            # Check if the target has been reached, and target demo time has lapsed.
+            _strans = self._check_target_display_timeout()
+        elif self._smachine.state == PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY:
+            # Check if the statemachine timer has reached the required duration.
+            if self._time >= self._protocol['demo_dur']:
+                # Demo duration reached. Move to next state.
+                _strans = self._smachine.run_statemachine(
+                    PlutoPropAssessEvents.HAPTIC_DEMO_ON_TARGET_TIMEOUT,    
+                    0
+                )
+        elif self._smachine.state == PlutoPropAssessStates.INTRA_TRIAL_REST:
+            # Update target position.
+            self._update_target_position_mjt()
+            # Check if hand has been clopsed, and target intra-trial duration 
+            # has lapsed.
+            _strans = self._check_intratrial_timeout()
+        elif self._smachine.state == PlutoPropAssessStates.TRIAL_ASSESSMENT_MOVING:
+            # Update target position.
+            self._update_target_position()
+            # Check if PROM is reached, and if time has run out.
+            _strans = self._check_trial_no_respose_timeout()
+        elif self._smachine.state == PlutoPropAssessStates.TRIAL_ASSESSMENT_RESPONSE_HOLD:
+            # Check if the statemachine timer has reached the required duration.
+            _strans = self._check_trial_hold_timeout()
+        elif self._smachine.state == PlutoPropAssessStates.TRIAL_ASSESSMENT_NO_RESPONSE_HOLD:
+            # Check if the statemachine timer has reached the required duration.
+            _strans = self._check_trial_hold_timeout()
+        elif self._smachine.state == PlutoPropAssessStates.INTER_TRIAL_REST:
+            # Update target position.
+            self._update_target_position_mjt()
+            # Check if the target has been reached, and target demo time has lapsed.
+            _strans = self._check_inter_trial_timeout()
+        elif self._smachine.state == PlutoPropAssessStates.PROTOCOL_STOP:
+            # Update target position.
+            self._update_target_position_mjt()
+            # Check if the target has been reached, and target demo time has lapsed.
+            _strans = self._check_protocol_stop_timeout()
 
-    #     # Handle the current proprioceptuive assessment state
-    #     self._state_handlers[self._smachine.state](_strans)
+        # Handle the current proprioceptuive assessment state
+        self._state_handlers[self._smachine.state](_strans)
 
-    #     # Update UI
-    #     self.update_ui()
+        # Update UI
+        self.update_ui()
 
     # def _check_target_display_timeout(self) -> bool:
     #     _tgterr = self._tgtctrl["final"] - self.pluto.hocdisp
