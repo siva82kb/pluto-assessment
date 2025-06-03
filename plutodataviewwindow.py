@@ -159,6 +159,8 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
 
     
 if __name__ == '__main__':
+    import qtjedi
+    qtjedi._OUTDEBUG = True
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM12")
     plutodev.send_heartbeat()

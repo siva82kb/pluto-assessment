@@ -249,7 +249,7 @@ if __name__ == '__main__':
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM13")
-    pcalib = PlutoCalibrationWindow(plutodev=plutodev, limb="LEFT", mechanism="WFE",
+    pcalib = PlutoCalibrationWindow(plutodev=plutodev, limb="LEFT", mechanism="HOC",
                                     dataviewer=True, heartbeat=True, 
                                     onclosecb=lambda: print(dt.now()))
     pcalib.show()

@@ -33,7 +33,7 @@
       <widget class="QLabel" name="lblTitle">
        <property name="font">
         <font>
-         <family>Bahnschrift Light</family>
+         <family>Cascadia Mono Light</family>
          <pointsize>12</pointsize>
         </font>
        </property>
@@ -52,7 +52,7 @@
       <widget class="QCheckBox" name="cbTrialRun">
        <property name="font">
         <font>
-         <family>Bahnschrift Light</family>
+         <family>Cascadia Code Light</family>
          <pointsize>10</pointsize>
         </font>
        </property>
@@ -68,8 +68,8 @@
       <widget class="QLabel" name="lblStatus">
        <property name="font">
         <font>
-         <family>Bahnschrift Light</family>
-         <pointsize>12</pointsize>
+         <family>Cascadia Mono Light</family>
+         <pointsize>10</pointsize>
         </font>
        </property>
        <property name="text">

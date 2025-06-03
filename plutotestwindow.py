@@ -266,9 +266,9 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM12")
+    plutodev = QtPluto("COM13")
     pdataview = PlutoTestControlWindow(plutodev=plutodev,
-                                       mech="WFE",
+                                       mech="HOC",
                                        dataviewer=True,
                                        onclosedb=lambda: print("Window closed"),
                                        heartbeat=True)

@@ -526,7 +526,7 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
 
         # Initialize the state machine.
         self._smachine = PlutoAssistPRomAssessmentStateMachine(self._pluto, self.data, self.ui.subjInst)
-
+        
         # Attach callbacks
         self._attach_pluto_callbacks()
 

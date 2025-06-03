@@ -79,6 +79,38 @@ class DiscReachConstant:
 
 
 #
+# Prioprioceptive Assessment Constants
+#
+class ProprioceptionConstants:
+    NO_OF_TRIALS = 3                    # Number of trials.
+    START_POSITION_TH = 0.25            # Start position of the hanbd (cm).       
+    TGT_POSITIONS = [0.25, 0.5, 0.75]   # Target positions (fraction of PROM).
+    MIN_TGT_SEP = 1                     # Minimum target separation (cm).
+    MOVE_SPEED = 0.5                    # Duration for haptic demonstration (cm/seconds).
+    ON_OFF_TGT_DURATION = 1             # Duration for deciding the hand is on or off target (seconds).
+    TGT_ERR_TH = 0.25                   # Target error threshold (cm).
+    DEMO_DURATION = 5                   # Duration for haptic demonstration (seconds).
+    INTRA_TRIAL_REST_DUURATION = 3      # Intra-Trial Rest Duration (seconds).
+    INTER_TRIAL_REST_DURATION = 5       # Inter-Trial Rest Duration (seconds).
+    DEMO_TGT_REACH_DURATION = 2.0       # Duration for the position controller to reach the target.
+
+    # Raw data file header.
+    RAW_HEADER = [
+        "systime", "devtime", "packno",  "status", "controltype", "error",
+        "limb", "mechanism",
+        "angle", "hocdisp", "torque", "control", "target", "desired", 
+        "controlbound", "cotnroldir", "controlgain", "button",
+        "trialno", "assessmentstate"
+    ]
+
+    # Summary file header.
+    SUMMARY_HEADER = [
+        "session", "type", "limb", "mechanism", "trial", "startpos",
+        "aromin", "aromax", "promin", "promax", "target",
+        "shown", "sensed", "torque"
+    ]
+
+#
 # Display constants
 #
 CURSOR_LOWER_LIMIT = -30
