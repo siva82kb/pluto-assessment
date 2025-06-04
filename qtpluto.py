@@ -374,14 +374,19 @@ class QtPluto(QObject):
         _payload.append(int((gain - pdef.PlutoMinControlGain) * 255 / (pdef.PlutoMaxControlGain - pdef.PlutoMinControlGain)))
         self.dev.send_message(_payload)
     
-    def set_control_hold(self, hold):
-        """Set the control bound.
+    def hold_control(self):
+        """Hold control.
         """
         if not self.is_connected():
             return
-        # Make sure the bound is between 0 and 1.
-        _payload = [pdef.ControlHoldTypes[hold]]
-        self.dev.send_message(_payload)
+        self.dev.send_message([pdef.InDataType["HOLD_CONTROL"]])
+    
+    def decay_control(self):
+        """Decay control.
+        """
+        if not self.is_connected():
+            return
+        self.dev.send_message([pdef.InDataType["DECAY_CONTROL"]])
     
     def set_limb(self, limb):
         """Set the limb.

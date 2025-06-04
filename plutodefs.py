@@ -75,6 +75,8 @@ InDataType = {
     "RESET_AAN_TARGET":     0x0B,
     "SET_CONTROL_GAIN":     0x0C,
     "SET_LIMB":             0x0D,
+    "HOLD_CONTROL":         0x0E,
+    "DECAY_CONTROL":        0x0F,
     "HEARTBEAT":            0x80,
 }
 

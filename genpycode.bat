@@ -8,3 +8,4 @@ pyuic5 -o ui_plutoromassess.py ui/plutoromassess.ui
 pyuic5 -o ui_plutoapromassess.py ui/plutoapromassess.ui
 pyuic5 -o ui_plutotestcontrol.py ui/plutotestcontrol.ui
 pyuic5 -o ui_plutopropassessctrl.py ui/plutopropassessctrl.ui
+pyuic5 -o ui_plutocontroltester.py ui/plutocontroltester.ui
