@@ -90,12 +90,12 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
             f"Dev Time : {self.pluto.currt:6.3f}s | Pack No : {self.pluto.packetnumber:06d}",
         ]
         _statusstr = ' | '.join((pdef.get_name(pdef.OutDataType, self.pluto.datatype),
-                                 pdef.get_name(pdef.ControlType, self.pluto.controltype),
                                  pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)))
         _dispdata += [
             f"Status   : {_statusstr}",
             f"Error    : {pdef.get_name(pdef.ErrorTypes, self.pluto.error)}",
-            f"Lmb-Mech : {pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<6s} | {pdef.get_name(pdef.LimbType, self.pluto.limb):<6s} | {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
+            f"Control  : {pdef.get_name(pdef.ControlTypes, self.pluto.controltype):<8s} | Control Hold: {pdef.get_name(pdef.ControlHoldTypes, self.pluto.controlhold)}",
+            f"Lmb-Mech : {pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<8s} | {pdef.get_name(pdef.LimbType, self.pluto.limb):<6s} | {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
             f"Actd     : {self.pluto.actuated:<6d} | Button  : {self.pluto.button}",
             ""
         ]
@@ -119,9 +119,7 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
             ]
         # Control bound, dir and gain
         _dispdata += [
-            f"C Bound  : {self.pluto.controlbound:1.2f}",
-            f"C Dir    : {self.pluto.controldir}",
-            f"C Gain   : {self.pluto.controlgain:02.2f}",
+            f"C Bound  : {self.pluto.controlbound:1.2f} | C Dir    : {self.pluto.controldir} | C Gain   : {self.pluto.controlgain:02.2f}",
         ]
         self.ui.textDevData.setText('\n'.join(_dispdata))
     
@@ -162,7 +160,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = True
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM12")
+    plutodev = QtPluto("COM13")
     plutodev.send_heartbeat()
     plutodev.set_limb("LEFT")
     pdataview = PlutoDataViewWindow(plutodev=plutodev,

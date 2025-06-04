@@ -34,7 +34,7 @@ LimbType = {
     "LEFT":     0x02,
 }
 
-ControlType = {
+ControlTypes = {
     "NONE":             0x00,
     "POSITION":         0x01,
     "RESIST":           0x02,
@@ -97,6 +97,12 @@ OperationStatus = {
 CalibrationStatus = {
     "NOCALIB":  0x00,
     "YESCALIB": 0x01,
+}
+
+ControlHoldTypes = {
+    "FREE":     0x00,
+    "HOLD":     0x01,
+    "DECAY":    0x02,
 }
 
 PlutoAngleRanges = {

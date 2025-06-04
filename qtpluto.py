@@ -175,8 +175,12 @@ class QtPluto(QObject):
         )
     
     @property
-    def button(self):
+    def controlhold(self):
         return self.currstatedata[9] if len(self.currstatedata) > 0 else None
+    
+    @property
+    def button(self):
+        return self.currstatedata[10] if len(self.currstatedata) > 0 else None
 
     def delt(self):
         return self._deltimes[-1] if len(self._deltimes) > 0 else 0
@@ -235,8 +239,10 @@ class QtPluto(QObject):
         self.currstatedata.append(newdata[10 + N * 4 + 1])
         # # Control gain - 8
         self.currstatedata.append(newdata[10 + N * 4 + 2])
-        # PLUTO button - 9
+        # # Control hold - 9
         self.currstatedata.append(newdata[10 + N * 4 + 3])
+        # PLUTO button - 10
+        self.currstatedata.append(newdata[10 + N * 4 + 4])
         
         # Update frame rate related data.
         self._currt = self.currstatedata[5] * 1e-3
@@ -251,9 +257,9 @@ class QtPluto(QObject):
 
         # Check and verify button events.
         if len(self.currstatedata) > 0 and len(self.prevstatedata) > 4:    
-            if self.prevstatedata[9] == 1.0 and self.currstatedata[9] == 0.0:
+            if self.prevstatedata[10] == 1.0 and self.currstatedata[10] == 0.0:
                 self.btnpressed.emit()
-            if self.prevstatedata[9] == 0.0 and self.currstatedata[9] == 1.0:
+            if self.prevstatedata[10] == 0.0 and self.currstatedata[10] == 1.0:
                 self.btnreleased.emit()
     
     def _handle_version(self, newdata):
@@ -286,7 +292,7 @@ class QtPluto(QObject):
         if not self.is_connected():
             return
         _payload = [pdef.InDataType["SET_CONTROL_TYPE"],
-                    pdef.ControlType[control]]
+                    pdef.ControlTypes[control]]
         self.dev.send_message(_payload)
     
     def set_control_target(self, target, target0=None, t0=None, dur=None):
@@ -297,8 +303,8 @@ class QtPluto(QObject):
         # Set default values
         # Assign the start position carefully.
         if target0 is None:
-            _posctrlcond = (self.controltype == pdef.ControlType["POSITION"]
-                            or self.controltype == pdef.ControlType["POSITIONAAN"])
+            _posctrlcond = (self.controltype == pdef.ControlTypes["POSITION"]
+                            or self.controltype == pdef.ControlTypes["POSITIONAAN"])
             target0 = (self.angle if _posctrlcond 
                        else (0 if self.desired == 999.0 else self.desired)) 
         t0 = t0 if t0 is not None else 0.0
@@ -368,6 +374,15 @@ class QtPluto(QObject):
         _payload.append(int((gain - pdef.PlutoMinControlGain) * 255 / (pdef.PlutoMaxControlGain - pdef.PlutoMinControlGain)))
         self.dev.send_message(_payload)
     
+    def set_control_hold(self, hold):
+        """Set the control bound.
+        """
+        if not self.is_connected():
+            return
+        # Make sure the bound is between 0 and 1.
+        _payload = [pdef.ControlHoldTypes[hold]]
+        self.dev.send_message(_payload)
+    
     def set_limb(self, limb):
         """Set the limb.
         """
@@ -391,7 +406,7 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     from qtjedi import JediComm
     app = QApplication(sys.argv)
-    pluto = QtPluto(port="COM12")
+    pluto = QtPluto(port="COM13")
     pluto.stop_sensorstream()
     pluto.get_version()
     pluto.send_heartbeat()
