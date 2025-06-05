@@ -44,7 +44,6 @@ import plutofullassessdef as pfadef
 from plutofullassessstatemachine import PlutoFullAssessmentStateMachine
 from plutofullassessstatemachine import Events, States
 from plutofullassesssdata import PlutoAssessmentData
-from plutofullassesssdata import PlutoAssessmentProtocolData
 from plutoassistpromwindow import PlutoAssistPRomAssessWindow
 from plutodiscreachwindow import PlutoDiscReachAssessWindow
 from plutopropassesswindow import PlutoPropAssessWindow

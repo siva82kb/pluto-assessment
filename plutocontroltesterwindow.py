@@ -58,6 +58,7 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         self.ui.radioPosition.clicked.connect(self._callback_test_device_control_selected)
         self.ui.radioPositionLinear.clicked.connect(self._callback_test_device_control_selected)
         self.ui.radioTorque.clicked.connect(self._callback_test_device_control_selected)
+        self.ui.radioObjectSim.clicked.connect(self._callback_test_device_control_selected)
         self.ui.pbSetTarget.clicked.connect(self._callback_on_set_target)
         self.ui.pbCtrlHold.clicked.connect(self._callback_on_control_hold)
         self.ui.pbCtrlDecay.clicked.connect(self._callback_on_control_decay)
@@ -96,23 +97,24 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
     # Update UI
     #
     def update_ui(self):
-        _nocontrol = not (self.ui.radioTorque.isChecked()
-                          or self.ui.radioPosition.isChecked()
-                          or self.ui.radioPositionLinear.isChecked())
+        _torqcontrol = self.ui.radioTorque.isChecked()
         _poscontrol = self.ui.radioPosition.isChecked() or self.ui.radioPositionLinear.isChecked()
-        # Enable/disable sliders
+        _objsimcontrol = self.ui.radioObjectSim.isChecked()
+        # Enable/disable spinners
+        self.ui.dsbTgtDur.setEnabled(_torqcontrol or _poscontrol)
         self.ui.dsbPosTgtValue.setEnabled(_poscontrol)
         self.ui.dsbTorqTgtValue.setEnabled(self.ui.radioTorque.isChecked())
         self.ui.dsbCtrlBndValue.setEnabled(_poscontrol)
         self.ui.dsbCtrlGainValue.setEnabled(_poscontrol)
-        self.ui.dsbTgtDur.setEnabled(not _nocontrol)
+        self.ui.dsbObjPos.setEnabled(_objsimcontrol)
+        self.ui.dsbObjStiff.setEnabled(_objsimcontrol)
         # Enable/disable control buttons
-        self.ui.pbSetTarget.setEnabled(not _nocontrol)
+        self.ui.pbSetTarget.setEnabled(_torqcontrol or _poscontrol or _objsimcontrol)
         self.ui.pbCtrlHold.setEnabled(_poscontrol)
         self.ui.pbCtrlDecay.setEnabled(_poscontrol)
         
         # Check the status of the radio buttons.
-        if _nocontrol:
+        if not (_torqcontrol or _poscontrol or _objsimcontrol):
             self.ui.lblFeedforwardTorqueValue.setText("Feedforward Torque Value (Nm):")
             self.ui.lblPositionTargetValue.setText("Target Position Value (deg):")
             self.ui.lblControlBoundValue.setText("Control Bound Value:")
@@ -203,6 +205,8 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
             self.pluto.set_control_type("POSITION")
         elif self.ui.radioPositionLinear.isChecked():
             self.pluto.set_control_type("POSITIONLINEAR")
+        elif self.ui.radioObjectSim.isChecked():
+            self.pluto.set_control_type("OBJECTSIM")
         self._dsbupdate = True
         self.update_ui()
     
@@ -233,10 +237,11 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
     
     def _callback_on_set_target(self, event):
         _dur = self.ui.dsbTgtDur.value()
-        _tgt = (self.ui.dsbTorqTgtValue.value() 
-                if self.ui.radioTorque.isChecked()
-                else self.ui.dsbPosTgtValue.value())
-        _tgt = - _tgt / pdef.HOCScale if self._mech == "HOC" else _tgt
+        if self.ui.radioTorque.isChecked():
+            _tgt = self.ui.dsbTorqTgtValue.value()
+        else:
+            _tgt = self.ui.dsbPosTgtValue.value()
+            _tgt = - _tgt / pdef.HOCScale if self._mech == "HOC" else _tgt
         # Set control bound.
         self.pluto.set_control_bound(self.ui.dsbCtrlBndValue.value())
         # Wait for 250ms

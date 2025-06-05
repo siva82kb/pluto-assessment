@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>452</width>
-    <height>320</height>
+    <height>419</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -15,18 +15,6 @@
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
-  </property>
-  <property name="minimumSize">
-   <size>
-    <width>452</width>
-    <height>320</height>
-   </size>
-  </property>
-  <property name="maximumSize">
-   <size>
-    <width>452</width>
-    <height>320</height>
-   </size>
   </property>
   <property name="windowTitle">
    <string>PLUTO Test Window</string>
@@ -38,24 +26,12 @@
       <x>10</x>
       <y>10</y>
       <width>431</width>
-      <height>301</height>
+      <height>397</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <widget class="QGroupBox" name="gbControlType">
-       <property name="minimumSize">
-        <size>
-         <width>100</width>
-         <height>80</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>500</width>
-         <height>80</height>
-        </size>
-       </property>
        <property name="font">
         <font>
          <family>Bahnschrift Light</family>
@@ -78,6 +54,19 @@
             </property>
             <property name="text">
              <string>Position</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QRadioButton" name="radioPositionLinear">
+            <property name="font">
+             <font>
+              <family>Bahnschrift Light</family>
+              <pointsize>12</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Position Linear</string>
             </property>
            </widget>
           </item>
@@ -107,16 +96,10 @@
             </property>
            </widget>
           </item>
-          <item row="1" column="2">
-           <widget class="QRadioButton" name="radioPositionLinear">
-            <property name="font">
-             <font>
-              <family>Bahnschrift Light</family>
-              <pointsize>12</pointsize>
-             </font>
-            </property>
+          <item row="2" column="0">
+           <widget class="QRadioButton" name="radioObjectSim">
             <property name="text">
-             <string>Position Linear</string>
+             <string>Object Sim</string>
             </property>
            </widget>
           </item>
@@ -127,31 +110,6 @@
      </item>
      <item>
       <layout class="QFormLayout" name="formLayout_3">
-       <item row="0" column="1">
-        <widget class="QDoubleSpinBox" name="dsbTgtDur">
-         <property name="font">
-          <font>
-           <family>Cascadia Mono Light</family>
-           <pointsize>10</pointsize>
-          </font>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-         <property name="decimals">
-          <number>2</number>
-         </property>
-         <property name="minimum">
-          <double>0.000000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>10.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>0.100000000000000</double>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="0">
         <widget class="QLabel" name="lblTargetDuration">
          <property name="minimumSize">
@@ -177,6 +135,31 @@
          </property>
          <property name="text">
           <string>Target Duration (s):</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QDoubleSpinBox" name="dsbTgtDur">
+         <property name="font">
+          <font>
+           <family>Cascadia Mono Light</family>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+         <property name="decimals">
+          <number>2</number>
+         </property>
+         <property name="minimum">
+          <double>0.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>10.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
          </property>
         </widget>
        </item>
@@ -360,6 +343,112 @@
        </item>
        <item row="4" column="1">
         <widget class="QDoubleSpinBox" name="dsbCtrlGainValue">
+         <property name="font">
+          <font>
+           <family>Cascadia Mono Light</family>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+         <property name="decimals">
+          <number>2</number>
+         </property>
+         <property name="minimum">
+          <double>1.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>10.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.010000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="lblObjectPosition">
+         <property name="minimumSize">
+          <size>
+           <width>320</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>320</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <family>Bahnschrift Light</family>
+           <pointsize>12</pointsize>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">color: rgb(170, 0, 0);</string>
+         </property>
+         <property name="text">
+          <string>Object Position:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="lblObjectStiffness">
+         <property name="minimumSize">
+          <size>
+           <width>320</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>320</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <family>Bahnschrift Light</family>
+           <pointsize>12</pointsize>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">color: rgb(170, 0, 0);</string>
+         </property>
+         <property name="text">
+          <string>Object Stiffness:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QDoubleSpinBox" name="dsbObjPos">
+         <property name="font">
+          <font>
+           <family>Cascadia Mono Light</family>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+         <property name="decimals">
+          <number>2</number>
+         </property>
+         <property name="minimum">
+          <double>1.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>10.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.010000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QDoubleSpinBox" name="dsbObjStiff">
          <property name="font">
           <font>
            <family>Cascadia Mono Light</family>

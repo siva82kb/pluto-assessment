@@ -41,6 +41,7 @@ ControlTypes = {
     "TORQUE":           0x03,
     "POSITIONAAN":      0x04,
     "POSITIONLINEAR":   0x05,
+    "OBJECTSIM":        0x06,
 }
 
 Mehcanisms = {
@@ -77,6 +78,8 @@ InDataType = {
     "SET_LIMB":             0x0D,
     "HOLD_CONTROL":         0x0E,
     "DECAY_CONTROL":        0x0F,
+    "SET_OBJECT_PARAM":     0x10,
+    "GET_OBJECT_PARAM":     0x11,
     "HEARTBEAT":            0x80,
 }
 
