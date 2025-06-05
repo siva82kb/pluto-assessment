@@ -7,19 +7,19 @@
     <x>0</x>
     <y>0</y>
     <width>395</width>
-    <height>228</height>
+    <height>296</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>395</width>
-    <height>228</height>
+    <height>296</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
     <width>395</width>
-    <height>228</height>
+    <height>296</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -32,7 +32,7 @@
       <x>10</x>
       <y>10</y>
       <width>371</width>
-      <height>211</height>
+      <height>271</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
@@ -84,6 +84,18 @@
      </item>
      <item>
       <widget class="QLabel" name="lblFeedforwardTorqueValue">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>20</height>
+        </size>
+       </property>
        <property name="font">
         <font>
          <family>Bahnschrift Light</family>
@@ -110,6 +122,18 @@
      </item>
      <item>
       <widget class="QLabel" name="lblPositionTargetValue">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>20</height>
+        </size>
+       </property>
        <property name="font">
         <font>
          <family>Bahnschrift Light</family>
@@ -128,6 +152,82 @@
       <widget class="QSlider" name="hSliderPosTgtValue">
        <property name="maximum">
         <number>1000</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblControlBoundValue">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <family>Bahnschrift Light</family>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: rgb(170, 0, 0);</string>
+       </property>
+       <property name="text">
+        <string>Control Bound:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSlider" name="hSliderCtrlBndValue">
+       <property name="maximum">
+        <number>255</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblControlGainValue">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <family>Bahnschrift Light</family>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: rgb(170, 0, 0);</string>
+       </property>
+       <property name="text">
+        <string>Control Gain:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSlider" name="hSliderCtrlGainValue">
+       <property name="maximum">
+        <number>255</number>
        </property>
        <property name="orientation">
         <enum>Qt::Horizontal</enum>

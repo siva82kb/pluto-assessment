@@ -113,7 +113,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
              self,
              'Select Subject',
              'Enter subject ID:'
-        )
+        ) 
         # Check if a valid input was given.
         if _done is False:
             return
@@ -417,7 +417,7 @@ class PlutoPropAssesor(QtWidgets.QMainWindow, Ui_PlutoPropAssessor):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    mywin = PlutoPropAssesor("COM4")
+    mywin = PlutoPropAssesor("COM13")
     # ImageUpdate()
     mywin.show()
     sys.exit(app.exec_())

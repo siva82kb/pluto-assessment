@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>APRomAssessWindow</class>
+ <widget class="QMainWindow" name="APRomAssessWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>751</width>
+    <height>329</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <family>Cascadia Mono Light</family>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>PLUTO A/P/AP ROM Assessment</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QWidget" name="verticalLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>10</y>
+      <width>731</width>
+      <height>311</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QLabel" name="lblTitle">
+       <property name="font">
+        <font>
+         <family>Cascadia Mono Light</family>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: rgb(170, 0, 0);</string>
+       </property>
+       <property name="text">
+        <string>PLUTO ROM Assessment</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGraphicsView" name="hocGraph"/>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="cbTrialRun">
+       <property name="font">
+        <font>
+         <family>Cascadia Mono Light</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: rgb(170, 0, 0);</string>
+       </property>
+       <property name="text">
+        <string>Trial Run</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblStatus">
+       <property name="font">
+        <font>
+         <family>Cascadia Mono Light</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>TextLabel</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -9,12 +9,14 @@ Email: siva82kb@gmail.com
 
 import sys
 import numpy as np
+from datetime import datetime as dt
 
 from qtpluto import QtPluto
 
 from PyQt5 import (
     QtCore,
     QtWidgets,)
+from PyQt5.QtCore import QTimer
 from enum import Enum
 
 import plutodefs as pdef
@@ -31,7 +33,7 @@ class PlutoCalibStates(Enum):
 
 
 class PlutoCalibrationStateMachine():
-    def __init__(self, plutodev):
+    def __init__(self, plutodev: QtPluto):
         self._state = PlutoCalibStates.WAIT_FOR_ZERO_SET
         self._pluto = plutodev
         self._stateactions = {
@@ -70,9 +72,8 @@ class PlutoCalibrationStateMachine():
         # Check if the button release event has happened.
         if event == pdef.PlutoEvents.RELEASED:
             # Check if the ROM is acceptable.
-            _romcheck = (-self._pluto.angle >= 0.9 * pdef.PlutoAngleRanges[mech]
-                         and -self._pluto.angle <= 1.1 * pdef.PlutoAngleRanges[mech])
-            if _romcheck:
+            _limit = pdef.PlutoAngleRanges[mech][1]
+            if np.abs(self._pluto.angle - _limit) < 0.1 * np.abs(_limit):
                 # Everything looks good. Calibration is complete.
                 self._state = PlutoCalibStates.WAIT_FOR_CLOSE
             else:
@@ -99,7 +100,8 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO calibration window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None, mechanism: str=None, modal=False, dataviewer=False):
+    def __init__(self, parent=None, plutodev: QtPluto=None, limb=None, mechanism: str=None, 
+                 modal=False, dataviewer=False, onclosecb=None, heartbeat=False):
         """
         Constructor for the PlutoCalibrationWindow class.
         """
@@ -111,28 +113,45 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
         
         # PLUTO device
         self._pluto = plutodev
+        self._limb = limb if limb else "NOLIMB"
         self._mechanism = mechanism
+
+        # Heartbeat timer
+        self._heartbeat = heartbeat
+        if self._heartbeat:
+            self.heartbeattimer = QTimer()
+            self.heartbeattimer.timeout.connect(lambda: self.pluto.send_heartbeat())
+            self.heartbeattimer.start(500)
+
+        # Set to NOMECH to start with
+        self.pluto.send_heartbeat()
+        self._pluto.set_limb(self._limb)
+        self._pluto.calibrate("NOMECH")
+         # Pause for 0.5sec
+        QTimer.singleShot(500, lambda: None) 
 
         # Initialize the state machine.
         self._smachine = PlutoCalibrationStateMachine(self._pluto)
 
-        # Set to NOMECH to start with
-        self._pluto.calibrate("NOMECH")
-        # self._pluto.reset_calibration("NOMECH")
-        # self._pluto.reset_calibration("NOMECH")
-
         # Attach callbacks
-        self.pluto.newdata.connect(self._callback_pluto_newdata)
-        self.pluto.btnreleased.connect(self._callback_pluto_btn_released)
+        self._attach_pluto_callbacks()
 
         # Update UI.
         self.update_ui()
+        # Set label for position display.
+        if self._mechanism == "HOC":
+            self.ui.lblPositionTitle.setText("Hand Aperture:")
+        else:
+            self.ui.lblPositionTitle.setText("Joint Position:")
+        self.ui.lblInstruction.setText(f"Calibration for {self._mechanism} mechanism for {self._limb} limb.")
 
         # Open the PLUTO data viewer window for sanity
         if dataviewer:
             # Open the device data viewer by default.
             self._open_devdata_viewer()
 
+        # Set the callback when the window is closed.
+        self.on_close_callback = onclosecb
 
     @property
     def pluto(self):
@@ -153,15 +172,21 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
         # Update based on the current state of the Calib statemachine
         if self._smachine.state == PlutoCalibStates.WAIT_FOR_ZERO_SET:
             self.ui.lblCalibStatus.setText("Not done.")
-            self.ui.lblHandDistance.setText("- NA- ")
+            self.ui.lblPositionDisplay.setText("- NA- ")
             self.ui.lblInstruction2.setText("Press the PLUTO button set zero.")
         elif self._smachine.state == PlutoCalibStates.WAIT_FOR_ROM_SET:
             self.ui.lblCalibStatus.setText("Zero set.")
-            self.ui.lblHandDistance.setText(f"{self.pluto.hocdisp:5.2f}cm")
+            self.ui.lblPositionDisplay.setText(
+                f"{self.pluto.hocdisp:5.2f}cm" if self.mechanism == "HOC"
+                else f"{self.pluto.angle:5.2f}deg"
+            )
             self.ui.lblInstruction2.setText("Press the PLUTO button set ROM.")
         elif self._smachine.state == PlutoCalibStates.WAIT_FOR_CLOSE:
             self.ui.lblCalibStatus.setText("All Done!")
-            self.ui.lblHandDistance.setText(f"{self.pluto.hocdisp:5.2f}cm")
+            self.ui.lblPositionDisplay.setText(
+                f"{self.pluto.hocdisp:5.2f}cm" if self.mechanism == "HOC"
+                else f"{self.pluto.angle:5.2f}deg"
+            )
             self.ui.lblInstruction2.setText("Press the PLUTO button to close window.")
         elif self._smachine.state == PlutoCalibStates.CALIB_ERROR:
             self.ui.lblCalibStatus.setText("Error!")
@@ -183,7 +208,15 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
     
     #
     # Signal Callbacks
-    # 
+    #
+    def _attach_pluto_callbacks(self):
+        self.pluto.newdata.connect(self._callback_pluto_newdata)
+        self.pluto.btnreleased.connect(self._callback_pluto_btn_released)
+    
+    def _detach_pluto_callbacks(self):
+        self.pluto.newdata.disconnect(self._callback_pluto_newdata)
+        self.pluto.btnreleased.disconnect(self._callback_pluto_btn_released)
+    
     def _callback_pluto_newdata(self):
         self._smachine.run_statemachine(
             pdef.PlutoEvents.NEWDATA,
@@ -198,15 +231,26 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
             self._mechanism
         )
         self.update_ui()
+    
+    #
+    # Close event
+    #
+    def closeEvent(self, event):
+        # Run the callback
+        if self.on_close_callback:
+            self.on_close_callback(data={"done": self.pluto.calibration == pdef.CalibrationStatus["YESCALIB"]})
+        # Disconnect the PLUTO callbacks.
+        self._detach_pluto_callbacks()
+        return super().closeEvent(event)
 
 
 if __name__ == '__main__':
+    import qtjedi
+    qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM3")
-    pcalib = PlutoCalibrationWindow(plutodev=plutodev, mechanism="HOC",
-                                    dataviewer=True)
+    plutodev = QtPluto("COM13")
+    pcalib = PlutoCalibrationWindow(plutodev=plutodev, limb="LEFT", mechanism="HOC",
+                                    dataviewer=True, heartbeat=True, 
+                                    onclosecb=lambda: print(dt.now()))
     pcalib.show()
     sys.exit(app.exec_())
-
-
-

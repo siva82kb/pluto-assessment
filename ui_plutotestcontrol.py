@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui\plutotestcontrol.ui'
+# Form implementation generated from reading ui file 'ui/plutotestcontrol.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -14,13 +14,13 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_PlutoTestControlWindow(object):
     def setupUi(self, PlutoTestControlWindow):
         PlutoTestControlWindow.setObjectName("PlutoTestControlWindow")
-        PlutoTestControlWindow.resize(395, 228)
-        PlutoTestControlWindow.setMinimumSize(QtCore.QSize(395, 228))
-        PlutoTestControlWindow.setMaximumSize(QtCore.QSize(395, 228))
+        PlutoTestControlWindow.resize(395, 296)
+        PlutoTestControlWindow.setMinimumSize(QtCore.QSize(395, 296))
+        PlutoTestControlWindow.setMaximumSize(QtCore.QSize(395, 296))
         self.centralwidget = QtWidgets.QWidget(PlutoTestControlWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(10, 10, 371, 211))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(10, 10, 371, 271))
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
@@ -48,6 +48,8 @@ class Ui_PlutoTestControlWindow(object):
         self.horizontalLayout.addWidget(self.radioPosition)
         self.verticalLayout.addWidget(self.gbControlType)
         self.lblFeedforwardTorqueValue = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.lblFeedforwardTorqueValue.setMinimumSize(QtCore.QSize(0, 20))
+        self.lblFeedforwardTorqueValue.setMaximumSize(QtCore.QSize(16777215, 20))
         font = QtGui.QFont()
         font.setFamily("Bahnschrift Light")
         font.setPointSize(12)
@@ -61,6 +63,8 @@ class Ui_PlutoTestControlWindow(object):
         self.hSliderTorqTgtValue.setObjectName("hSliderTorqTgtValue")
         self.verticalLayout.addWidget(self.hSliderTorqTgtValue)
         self.lblPositionTargetValue = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.lblPositionTargetValue.setMinimumSize(QtCore.QSize(0, 20))
+        self.lblPositionTargetValue.setMaximumSize(QtCore.QSize(16777215, 20))
         font = QtGui.QFont()
         font.setFamily("Bahnschrift Light")
         font.setPointSize(12)
@@ -73,6 +77,36 @@ class Ui_PlutoTestControlWindow(object):
         self.hSliderPosTgtValue.setOrientation(QtCore.Qt.Horizontal)
         self.hSliderPosTgtValue.setObjectName("hSliderPosTgtValue")
         self.verticalLayout.addWidget(self.hSliderPosTgtValue)
+        self.lblControlBoundValue = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.lblControlBoundValue.setMinimumSize(QtCore.QSize(0, 20))
+        self.lblControlBoundValue.setMaximumSize(QtCore.QSize(16777215, 20))
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift Light")
+        font.setPointSize(12)
+        self.lblControlBoundValue.setFont(font)
+        self.lblControlBoundValue.setStyleSheet("color: rgb(170, 0, 0);")
+        self.lblControlBoundValue.setObjectName("lblControlBoundValue")
+        self.verticalLayout.addWidget(self.lblControlBoundValue)
+        self.hSliderCtrlBndValue = QtWidgets.QSlider(self.verticalLayoutWidget)
+        self.hSliderCtrlBndValue.setMaximum(255)
+        self.hSliderCtrlBndValue.setOrientation(QtCore.Qt.Horizontal)
+        self.hSliderCtrlBndValue.setObjectName("hSliderCtrlBndValue")
+        self.verticalLayout.addWidget(self.hSliderCtrlBndValue)
+        self.lblControlGainValue = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.lblControlGainValue.setMinimumSize(QtCore.QSize(0, 20))
+        self.lblControlGainValue.setMaximumSize(QtCore.QSize(16777215, 20))
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift Light")
+        font.setPointSize(12)
+        self.lblControlGainValue.setFont(font)
+        self.lblControlGainValue.setStyleSheet("color: rgb(170, 0, 0);")
+        self.lblControlGainValue.setObjectName("lblControlGainValue")
+        self.verticalLayout.addWidget(self.lblControlGainValue)
+        self.hSliderCtrlGainValue = QtWidgets.QSlider(self.verticalLayoutWidget)
+        self.hSliderCtrlGainValue.setMaximum(255)
+        self.hSliderCtrlGainValue.setOrientation(QtCore.Qt.Horizontal)
+        self.hSliderCtrlGainValue.setObjectName("hSliderCtrlGainValue")
+        self.verticalLayout.addWidget(self.hSliderCtrlGainValue)
         PlutoTestControlWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(PlutoTestControlWindow)
@@ -87,13 +121,5 @@ class Ui_PlutoTestControlWindow(object):
         self.radioPosition.setText(_translate("PlutoTestControlWindow", "Position"))
         self.lblFeedforwardTorqueValue.setText(_translate("PlutoTestControlWindow", "Feedforward Torque Value (Nm):"))
         self.lblPositionTargetValue.setText(_translate("PlutoTestControlWindow", "Target Position Value (deg):"))
-
-
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    PlutoTestControlWindow = QtWidgets.QMainWindow()
-    ui = Ui_PlutoTestControlWindow()
-    ui.setupUi(PlutoTestControlWindow)
-    PlutoTestControlWindow.show()
-    sys.exit(app.exec_())
+        self.lblControlBoundValue.setText(_translate("PlutoTestControlWindow", "Control Bound:"))
+        self.lblControlGainValue.setText(_translate("PlutoTestControlWindow", "Control Gain:"))

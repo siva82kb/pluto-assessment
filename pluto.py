@@ -14,7 +14,7 @@ import struct
 read_byte = lambda ser: int.from_bytes(ser.read(), byteorder='big')
 
 # Connect to the selected COM port
-ser = serial.Serial("COM5")
+ser = serial.Serial("COM13")
 
 # Main loop
 pcktcount = 0

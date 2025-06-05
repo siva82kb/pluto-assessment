@@ -81,7 +81,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="lblInstruction_3">
+        <widget class="QLabel" name="lblPositionTitle">
          <property name="font">
           <font>
            <family>Bahnschrift Light</family>
@@ -97,7 +97,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="lblHandDistance">
+        <widget class="QLabel" name="lblPositionDisplay">
          <property name="font">
           <font>
            <family>Bahnschrift Light</family>

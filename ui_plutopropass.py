@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui\plutopropass.ui'
+# Form implementation generated from reading ui file 'ui/plutopropass.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -138,13 +138,3 @@ class Ui_PlutoPropAssessor(object):
         self.pbRomAssess.setText(_translate("PlutoPropAssessor", "Assess ROM"))
         self.pbRomAssess.setShortcut(_translate("PlutoPropAssessor", "Ctrl+S, Ctrl+S"))
         self.pbPropAssessment.setText(_translate("PlutoPropAssessor", "Proprioception Assessment"))
-
-
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    PlutoPropAssessor = QtWidgets.QMainWindow()
-    ui = Ui_PlutoPropAssessor()
-    ui.setupUi(PlutoPropAssessor)
-    PlutoPropAssessor.show()
-    sys.exit(app.exec_())

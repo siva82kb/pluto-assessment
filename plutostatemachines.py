@@ -27,6 +27,7 @@ class PlutoPropAssessEvents(Enum):
     INTRA_TRIAL_REST_TIMEOUT = 6
     INTER_TRIAL_REST_TIMEOUT = 7
 
+
 class PlutoCalibStates(Enum):
     WAIT_FOR_ZERO_SET = 0
     WAIT_FOR_ROM_SET = 1
@@ -188,8 +189,6 @@ class PlutoRomAssessmentStateMachine():
         pass
 
 
-
-
 class PlutoPropAssessStates(Enum):
     PROP_DONE = 0
     WAIT_FOR_START = 1
@@ -288,4 +287,52 @@ class PlutoPropAssessmentStateMachine():
     def _protocol_done(self, event, timeval):
         pass
 
+    
+    # def _wait_for_start(self, event, timeval):
+    #     """Waits till the start button is pressed.
+    #     """
+    #     self._timer.stop()
+    #     if event == PlutoPropAssessEvents.STARTSTOP_CLICKED:
+    #         # Check to make sure the angle is close to zero.
+    #         if self._pluto.hocdisp < 0.25:
+    #             self._state = PlutoPropAssessStates.WAIT_FOR_HAPTIC_DISPAY_START
+    #             self._instruction = "Starting the ProprioceptionAssessment Protocol Display."
+    #         else:
+    #             self._instruction = "Hand must be closed before we start."
 
+    # def _wait_for_haptic_display_start(self, event, timeval):
+    #     self._timer.stop()
+    #     if event == PlutoButtonEvents.RELEASED:
+    #         self._state = PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY_MOVING
+    #         self._instruction = "Running Haptic Display"
+
+    # def _trial_haptic_display_moving(self, event, timeval):
+    #     # Check if the target has been reached.
+    #     if event == PlutoPropAssessEvents.HAPTIC_DEMO_TARGET_REACHED_TIMEOUT:
+    #         self._state = PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY
+    #         # Wait for the demo duration at the target.
+    #         self._timer.start(1000)
+
+
+    # def _trial_haptic_display(self, event, timeval):
+    #     # Check if the target has been reached.
+    #     if event == PlutoPropAssessEvents.HAPTIC_DEMO_ON_TARGET_TIMEOUT:
+    #         self._state = PlutoPropAssessStates.INTRA_TRIAL_REST
+
+    # def _intra_trial_rest(self, event, timeval):
+    #     pass
+
+    # def _trial_assessment(self, event, timeval):
+    #     pass
+
+    # def _inter_trial_rest(self, event, timeval):
+    #     pass
+
+    # def _protocol_pause(self, event, timeval):
+    #     pass
+
+    # def _protocol_stop(self, event, timeval):
+    #     pass
+
+    # def _protocol_done(self, event, timeval):
+    #     pass
