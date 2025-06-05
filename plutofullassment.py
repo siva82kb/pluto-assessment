@@ -42,11 +42,12 @@ from ui_plutofullassessment import Ui_PlutoFullAssessor
 import plutodefs as pdef
 import plutofullassessdef as pfadef
 from plutofullassessstatemachine import PlutoFullAssessmentStateMachine
-from plutofullassessstatemachine import PlutoFullAssessEvents, PlutoFullAssessStates
+from plutofullassessstatemachine import Events, States
 from plutofullassesssdata import PlutoAssessmentData
 from plutofullassesssdata import PlutoAssessmentProtocolData
 from plutoassistpromwindow import PlutoAssistPRomAssessWindow
 from plutodiscreachwindow import PlutoDiscReachAssessWindow
+from plutopropassesswindow import PlutoPropAssessWindow
 from plutofullassesssdata import DataFrameModel
 
 
@@ -95,10 +96,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             progconsole=self.textProtocolDetails
         )
         if DEBUG:
-            self._smachine.run_statemachine(PlutoFullAssessEvents.SUBJECT_SET, 
+            self._smachine.run_statemachine(Events.SUBJECT_SET, 
                                             {"subjid": "1234"})
             _data = {"type": "Stroke", "limb": "Left"}
-            self._smachine.run_statemachine(PlutoFullAssessEvents.TYPE_LIMB_SET,
+            self._smachine.run_statemachine(Events.TYPE_LIMB_SET,
                                             _data)
             # Set limb in the device.
             self.pluto.send_heartbeat()
@@ -186,7 +187,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                     return
             # Run the state machine.
             self._smachine.run_statemachine(
-                PlutoFullAssessEvents.SUBJECT_SET,  
+                Events.SUBJECT_SET,  
                 {'subjid': _subjid.lower()}
             )
         
@@ -209,7 +210,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             self._subjdetails["slimb"] = self.cbLimb.currentText()
         # Run the state machine.
         self._smachine.run_statemachine(
-            PlutoFullAssessEvents.TYPE_LIMB_SET,
+            Events.TYPE_LIMB_SET,
             0
         )
         # Update UI
@@ -241,7 +242,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # Run the state machine.
         self._smachine.run_statemachine(
-            PlutoFullAssessEvents.AROM_ASSESS,
+            Events.AROM_ASSESS,
             None
         )
         # Disable main controls
@@ -270,7 +271,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # Run the state machine.
         self._smachine.run_statemachine(
-            PlutoFullAssessEvents.PROM_ASSESS,
+            Events.PROM_ASSESS,
             None
         )
         # Disable main controls
@@ -300,7 +301,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # Run the state machine.
         self._smachine.run_statemachine(
-            PlutoFullAssessEvents.APROM_ASSESS,
+            Events.APROM_ASSESS,
             None
         )
         # Disable main controls
@@ -329,7 +330,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # Run the state machine.
         self._smachine.run_statemachine(
-            PlutoFullAssessEvents.DISCREACH_ASSESS,
+            Events.DISCREACH_ASSESS,
             None
         )
         # Disable main controls
@@ -354,24 +355,35 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._currwndclosed = False
 
     def _callback_assess_prop(self):
+        # Check if PROP has already been assessed and needs to be reassessed.
+        if self._reassess_requested("PROP") is False:
+            return
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            Events.PROP_ASSESS,
+            None
+        )
         # Disable main controls
         self._maindisable = True
-        # Now create the folder for saving all the data.
-        self._create_session_folder()
-        # Open the proprioception assessment window.
-        self._propwnd = PlutoPropAssessWindow(
+        self._discwnd = PlutoPropAssessWindow(
             plutodev=self.pluto,
-            subjtype=self._subjdetails["type"],
-            limb=self._subjdetails["limb"],
-            griptype=self._subjdetails["grip"],
-            arom=self._romdata['AROM'],
-            prom=self._romdata['PROM'], 
-            outdir=self._datadir.as_posix(),
-            dataviewer=False
+            assessinfo={
+                "subjid": self.data.subjid,
+                "type": self.data.type,
+                "limb": self.data.limb,
+                "mechanism": self.data.protocol.mech,
+                "session": self.data.session,
+                "ntrials": pfadef.protocol["DISC"]["N"],
+                "rawfile": self.data.protocol.rawfilename,
+                "summaryfile": self.data.protocol.summaryfilename,
+                "arom": self.data.romsumry["AROM"][self.data.protocol.mech][-1]["rom"],
+                "prom": self.data.romsumry["PROM"][self.data.protocol.mech][-1]["rom"]
+            },
+            modal=True,
+            onclosecb=self._propasswnd_close_event
         )
-        # Attach events
-        self._propwnd.closeEvent = self._propwnd_close_event
-        self._propwnd.show()
+        self._discwnd.show()
+        self._currwndclosed = False
 
     def _callback_subjtype_select(self):
         # Reset AROM and PROM values if the current selection is different.
@@ -477,7 +489,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             and self.pluto.calibration == 1):
             # Run the state machine.
             self._smachine.run_statemachine(
-                PlutoFullAssessEvents.CALIBRATED,
+                Events.CALIB_DONE if data["done"] else Events.CALIB_NO_DONE,
                 {"mech": pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism)}
             )
         # Set the window closed flag.
@@ -497,8 +509,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Window not closed.
         # Run the state machine.
         self._smachine.run_statemachine(
-            PlutoFullAssessEvents.AROM_SET,
-            {"romval": data}
+            Events.AROM_DONE if data["done"] else Events.AROM_NO_DONE,
+            {"romval": data["rom"]}
         )
         # Reenable main controls
         self._maindisable = False
@@ -516,8 +528,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Window not closed.
         # Run the state machine.
         self._smachine.run_statemachine(
-            PlutoFullAssessEvents.PROM_SET,
-            {"romval": data}
+            Events.PROM_DONE if data["done"] else Events.PROM_NO_DONE,
+            {"romval": data["rom"]}
         )
         # Reenable main controls
         self._maindisable = False
@@ -535,8 +547,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Window not closed.
         # Run the state machine.
         self._smachine.run_statemachine(
-            PlutoFullAssessEvents.APROM_SET,
-            {"romval": data}
+            Events.APROM_DONE if data["done"] else Events.APROM_NO_DONE,
+            {"romval": data["rom"]}
         )
         # Reenable main controls
         self._maindisable = False
@@ -554,7 +566,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Window not closed.
         # Run the state machine.
         self._smachine.run_statemachine(
-            PlutoFullAssessEvents.DISCREACH_DONE,
+            Events.DISCREACH_DONE if data["done"] else Events.DISCREACH_NO_DONE,
             {}
         )
         # Reenable main controls
@@ -563,31 +575,46 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._updatetable = True
         # Set the window closed flag.
         self._currwndclosed = True
-        # Run the statemachine one more time to check if mechanism assessment
-        # is done.
-        self._smachine.run_statemachine(None, {})
         self.update_ui()
-
-    def _propwnd_close_event(self, data):
-        print("Proprioception assessment window closed.")
-        # Set device to no control.
-        self.pluto.set_control_type("NONE")
-        # Reset variables
-        self._propwnd.close()
-        self._propwnd.deleteLater()
-        self._propwnd = None
+    
+    def _propasswnd_close_event(self, data):
+        # Check if the window is already closed.
+        if self._currwndclosed is True:
+            self._discwnd = None
+            return
+        # Window not closed.
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            Events.PROP_DONE if data["done"] else Events.PROP_NO_DONE,
+            {}
+        )
         # Reenable main controls
         self._maindisable = False
+        # Update the Table.
+        self._updatetable = True
+        # Set the window closed flag.
+        self._currwndclosed = True
+        self.update_ui()
+
+    # def _propwnd_close_event(self, data):
+    #     # Set device to no control.
+    #     self.pluto.set_control_type("NONE")
+    #     # Reset variables
+    #     self._propwnd.close()
+    #     self._propwnd.deleteLater()
+    #     self._propwnd = None
+    #     # Reenable main controls
+    #     self._maindisable = False
 
     #
     # UI Update function
     #
     def update_ui(self):        
         # Select subject
-        self.pbSubject.setEnabled(self._maindisable is False and self._smachine.state == PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT)
+        self.pbSubject.setEnabled(self._maindisable is False and self._smachine.state == States.SUBJ_SELECT)
         
         # Limb selection
-        _lmbflag = self._maindisable is False and self._smachine.state == PlutoFullAssessStates.WAIT_FOR_LIMB_SELECT
+        _lmbflag = self._maindisable is False and self._smachine.state == States.LIMB_SELECT
         self.lblSubjectType.setEnabled(_lmbflag)
         self.cbSubjectType.setEnabled(_lmbflag)
         self.lblLimb.setEnabled(_lmbflag)
@@ -608,8 +635,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Mechanisms selection
         _mechflag = (
             self._maindisable is False and 
-            (self._smachine.state == PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT
-             or self._smachine.state == PlutoFullAssessStates.WAIT_FOR_MECHANISM_OR_TASK_SELECT)
+            (self._smachine.state == States.MECH_SELECT
+             or self._smachine.state == States.MECH_OR_TASK_SELECT)
         )
         if self.pbSetLimb.text() == "Set Limb": self.pbSetLimb.setText("Reset Limb")
         self.gbMechanisms.setEnabled(_mechflag)
@@ -636,7 +663,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Update session information.
         self.lblSessionInfo.setText(self._get_session_info()) 
         
-        # if self._smachine.state == PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT:
+        # if self._smachine.state == States.SUBJ_SELECT:
         #     # Disable everything except subject selection button.
 
         # # Select limb
@@ -782,11 +809,11 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         """Get the event for the selected mechanism.
         """
         if self.rbWFE.isChecked():
-            return PlutoFullAssessEvents.WFE_MECHANISM_SET
+            return Events.WFE_SET
         elif self.rbFPS.isChecked():
-            return PlutoFullAssessEvents.FPS_MECHANISM_SET
+            return Events.FPS_SET
         elif self.rbHOC.isChecked():
-            return PlutoFullAssessEvents.HOC_MECHANISM_SET
+            return Events.HOC_SET
         else:
             return None
         
@@ -801,7 +828,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             f"Time      : {self.pluto.systime} | {self.pluto.currt:6.3f}s | {self.pluto.packetnumber:06d}",
         ]
         _statusstr = ' | '.join((pdef.get_name(pdef.OutDataType, self.pluto.datatype),
-                                 pdef.get_name(pdef.ControlType, self.pluto.controltype),
+                                 pdef.get_name(pdef.ControlTypes, self.pluto.controltype),
                                  pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)))
         _dispdata += [
             f"Status    : {_statusstr}",
@@ -831,7 +858,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     #
     # Device Data Viewer Functions 
     #
-
 
     #
     # Main window close event

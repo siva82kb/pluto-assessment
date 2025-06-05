@@ -814,7 +814,8 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
     
     def closeEvent(self, event):
         if self.on_close_callback:
-            self.on_close_callback(data=self.data.rom)
+            self.on_close_callback(data={"rom": self.data.rom,
+                                         "done": self.data.all_trials_done})
         # Detach PLUTO callbacks.
         self._detach_pluto_callbacks()
         return super().closeEvent(event)

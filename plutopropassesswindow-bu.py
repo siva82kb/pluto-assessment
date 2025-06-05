@@ -31,7 +31,7 @@ import json
 import random
 import winsound
 
-import plutodefs as pdef
+import plutodefs as pdefw
 from ui_plutopropassessctrl import Ui_ProprioceptionAssessWindow
 from ui_plutoapromassess import Ui_APRomAssessWindow
 from plutodataviewwindow import PlutoDataViewWindow

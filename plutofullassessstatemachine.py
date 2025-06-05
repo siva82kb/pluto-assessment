@@ -49,67 +49,74 @@ from plutofullassesssdata import PlutoAssessmentData
 # from misc import CSVBufferWriter
 
 
-class PlutoFullAssessEvents(Enum):
+class Events(Enum):
     SUBJECT_SET = 0
     TYPE_LIMB_SET = auto()
-    WFE_MECHANISM_SET = auto()
-    FPS_MECHANISM_SET = auto()
-    HOC_MECHANISM_SET = auto()
-    CALIBRATED = auto()
+    WFE_SET = auto()
+    FPS_SET = auto()
+    HOC_SET = auto()
+    CALIB_DONE = auto()
+    CALIB_NO_DONE = auto()
     AROM_ASSESS = auto()
     PROM_ASSESS = auto()
     APROM_ASSESS = auto()
     DISCREACH_ASSESS = auto()
     PROP_ASSESS = auto()
     FCTRL_ASSESS = auto()
-    AROM_SET = auto()
-    PROM_SET = auto()
-    APROM_SET = auto()
+    AROM_DONE = auto()
+    PROM_DONE = auto()
+    APROM_DONE = auto()
     DISCREACH_DONE = auto()
     PROP_DONE = auto()
     FCTRL_DONE = auto()
+    AROM_NO_DONE = auto()
+    PROM_NO_DONE = auto()
+    APROM_NO_DONE = auto()
+    DISCREACH_NO_DONE = auto()
+    PROP_NO_DONE = auto()
+    FCTRL_NO_DONE = auto()
 
     @classmethod
     def mech_selected_events(cls):
         return [
-            PlutoFullAssessEvents.WFE_MECHANISM_SET,
-            PlutoFullAssessEvents.FPS_MECHANISM_SET,
-            PlutoFullAssessEvents.HOC_MECHANISM_SET
+            Events.WFE_SET,
+            Events.FPS_SET,
+            Events.HOC_SET
         ]
     
     @classmethod
     def task_selected_events(cls):
         return [
-            PlutoFullAssessEvents.AROM_ASSESS,
-            PlutoFullAssessEvents.PROM_ASSESS,
-            PlutoFullAssessEvents.APROM_ASSESS,
-            PlutoFullAssessEvents.DISCREACH_ASSESS,
-            PlutoFullAssessEvents.PROP_ASSESS,
-            PlutoFullAssessEvents.FCTRL_ASSESS,
+            Events.AROM_ASSESS,
+            Events.PROM_ASSESS,
+            Events.APROM_ASSESS,
+            Events.DISCREACH_ASSESS,
+            Events.PROP_ASSESS,
+            Events.FCTRL_ASSESS,
         ]
 
 
-class PlutoFullAssessStates(Enum):
-    WAIT_FOR_SUBJECT_SELECT = 0
-    WAIT_FOR_LIMB_SELECT = auto()
-    WAIT_FOR_MECHANISM_SELECT = auto()
-    WAIT_FOR_CALIBRATE = auto()
-    WAIT_FOR_AROM_ASSESS = auto()
-    WAIT_FOR_PROM_ASSESS = auto()
-    WAIT_FOR_APROM_ASSESS = auto()
-    WAIT_FOR_DISC_ASSESS = auto()
-    WAIT_FOR_PROP_ASSESS = auto()
-    WAIT_FOR_FCTRL_ASSESS = auto()
-    WAIT_FOR_TASK_SELECT = auto()
+class States(Enum):
+    SUBJ_SELECT = 0
+    LIMB_SELECT = auto()
+    MECH_SELECT = auto()
+    MECH_OR_TASK_SELECT = auto()
+    CALIBRATE = auto()
+    AROM_ASSESS = auto()
+    PROM_ASSESS = auto()
+    APROM_ASSESS = auto()
+    DISC_ASSESS = auto()
+    PROP_ASSESS = auto()
+    FCTRL_ASSESS = auto()
+    TASK_SELECT = auto()
     TASK_DONE = auto()
-    MECHANISM_DONE = auto()
-    SUBJECT_LIMB_DONE = auto()
-    WAIT_FOR_MECHANISM_OR_TASK_SELECT = auto()
+    MECH_DONE = auto()
+    SUBJ_LIMB_DONE = auto()
 
 
 class PlutoFullAssessmentStateMachine():
     def __init__(self, plutodev: QtPluto, data: PlutoAssessmentData, progconsole):
-        self._state = PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT
+        self._state = States.SUBJ_SELECT
         self._data: PlutoAssessmentData = data
         self._instruction = ""
         self._protocol = None
@@ -119,39 +126,39 @@ class PlutoFullAssessmentStateMachine():
         # particular instance of the statemachine.
         self._pluto = plutodev
         self._stateactions = {
-            PlutoFullAssessStates.WAIT_FOR_SUBJECT_SELECT: self._wait_for_subject_select,
-            PlutoFullAssessStates.WAIT_FOR_LIMB_SELECT: self._wait_for_limb_select,
-            PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT: self._wait_for_mechanism_select,
-            PlutoFullAssessStates.WAIT_FOR_CALIBRATE: self._wait_for_calibrate,
-            PlutoFullAssessStates.WAIT_FOR_AROM_ASSESS: self._wait_for_arom_assess,
-            PlutoFullAssessStates.WAIT_FOR_PROM_ASSESS: self._wait_for_prom_assess,
-            PlutoFullAssessStates.WAIT_FOR_APROM_ASSESS: self._wait_for_aprom_assess,
-            PlutoFullAssessStates.WAIT_FOR_DISC_ASSESS: self._wait_for_discreach_assess,
-            PlutoFullAssessStates.WAIT_FOR_PROP_ASSESS: self._wait_for_prop_assess,
-            PlutoFullAssessStates.WAIT_FOR_FCTRL_ASSESS: self._wait_for_fctrl_assess,
-            PlutoFullAssessStates.WAIT_FOR_TASK_SELECT: self._wait_for_task_select,
-            PlutoFullAssessStates.TASK_DONE: self._task_done,
-            PlutoFullAssessStates.MECHANISM_DONE: self._wait_for_mechanism_done,
-            PlutoFullAssessStates.SUBJECT_LIMB_DONE: self._wait_for_subject_limb_done,
-            PlutoFullAssessStates.WAIT_FOR_MECHANISM_OR_TASK_SELECT: self._wait_for_mechanism_or_task_select,
+            States.SUBJ_SELECT: self._handle_subject_select,
+            States.LIMB_SELECT: self._handle_limb_select,
+            States.MECH_SELECT: self._handle_mechanism_select,
+            States.CALIBRATE: self._handle_calibrate,
+            States.AROM_ASSESS: self._handle_arom_assess,
+            States.PROM_ASSESS: self._handle_prom_assess,
+            States.APROM_ASSESS: self._handle_aprom_assess,
+            States.DISC_ASSESS: self._handle_discreach_assess,
+            States.PROP_ASSESS: self._handle_prop_assess,
+            States.FCTRL_ASSESS: self._handle_fctrl_assess,
+            States.TASK_SELECT: self._handle_task_select,
+            States.TASK_DONE: self._task_done,
+            States.MECH_DONE: self._handle_mechanism_done,
+            States.SUBJ_LIMB_DONE: self._handle_subject_limb_done,
+            States.MECH_OR_TASK_SELECT: self._handle_mechanism_or_task_select,
         }
         # Task to next state dictionary.
         self._task_to_nextstate = {
-            "AROM": PlutoFullAssessStates.WAIT_FOR_AROM_ASSESS,
-            "PROM": PlutoFullAssessStates.WAIT_FOR_PROM_ASSESS,
-            "APROM": PlutoFullAssessStates.WAIT_FOR_APROM_ASSESS,
-            "DISC": PlutoFullAssessStates.WAIT_FOR_DISC_ASSESS,
-            "PROP": PlutoFullAssessStates.WAIT_FOR_PROP_ASSESS,
-            "FCTRL": PlutoFullAssessStates.WAIT_FOR_FCTRL_ASSESS
+            "AROM": States.AROM_ASSESS,
+            "PROM": States.PROM_ASSESS,
+            "APROM": States.APROM_ASSESS,
+            "DISC": States.DISC_ASSESS,
+            "PROP": States.PROP_ASSESS,
+            "FCTRL": States.FCTRL_ASSESS
         }
         # Event to next state dictionary.
         self._event_to_nextstate = {
-            PlutoFullAssessEvents.AROM_ASSESS: PlutoFullAssessStates.WAIT_FOR_AROM_ASSESS,
-            PlutoFullAssessEvents.PROM_ASSESS: PlutoFullAssessStates.WAIT_FOR_PROM_ASSESS,
-            PlutoFullAssessEvents.APROM_ASSESS: PlutoFullAssessStates.WAIT_FOR_APROM_ASSESS,
-            PlutoFullAssessEvents.DISCREACH_ASSESS: PlutoFullAssessStates.WAIT_FOR_DISC_ASSESS,
-            PlutoFullAssessEvents.PROP_ASSESS: PlutoFullAssessStates.WAIT_FOR_PROP_ASSESS,
-            PlutoFullAssessEvents.FCTRL_ASSESS: PlutoFullAssessStates.WAIT_FOR_FCTRL_ASSESS
+            Events.AROM_ASSESS: States.AROM_ASSESS,
+            Events.PROM_ASSESS: States.PROM_ASSESS,
+            Events.APROM_ASSESS: States.APROM_ASSESS,
+            Events.DISCREACH_ASSESS: States.DISC_ASSESS,
+            Events.PROP_ASSESS: States.PROP_ASSESS,
+            Events.FCTRL_ASSESS: States.FCTRL_ASSESS
         }
     
     @property
@@ -167,71 +174,79 @@ class PlutoFullAssessmentStateMachine():
         """
         self._stateactions[self._state](event, data)
 
-    def _wait_for_subject_select(self, event, data):
+    def _handle_subject_select(self, event, data):
         """
         """
-        if event == PlutoFullAssessEvents.SUBJECT_SET:
+        if event == Events.SUBJECT_SET:
             # Set the subject ID.
             self._data.set_subjectid(data['subjid'])
             # We need to now select the limb.
-            self._state = PlutoFullAssessStates.WAIT_FOR_LIMB_SELECT
+            self._state = States.LIMB_SELECT
             self._pconsole.append(self._instruction)
     
-    def _wait_for_limb_select(self, event, data):
+    def _handle_limb_select(self, event, data):
         """
         """
-        if event == PlutoFullAssessEvents.TYPE_LIMB_SET:
+        if event == Events.TYPE_LIMB_SET:
             # Set limb type and limb.
             self._data.set_limbtype(slimb=data["limb"], stype=data["type"])
             # We need to now select the mechanism.
-            self._state = PlutoFullAssessStates.WAIT_FOR_MECHANISM_SELECT
+            self._state = States.MECH_SELECT
             self._pconsole.append(self._instruction)
             # Generated assessment protocol.
             self._data.start_protocol()
             self.log(f"Protocol started.")
 
-    def _wait_for_mechanism_select(self, event, data):
+    def _handle_mechanism_select(self, event, data):
         """
         """
         # Check which mechanism is selected.
         _event_mech_map = {
-            PlutoFullAssessEvents.WFE_MECHANISM_SET: "WFE",
-            PlutoFullAssessEvents.FPS_MECHANISM_SET: "FPS",
-            PlutoFullAssessEvents.HOC_MECHANISM_SET: "HOC",
+            Events.WFE_SET: "WFE",
+            Events.FPS_SET: "FPS",
+            Events.HOC_SET: "HOC",
         }
         if event not in _event_mech_map:
             return   
         # Set current mechanism.
         self._data.protocol.set_mechanism(_event_mech_map[event])
         self._data.romsumry.set_mechanism(_event_mech_map[event])
-        self._state = PlutoFullAssessStates.WAIT_FOR_CALIBRATE
+        self._state = States.CALIBRATE
         self.log(f"Mechanism set to {self._data.protocol.mech}.")
 
-    def _wait_for_calibrate(self, event, data):
+    def _handle_calibrate(self, event, data):
         """
         """
         # Check if the calibration is done.
-        if event == PlutoFullAssessEvents.CALIBRATED:
+        if event == Events.CALIB_DONE:
             self._data.protocol.set_mechanism_calibrated(data["mech"])
             self.log(f"Mechanism {self._data.protocol.mech} calibrated.")
             # Check if the chosen mechanism has been assessed.
             if self._data.protocol.mech in self._data.protocol.mech_completed:
-                self._state = PlutoFullAssessStates.MECHANISM_DONE
+                self._state = States.MECH_DONE
             else:
                 # Jump to the next task state.
                 # Check if the current mechanism has been assessed.
                 self._state = (
-                    PlutoFullAssessStates.WAIT_FOR_MECHANISM_OR_TASK_SELECT
+                    States.MECH_OR_TASK_SELECT
                     if self._data.protocol.current_mech_completed
-                    else PlutoFullAssessStates.WAIT_FOR_TASK_SELECT
+                    else States.TASK_SELECT
                 )
-                # self._state = self._task_to_nextstate[self._data.protocol.task_enabled[-1]]
+        elif event == Events.CALIB_NO_DONE:
+            # Jump to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"Mechanism {self._data.protocol.mech} calibrated.")
 
-    def _wait_for_arom_assess(self, event, data):
+    def _handle_arom_assess(self, event, data):
         """
         """
         # Check if AROM is set.
-        if event == PlutoFullAssessEvents.AROM_SET:
+        if event == Events.AROM_DONE:
             # Update AROM assessment data.
             self._data.romsumry.update(
                 romval=data["romval"],
@@ -249,20 +264,27 @@ class PlutoFullAssessmentStateMachine():
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
-                PlutoFullAssessStates.WAIT_FOR_MECHANISM_OR_TASK_SELECT
+                States.MECH_OR_TASK_SELECT
                 if self._data.protocol.current_mech_completed
-                else PlutoFullAssessStates.WAIT_FOR_TASK_SELECT
+                else States.TASK_SELECT
             )
             _romval = self._data.romsumry['AROM'][self._data.protocol.mech][-1]['rom']
             self.log(f"AROM Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
-        else:
-            self._state = PlutoFullAssessStates.WAIT_FOR_TASK_SELECT
+        elif event == Events.AROM_NO_DONE:
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"AROM not done for {self._data.protocol.mech}.")
     
-    def _wait_for_prom_assess(self, event, data):
+    def _handle_prom_assess(self, event, data):
         """
         """
         # Check if AROM is et.
-        if event == PlutoFullAssessEvents.PROM_SET:
+        if event == Events.PROM_DONE:
             # Update AROM assessment data.
             self._data.romsumry.update(
                 romval=data["romval"],
@@ -280,20 +302,29 @@ class PlutoFullAssessmentStateMachine():
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
-                PlutoFullAssessStates.WAIT_FOR_MECHANISM_OR_TASK_SELECT
+                States.MECH_OR_TASK_SELECT
                 if self._data.protocol.current_mech_completed
-                else PlutoFullAssessStates.WAIT_FOR_TASK_SELECT
+                else States.TASK_SELECT
             )
             _romval = self._data.romsumry['PROM'][self._data.protocol.mech][-1]['rom']
             self.log(f"PROM Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
-        else:
-            self._state = PlutoFullAssessStates.WAIT_FOR_TASK_SELECT
+        # else:
+        #     self._state = States.TASK_SELECT
+        elif event == Events.PROM_NO_DONE:
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"PROM not done for {self._data.protocol.mech}.")
 
-    def _wait_for_aprom_assess(self, event, data):
+    def _handle_aprom_assess(self, event, data):
         """
         """
         # Check if AROM is et.
-        if event == PlutoFullAssessEvents.APROM_SET:
+        if event == Events.APROM_DONE:
             # Update AROM assessment data.
             self._data.romsumry.update(
                 romval=data["romval"],
@@ -311,18 +342,27 @@ class PlutoFullAssessmentStateMachine():
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
-                PlutoFullAssessStates.WAIT_FOR_MECHANISM_OR_TASK_SELECT
+                States.MECH_OR_TASK_SELECT
                 if self._data.protocol.current_mech_completed
-                else PlutoFullAssessStates.WAIT_FOR_TASK_SELECT
+                else States.TASK_SELECT
             )
             _romval = self._data.romsumry['APROM'][self._data.protocol.mech][-1]['rom']
             self.log(f"APROM Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
+        elif event == Events.APROM_NO_DONE:
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"APROM not done for {self._data.protocol.mech}.")
     
-    def _wait_for_discreach_assess(self, event, data):
+    def _handle_discreach_assess(self, event, data):
         """
         """
         # Check if discrete reaching is done.
-        if event == PlutoFullAssessEvents.DISCREACH_DONE:
+        if event == Events.DISCREACH_DONE:
             # Update the protocol data.
             self._data.protocol.update(
                 self._data.session,
@@ -332,59 +372,92 @@ class PlutoFullAssessmentStateMachine():
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
-                PlutoFullAssessStates.WAIT_FOR_MECHANISM_OR_TASK_SELECT
+                States.MECH_OR_TASK_SELECT
                 if self._data.protocol.current_mech_completed
-                else PlutoFullAssessStates.WAIT_FOR_TASK_SELECT
+                else States.TASK_SELECT
             )
             self.log(f"Discrete reaching done for {self._data.protocol.mech}.")
+        elif event == Events.DISCREACH_NO_DONE:
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"Dsicrete reaching not done for {self._data.protocol.mech}.")
 
-    def _wait_for_prop_assess(self, event, data):
+    def _handle_prop_assess(self, event, data):
+        """
+        """
+        # Check if proprioceptive assessment is done.
+        if event == Events.PROP_DONE:
+            # Update the protocol data.
+            self._data.protocol.update(
+                self._data.session,
+                self._data.protocol.rawfilename,
+                ""
+            )
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"Proprioception done for {self._data.protocol.mech}.")
+        elif event == Events.PROP_NO_DONE:
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"Proprioception not done for {self._data.protocol.mech}.")
+
+    def _handle_fctrl_assess(self, event, data):
         """
         """
         pass
 
-    def _wait_for_fctrl_assess(self, event, data):
-        """
-        """
-        pass
-
-    def _wait_for_task_select(self, event, data):
+    def _handle_task_select(self, event, data):
         """
         """
         # Select the next state
-        if event == PlutoFullAssessEvents.AROM_ASSESS:
+        if event == Events.AROM_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("AROM")
             self._data.romsumry.set_task("AROM")
             self.log(f"Task set to AROM.")
-        elif event == PlutoFullAssessEvents.PROM_ASSESS:
+        elif event == Events.PROM_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("PROM")
             self._data.romsumry.set_task("PROM")
             self.log(f"Task set to PROM.")
-        elif event == PlutoFullAssessEvents.APROM_ASSESS:
+        elif event == Events.APROM_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("APROM")
             self._data.romsumry.set_task("APROM")
             self.log(f"Task set to APROM.")
-        elif event == PlutoFullAssessEvents.DISCREACH_ASSESS:
+        elif event == Events.DISCREACH_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("DISC")
             self.log(f"Task set to DISC.")
-        elif event == PlutoFullAssessEvents.PROP_ASSESS:
+        elif event == Events.PROP_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("PROP")
             self.log(f"Task set to PROP.")
-        elif event == PlutoFullAssessEvents.FCTRL_ASSESS:
+        elif event == Events.FCTRL_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("FCTRL")
             self.log(f"Task set to FCTRL.")
         elif event is None:
             # Check if the current mechanism has been assessed.
             self._state = (
-                PlutoFullAssessStates.WAIT_FOR_MECHANISM_OR_TASK_SELECT
+                States.MECH_OR_TASK_SELECT
                 if self._data.protocol.current_mech_completed
-                else PlutoFullAssessStates.WAIT_FOR_TASK_SELECT
+                else States.TASK_SELECT
             )
 
     def _task_done(self, event, data):
@@ -392,24 +465,24 @@ class PlutoFullAssessmentStateMachine():
         """
         pass
 
-    def _wait_for_mechanism_done(self, event, data):
+    def _handle_mechanism_done(self, event, data):
         """
         """
         pass
 
-    def _wait_for_subject_limb_done(self, event, data):
+    def _handle_subject_limb_done(self, event, data):
         """
         """
         pass
 
-    def _wait_for_mechanism_or_task_select(self, event, data):
+    def _handle_mechanism_or_task_select(self, event, data):
         """
         """
         # Is a mechanism selected?
-        if event in PlutoFullAssessEvents.mech_selected_events():
-            self._wait_for_mechanism_select(event, data)
-        elif event in PlutoFullAssessEvents.task_selected_events():
-            self._wait_for_task_select(event, data)
+        if event in Events.mech_selected_events():
+            self._handle_mechanism_select(event, data)
+        elif event in Events.task_selected_events():
+            self._handle_task_select(event, data)
     
     #
     # Protocol console logging

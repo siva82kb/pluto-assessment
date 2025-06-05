@@ -20,7 +20,8 @@ from PyQt5 import (
     QtGui)
 from PyQt5.QtCore import (
     pyqtSignal,
-    QTimer
+    QTimer,
+    QThread
 )
 import pyqtgraph as pg
 
@@ -32,6 +33,7 @@ import random
 import winsound
 
 import plutodefs as pdef
+from plutodefs import PlutoEvents as PlEvnts
 from ui_plutopropassessctrl import Ui_ProprioceptionAssessWindow
 from ui_plutoapromassess import Ui_APRomAssessWindow
 from plutodataviewwindow import PlutoDataViewWindow
@@ -72,6 +74,7 @@ class Events(Enum):
 
 class Actions(Enum):
     NO_CTRL = 0
+    BEEP = auto()
     POS_CTRL = auto()
     DEMO_MOVE = auto()
     CTRL_HOLD = auto()
@@ -98,6 +101,28 @@ class States(Enum):
         return [States.DEMO_WAIT,
                 States.DEMO_MOVING,
                 States.DEMO_HOLDING]
+    
+
+class BeepThread(QThread):
+    def __init__(self, frequency=BEEP_FREQ, duration=BEEP_DUR, parent=None):
+        super().__init__(parent)
+        self.frequency = frequency
+        self.duration = duration
+        self._play = False
+        self._stop = False
+
+    def play(self):
+        self._play = True
+
+    def stop(self):
+        self._stop = True
+
+    def run(self):
+        while not self._stop:
+            if self._play:
+                winsound.Beep(self.frequency, self.duration)
+                self._play = False
+            self.msleep(100 + np.random.randint(0, 100))
 
 
 class PlutoPropAssessData():
@@ -105,29 +130,28 @@ class PlutoPropAssessData():
         self._assessinfo = assessinfo
         self._demomode = None
         # Trial variables
-        self._currtrial = 0
         self._startpos = None
         self._trialpostorq = {}
         self._buffer = {"dt": [], "pos": [], "vel": [], "ctrl": []}
-        self._passdata = [{} for _ in range(self.ntrials)]
-        self._currtrial = -1
+        # Generate targets.
         self._targets = []
+        self._generate_targets()
+        self._currtrial = -1
+        self._currtarget = None
+        self._passdata = [{} for _ in range(len(self._targets))]
         
         # Propprioceptive assessment position
         self._proppostorq = [[] for _ in range(self.ntrials)]
         
-        # Generate targets.
-        self._generate_targets()
-
         # Logging variables
         self._logstate: LogState = LogState.WAIT_FOR_LOG
         self._rawwriter: CSVWriter = CSVWriter(fname=self.rawfile,
-                                               header=pfadef.RAWDATA_HEADER)
+                                               header=PropConst.RAW_HEADER)
         self._summwriter: CSVWriter = CSVWriter(fname=self.summaryfile, 
                                                 header=PropConst.SUMMARY_HEADER,
                                                 flush_interval=0.0,
                                                 max_rows=1)
-
+    
     @property
     def type(self):
         return self._assessinfo["type"]
@@ -165,7 +189,7 @@ class PlutoPropAssessData():
         return self._assessinfo["prom"]
 
     @property
-    def currtrial(self):
+    def current_trial(self):
         return self._currtrial
     
     @property
@@ -204,7 +228,7 @@ class PlutoPropAssessData():
     def all_trials_done(self):
         """Check if all trials are done.
         """
-        return self._currtrial >= self.ntrials
+        return self._currtrial >= len(self._targets)
     
     @property
     def rawfilewriter(self):
@@ -212,23 +236,21 @@ class PlutoPropAssessData():
     
     @property
     def current_target(self):
-        """Get the current target position for the trial.
-        """
-        # Check if in demomode.
-        if self._demomode is True:
-            return (0.75 * np.random.rand() + 0.25) * self.prom[1]
-        # Not in demo mode. 
-        if self._currtrial < 0 or self._currtrial >= self.ntrials:
-            return None
-        return self._targets[self._currtrial]
+        return self._currtarget
     
-    def start_newtrial(self, reset: bool = False):
+    def start_newtrial(self):
         """Start a new trial.
         """
-        if self._currtrial < self.ntrials:
+        if self._currtrial < len(self.targets):
             self._startpos = None
             self._buffer = {"dt": [], "pos": [], "vel": [], "ctrl": []}
-            self._currtrial = 0 if reset else self._currtrial + 1
+            # Update trial number and target
+            if self._demomode:
+                self._currtrial = 0
+                self._currtarget = (0.75 * np.random.rand() + 0.25) * self.prom[1] 
+            else:
+                self._currtrial = self._currtrial + 1
+                self._currtarget = self._targets[self._currtrial] if self._currtrial < len(self._targets) else None
             self._trialpostorq = {
                 'startpos': None,
                 'tgtpos': self.current_target,
@@ -258,20 +280,21 @@ class PlutoPropAssessData():
         """
         # Update ROM 
         self._passdata[self._currtrial] = self._trialpostorq.copy()
-        print(self._passdata)
         # Update the summary file.
         self._summwriter.write_row([
             self.session,
             self.type,
             self.limb,
             self.mechanism,
-            self.currtrial,
-            self._startpos,
-            self._trialrom[0],
-            self._trialrom[-1],
-            self._trialrom[-1] - self._trialrom[0],
-            0,
-            0
+            self.current_trial,
+            self._trialpostorq['startpos'],
+            self.arom[0], self.arom[1],
+            self.prom[0], self.prom[1],
+            self.current_target,
+            self._trialpostorq['shownpos'],
+            self._trialpostorq['sensedpos'],
+            self._trialpostorq['showntorq'],
+            self._trialpostorq['sensedtorq']
         ])
         
     def set_startpos(self):
@@ -290,7 +313,7 @@ class PlutoPropAssessData():
     def set_sensedpostorq(self, success=True):
         """
         """
-        self._trialpostorq['sensedpos'] = (self.data.prom[1] if not success 
+        self._trialpostorq['sensedpos'] = (self.prom[1] if not success 
                                            else float(np.mean(self._buffer['pos'])))
         self._trialpostorq['sensedtorq'] = float(np.mean(self._buffer['ctrl']))
         
@@ -299,12 +322,14 @@ class PlutoPropAssessData():
     
     def terminate_rawlogging(self):
         self._logstate = LogState.LOGGING_DONE
-        self._rawfilewriter.close()
-        self._rawfilewriter = None
+        if self._rawwriter:
+            self._rawwriter.close()
+            self._rawwriter = None
     
     def terminate_summarylogging(self):
-        self._summwriter.close()
-        self._summwriter = None
+        if self._summwriter:
+            self._summwriter.close()
+            self._summwriter = None
     
     def _generate_targets(self):
         _tgtsep = PropConst.TGT_POSITIONS[0] * self.prom[1]
@@ -323,8 +348,8 @@ class PlutoPropAssessData():
         # Not in demo mode.
         _dispstr = [
             "Trial: " + 
-            f"{self.currtrial:3d} / {self.ntrials:3d}"
-            if self.currtrial > 0
+            f"{self.current_trial:3d} / {self.ntrials:3d}"
+            if self.current_trial > 0
             else f"- NA -"
         ]
         _dispstr += [
@@ -345,6 +370,8 @@ class PlutoPropAssessmentStateMachine():
         self._instruction = f""
         self._instdisp = instdisp
         self._pluto = plutodev
+        self._beeper = BeepThread()
+        self._beeper.start()
         # Indicates if both AROM and PROM have been done for this
         # particular instance of the statemachine.
         self._statehandlers = {
@@ -362,7 +389,7 @@ class PlutoPropAssessmentStateMachine():
         }
         # Instructions.
         self._stateinstructions = {
-            States.REST: "Close Hand & press button to start..",
+            States.REST: "Close Hand & press button to start.",
             States.DEMO_WAIT: "Waiting for Haptic Display to start.",
             States.DEMO_MOVING: "Haptic Display Moving.",
             States.DEMO_HOLDING: "Haptic Display Holding.",
@@ -377,6 +404,7 @@ class PlutoPropAssessmentStateMachine():
         # Action handlers
         self._actionhandlers = {
             Actions.NO_CTRL: self._act_no_ctrl, 
+            Actions.BEEP: self._act_beep,
             Actions.POS_CTRL: self._act_pos_ctrl, 
             Actions.DEMO_MOVE: self._act_demo_move, 
             Actions.CTRL_HOLD: self._act_ctrl_hold, 
@@ -407,32 +435,42 @@ class PlutoPropAssessmentStateMachine():
         """
         _action = self._statehandlers[self._state](event, dt)
         self._actionhandlers[_action]()
-        self._instdisp.setText(self._stateinstructions[self._state] 
-                               + f" [{self._statetimer:1.1f}s]" if self._statetimer else "")
-    
+        # Display instructions.
+        self._display_instruction()
+
     def _handle_rest(self, event, dt) -> Actions:
         """Waits till the start button is pressed.
         """
+        # Check if all trials are done.
+        if not self._data.demomode and self._data.all_trials_done:
+            self._data.terminate_rawlogging()
+            self._data.terminate_summarylogging()
+            if event == PlEvnts.RELEASED:
+                self._state = States.DONE
+                self._statetimer = None
+            return Actions.NO_CTRL
         # Check if all trials are done or if we are in the demo mode.
-        if event == pdef.PlutoEvents.RELEASED: 
+        if event == PlEvnts.RELEASED:
             # Check to make sure the angle is close to zero.
             if self._pluto.hocdisp < PropConst.START_POSITION_TH:
                 self._data.set_startpos()
                 self._state = States.DEMO_WAIT
                 self._statetimer = 0.5
+                if not self._data.demomode:
+                    self._data.start_rawlogging()
                 return Actions.POS_CTRL
         return Actions.NO_CTRL
 
     def _handle_demo_wait(self, event, dt) -> Actions:
-        if event == pdef.PlutoEvents.NEWDATA:
+        if event == PlEvnts.NEWDATA:
             self._statetimer -= dt
             if self._statetimer <= 0:
                 self._state = States.DEMO_MOVING
-                return Actions.DEMO_MOVE
+                return Actions.BEEP
         return Actions.POS_CTRL
 
     def _handle_demo_moving(self, event, dt) -> Actions:
-        if event == pdef.PlutoEvents.NEWDATA:
+        if event == PlEvnts.NEWDATA:
             # Check if the target has been reached and the subject is holding.
             if self.subj_in_target():
                 self._state = States.DEMO_HOLDING
@@ -440,7 +478,7 @@ class PlutoPropAssessmentStateMachine():
         return Actions.DEMO_MOVE
 
     def _handle_demo_holding(self, event, dt) -> Actions:
-        if event == pdef.PlutoEvents.NEWDATA:
+        if event == PlEvnts.NEWDATA:
             if not (self.subj_in_target() and self.subj_is_holding()):
                 self._statetimer = PropConst.DEMO_DURATION
                 return Actions.CTRL_HOLD
@@ -453,22 +491,22 @@ class PlutoPropAssessmentStateMachine():
         return Actions.CTRL_HOLD
 
     def _handle_intra_trial_rest(self, event, dt) -> Actions:
-        if event == pdef.PlutoEvents.NEWDATA:
+        if event == PlEvnts.NEWDATA:
             if not (self.subj_near_start_position() and self.subj_is_holding()):
                 return Actions.GO_HOME
             self._statetimer -= dt
             if self._statetimer <= 0:
                 self._state = States.ASSESS_MOVING
                 self._statetimer = None
-                return Actions.ASSESS_MOVE
+                return Actions.BEEP
         return Actions.GO_HOME
     
     def _handle_assess_moving(self, event, dt) -> Actions:
-        if event == pdef.PlutoEvents.RELEASED:
+        if event == PlEvnts.RELEASED:
             self._state = States.ASSESS_HOLDING
             self._statetimer = 1.0
             return Actions.CTRL_HOLD
-        if event == pdef.PlutoEvents.NEWDATA:
+        if event == PlEvnts.NEWDATA:
             if self.subj_near_prom():
                 self._state = States.ASSESS_NORESPONSE
                 self._statetimer = 1.0
@@ -476,31 +514,34 @@ class PlutoPropAssessmentStateMachine():
         return Actions.ASSESS_MOVE
     
     def _handle_assess_holding(self, event, dt) -> Actions:
-        if event == pdef.PlutoEvents.NEWDATA:
+        if event == PlEvnts.NEWDATA:
             self._statetimer -= dt
             if self._statetimer <= 0:
                 self._data.set_sensedpostorq()
                 self._state = States.INTER_TRIAL_REST
-                self._statetimer = None
+                self._statetimer = PropConst.INTER_TRIAL_REST_DURATION
                 return Actions.GO_HOME
         return Actions.CTRL_HOLD
 
     def _handle_assess_noresponse(self, event, dt) -> Actions:
-        if event == pdef.PlutoEvents.NEWDATA:
+        if event == PlEvnts.NEWDATA:
             self._statetimer -= dt
             if self._statetimer <= 0:
+                self._data.set_sensedpostorq(success=False)
                 self._state = States.INTER_TRIAL_REST
                 self._statetimer = PropConst.INTER_TRIAL_REST_DURATION
                 return Actions.GO_HOME
         return Actions.GO_HOME
 
     def _handle_inter_trial_rest(self, event, dt) -> Actions:
-        if event == pdef.PlutoEvents.NEWDATA:
+        if event == PlEvnts.NEWDATA:
             if not self.subj_near_start_position():
                 self._statetimer = PropConst.INTER_TRIAL_REST_DURATION
                 return Actions.GO_HOME
             self._statetimer -= dt
             if self._statetimer <= 0:
+                self._data.set_prop_assessment()
+                self._data.start_newtrial()
                 self._state = States.REST
                 self._statetimer = None
                 return Actions.GO_HOME
@@ -525,6 +566,9 @@ class PlutoPropAssessmentStateMachine():
     def _act_no_ctrl(self):
         if self._ctrl_is_none(): return
         self._pluto.set_control_type("NONE")
+    
+    def _act_beep(self):
+        self._beeper.play()
 
     def _act_pos_ctrl(self):
         if self._ctrl_is_pos(): return
@@ -534,7 +578,7 @@ class PlutoPropAssessmentStateMachine():
         self._pluto.set_control_gain(2.0)
         self._act_demo_move()
 
-    def _act_demo_move(self):
+    def _act_demo_move(self):        
         # Set the target.
         _tgtdetails = self._compute_target_details(self._data.current_target, demomode=True)
         if self._tgt_set(_tgtdetails["target"]): return
@@ -556,7 +600,19 @@ class PlutoPropAssessmentStateMachine():
 
     def _act_do_nothing(self):
         pass
-
+    
+    def _display_instruction(self):
+        if self._state != States.REST:
+            self._instdisp.setText(self._stateinstructions[self._state] 
+                                + f" [{self._statetimer:1.1f}s]" if self._statetimer else "")
+        else:
+            if self._data.demomode:
+                self._instdisp.setText(f"Press the PLUTO button to start demo trial.")
+            elif self._data.all_trials_done:
+                self._instdisp.setText(f"All trials done. Press the PLUTO button to quit.")
+            else:
+                self._instdisp.setText(f"PLUTO button to start trial {self._data.current_trial + 1} / {len(self._data.targets)}.")
+    
     #
     # Supporting functions
     #
@@ -566,6 +622,9 @@ class PlutoPropAssessmentStateMachine():
         self._tgt_set= lambda tgt : np.isclose(self._pluto.target, tgt, rtol=1e-03, atol=1e-03)
         self._ctrl_hold = lambda : self._pluto.controlhold == pdef.ControlHoldTypes["HOLD"]
         self._ctrl_decay = lambda : self._pluto.controlhold == pdef.ControlHoldTypes["DECAY"]
+        self.subj_in_target = lambda : np.abs(self._data.current_target - self._pluto.hocdisp) < PropConst.TGT_ERR_TH
+        self.subj_near_start_position = lambda : self._pluto.hocdisp - self._data.startpos < PropConst.TGT_ERR_TH
+        self.subj_near_prom = lambda : np.abs(self._pluto.hocdisp - self._data.prom[1]) < PropConst.TGT_ERR_TH
 
     def subj_is_holding(self):
         """Check if the subject is holding the position.
@@ -574,21 +633,6 @@ class PlutoPropAssessmentStateMachine():
                if self._data.mechanism == "HOC"
                else pfadef.VEL_NOT_HOC_THRESHOLD)
         return bool(np.all(np.abs(self._data.trialdata['vel']) < _th))
-    
-    def subj_in_target(self) -> bool:
-        """Check if the subejct is close to the target position.
-        """
-        return np.abs(self._data.current_target - self._pluto.hocdisp) < PropConst.TGT_ERR_TH
-    
-    def subj_near_start_position(self) -> bool:
-        """Check if the subejct is close to the target position.
-        """
-        return self._pluto.hocdisp - self._data.startpos < PropConst.TGT_ERR_TH
-    
-    def subj_near_prom(self) -> bool:
-        """Check if the subejct is close to the target position.
-        """
-        return np.abs(self._pluto.hocdisp - self._data.prom[1]) < PropConst.TGT_ERR_TH
     
     def _compute_target_details(self, tgtpos, demomode=False) -> dict:
         """Compute the target details for the given target position.
@@ -721,7 +765,7 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
     # 
     def closeEvent(self, event):
         if self.on_close_callback:
-            self.on_close_callback(data=[])
+            self.on_close_callback(data={"done": self.data.all_trials_done})
         # Set device to no control.
         self.pluto.set_control_type("NONE")
         # Detach PLUTO callbacks.
@@ -730,6 +774,7 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             self._devdatawnd.close()
         except:
             pass
+        self._smachine._beeper.stop()
         return super().closeEvent(event)
 
     #
@@ -764,6 +809,10 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
 
         # Update status message
         self.ui.lblStatus.setText(f"{self.pluto.error} | {self.pluto.controltype} | {self._smachine.state}")
+
+        # Close if needed
+        if self._smachine.state == States.DONE:
+            self.close()
 
     def _update_graph(self):
         # Current position.
@@ -861,16 +910,31 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         )
         # Run the statemachine
         self._smachine.run_statemachine(
-            pdef.PlutoEvents.NEWDATA,
+            PlEvnts.NEWDATA,
             self.pluto.delt()
         )
         if np.random.rand() < 0.2:
             self.update_ui()
+        
+        #
+        # Log data
+        if self.data.logstate == LogState.LOG_DATA:
+            self.data.rawfilewriter.write_row([
+                self.pluto.systime, self.pluto.currt, self.pluto.packetnumber,
+                self.pluto.status, self.pluto.controltype, self.pluto.error, 
+                self.pluto.limb, self.pluto.mechanism,
+                self.pluto.angle, self.pluto.hocdisp, self.pluto.torque, 
+                self.pluto.control, self.pluto.target, self.pluto.desired,
+                self.pluto.controlbound, self.pluto.controldir, 
+                self.pluto.controlgain, self.pluto.controlhold, self.pluto.button,
+                self.data.current_trial,
+                f"{self._smachine.state.name}"
+            ])
 
     def _callback_pluto_btn_released(self):
         # Run the statemachine
         _action = self._smachine.run_statemachine(
-            pdef.PlutoEvents.RELEASED,
+            PlEvnts.RELEASED,
             self.pluto.delt()
         )
         self.update_ui()

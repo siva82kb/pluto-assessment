@@ -1029,7 +1029,7 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
     
     def closeEvent(self, event):
         if self.on_close_callback:
-            self.on_close_callback(data=self.data.rom)
+            self.on_close_callback(data={"done": self.data.all_trials_done})
         # Detach PLUTO callbacks.
         self._detach_pluto_callbacks()
         return super().closeEvent(event)

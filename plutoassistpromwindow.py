@@ -900,23 +900,23 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
     def _perform_action(self, action: PlutoAssistPRomAssessAction) -> None:
         if action == PlutoAssistPRomAssessAction.SET_CONTROl_TO_NONE:
             # Check if the current control type is not NONE.
-            if self.pluto.controltype != pdef.ControlType["NONE"]:
+            if self.pluto.controltype != pdef.ControlTypes["NONE"]:
                 self.pluto.set_control_type("NONE")
         elif action == PlutoAssistPRomAssessAction.SET_CONTROL_TO_TORQUE:
             # Check if the current control type is not TORQUE.
-            if self.pluto.controltype != pdef.ControlType["TORQUE"]:
+            if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
                 self.pluto.set_control_type("TORQUE")
             self.pluto.set_control_target(target=0, dur=2.0)
         elif action == PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_ZERO:
-            if self.pluto.controltype != pdef.ControlType["TORQUE"]:
+            if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
                 self.pluto.set_control_type("TORQUE")
             self.pluto.set_control_target(target=0, dur=2.0)
         elif action == PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_DIR:
-            if self.pluto.controltype != pdef.ControlType["TORQUE"]:
+            if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
                 self.pluto.set_control_type("TORQUE")
             self.pluto.set_control_target(target=1.0, dur=2.0)
         elif action == PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_OTHER_DIR:
-            if self.pluto.controltype != pdef.ControlType["TORQUE"]:
+            if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
                 self.pluto.set_control_type("TORQUE")
             self.pluto.set_control_target(target=-1.0, dur=2.0)
 
@@ -932,8 +932,10 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
             self._smachine.reset_statemachine()
     
     def closeEvent(self, event):
+        self.pluto.set_control_type("NONE")
         if self.on_close_callback:
-            self.on_close_callback(data=self.data.rom)
+            self.on_close_callback(data={"rom": self.data.rom,
+                                         "done": self.data.all_trials_done})
         # Detach PLUTO callbacks.
         self._detach_pluto_callbacks()
         try:

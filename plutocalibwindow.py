@@ -238,7 +238,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
     def closeEvent(self, event):
         # Run the callback
         if self.on_close_callback:
-            self.on_close_callback()
+            self.on_close_callback(data={"done": self.pluto.calibration == pdef.CalibrationStatus["YESCALIB"]})
         # Disconnect the PLUTO callbacks.
         self._detach_pluto_callbacks()
         return super().closeEvent(event)

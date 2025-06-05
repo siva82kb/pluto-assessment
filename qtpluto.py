@@ -212,7 +212,8 @@ class QtPluto(QObject):
         self.currstatedata.append(newdata[3])
         
         # Decode according to the datatype.
-        self._packet_type_handlers[self.datatype](newdata)
+        if self.datatype not in self._packet_type_handlers:
+            self._packet_type_handlers[self.datatype](newdata)
     
     def _handle_stream(self, newdata):
         """
