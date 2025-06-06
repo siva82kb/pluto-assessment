@@ -29,40 +29,56 @@
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
+     <property name="spacing">
+      <number>0</number>
+     </property>
      <item>
-      <widget class="QLabel" name="lblTitle">
-       <property name="font">
-        <font>
-         <family>Cascadia Mono Light</family>
-         <pointsize>12</pointsize>
-        </font>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <property name="bottomMargin">
+        <number>0</number>
        </property>
-       <property name="styleSheet">
-        <string notr="true">color: rgb(170, 0, 0);</string>
-       </property>
-       <property name="text">
-        <string>PLUTO ROM Assessment</string>
-       </property>
-      </widget>
+       <item>
+        <widget class="QLabel" name="lblTitle">
+         <property name="font">
+          <font>
+           <family>Cascadia Mono Light</family>
+           <pointsize>12</pointsize>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">color: rgb(170, 0, 0);</string>
+         </property>
+         <property name="text">
+          <string>PLUTO ROM Assessment</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="cbTrialRun">
+         <property name="maximumSize">
+          <size>
+           <width>90</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <family>Cascadia Mono Light</family>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">color: rgb(170, 0, 0);</string>
+         </property>
+         <property name="text">
+          <string>Trial Run</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
      <item>
       <widget class="QGraphicsView" name="hocGraph"/>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="cbTrialRun">
-       <property name="font">
-        <font>
-         <family>Cascadia Mono Light</family>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">color: rgb(170, 0, 0);</string>
-       </property>
-       <property name="text">
-        <string>Trial Run</string>
-       </property>
-      </widget>
      </item>
      <item>
       <widget class="QLabel" name="lblStatus">

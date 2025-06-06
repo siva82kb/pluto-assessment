@@ -10,10 +10,19 @@ import numpy as np
 from enum import Enum
 
 
+# Min and Max PWM.
+MINPWM = 410
+MAXPWM = 3686
+
+# Pluto torque and force calculation.
+PLUTO_TORQUE_SCALE = 0.00030981                         # Nm / PWM scale
+HOC_PINION_SCALE = 0.03                                 # in meters
+MAX_TORQUE = (MAXPWM - MINPWM) * PLUTO_TORQUE_SCALE     # Maximum torque
+MAX_HOC_FORCE = 0.5 * MAX_TORQUE / HOC_PINION_SCALE     # Maximum HOC force
 
 # Hand Openiong and Closing Mechanism Conversion Factor
-HOCScale = 3.97 * (np.pi / 180) * (14 / 9)
-PLUTOMaxTorque = 1.0 #Nm
+# cm/deg
+HOCScale = 2 * (np.pi / 180) * HOC_PINION_SCALE * 100            
 
 # Min, Max control bound
 PlutoMinControlBound = 0.0
@@ -22,10 +31,6 @@ PlutoMaxControlBound = 1.0
 # Min, Max control gain
 PlutoMinControlGain = 1.0
 PlutoMaxControlGain = 10.0
-
-# Min and Max PWM.
-MINPWM = 410
-MAXPWM = 3686
 
 class PlutoEvents(Enum):
     PRESSED = 0
@@ -123,7 +128,7 @@ PlutoAngleRanges = {
 }
 
 PlutoTargetRanges = {
-    "TORQUE":   [-PLUTOMaxTorque, PLUTOMaxTorque],
+    "TORQUE":   [-MAX_TORQUE, MAX_TORQUE],
     "POSITION": PlutoAngleRanges
 }
 
@@ -140,3 +145,11 @@ def get_name(def_dict, code):
         if value == code:
             return name
     return None
+
+def control_to_torque(pwm): 
+    if pwm > MINPWM:
+        return PLUTO_TORQUE_SCALE * (pwm - MINPWM)
+    elif pwm < -MINPWM:
+        return PLUTO_TORQUE_SCALE * (pwm + MINPWM)
+    else:
+        return 0.0

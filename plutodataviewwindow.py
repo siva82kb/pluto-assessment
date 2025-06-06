@@ -105,7 +105,7 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
             + (f" [{self.pluto.hocdisp:05.2f}cm]" if self.pluto.calibration == 1 else "")
         ]
         _dispdata += [
-            # f"Torque  : {self.pluto.torque:3.1f}Nm",
+            f"Torque  : {self.pluto.torque:+3.1f}Nm | Grip Force: {self.pluto.gripforce:+3.1f}N / {pdef.MAX_HOC_FORCE:3.1f}N",
             f"Control  : {self.pluto.control:3.1f}",
         ]
         # Display target and desired only for NONE, TORQUE, POSITION/AAN/LINEAR controllers.

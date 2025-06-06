@@ -244,8 +244,8 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
             self.pluto.set_object_param(_delposition, _position)
             QtCore.QThread.msleep(100)
             self.pluto.get_object_param()
-            QtCore.QThread.msleep(100)
-            self.pluto.set_diagnostic_mode()
+            # QtCore.QThread.msleep(100)
+            # self.pluto.set_diagnostic_mode()
             print(f"Delta Position: {_delposition}, Position: {_position}")
             return
         # Torque or position target is to be set.

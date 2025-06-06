@@ -42,7 +42,6 @@ PROP_SUMMARY_HEADER = [
     "session", "type", "limb", "mechanism", "trial", "startpos", "target", "shown", "sensed", "torque"
 ]
 
-# APROM Assessment Constant.
 #
 # APROM Assessment Constants
 #
@@ -112,6 +111,33 @@ class ProprioceptionConstants:
         "session", "type", "limb", "mechanism", "trial", "startpos",
         "aromin", "aromax", "promin", "promax", "target",
         "shownpos", "sensedpos", "showntorq", "sensedtorq", 
+    ]
+
+#
+# Force Control Assessment Constants
+#
+class ForceControlConstants:
+    NO_OF_TRIALS = 3                    # Number of trials.
+    FULL_RANGE_WIDTH = 2.0              # The full force range in position. (cm) 
+    TGT_POSITION = 0.4                  # Target positions (fraction of AROM).
+    TGT_FORCE = 05.00                   # Target force (N).
+    TGT_FORCE_WIDTH = 01.00             # Target force width (N).
+    DURATION = 30.0                     # Task duration (seconds).
+    
+    # Raw data file header.
+    RAW_HEADER = [
+        "systime", "devtime", "packno",  "status", "controltype", "error",
+        "limb", "mechanism",
+        "angle", "hocdisp", "torque", "control", "target", "desired", 
+        "controlbound", "controldir", "controlgain", "controlhold", "button",
+        "objectPosition", "objectDelPosition",
+        "trialno", "assessmentstate"
+    ]
+
+    # Summary file header.
+    SUMMARY_HEADER = [
+        "session", "type", "limb", "mechanism", "trial", 
+        "aromin", "aromax", "targetposition", "targetforce" 
     ]
 
 #

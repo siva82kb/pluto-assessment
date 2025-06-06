@@ -123,7 +123,14 @@ class QtPluto(QObject):
     
     @property
     def torque(self):
-        return self.currsensordata[1] if len(self.currsensordata) > 0 else None
+        # return self.currsensordata[1] if len(self.currsensordata) > 0 else None
+        if self.control is None: return None
+        return pdef.control_to_torque(self.control)
+    
+    @property
+    def gripforce(self):
+        if self.control is None: return None
+        return 0.5 * self.torque / pdef.HOC_PINION_SCALE
     
     @property
     def control(self):
