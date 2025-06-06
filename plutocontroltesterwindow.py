@@ -107,7 +107,7 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         self.ui.dsbCtrlBndValue.setEnabled(_poscontrol)
         self.ui.dsbCtrlGainValue.setEnabled(_poscontrol)
         self.ui.dsbObjPos.setEnabled(_objsimcontrol)
-        self.ui.dsbObjStiff.setEnabled(_objsimcontrol)
+        self.ui.dsbObjDelPos.setEnabled(_objsimcontrol)
         # Enable/disable control buttons
         self.ui.pbSetTarget.setEnabled(_torqcontrol or _poscontrol or _objsimcontrol)
         self.ui.pbCtrlHold.setEnabled(_poscontrol)
@@ -237,21 +237,32 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
     
     def _callback_on_set_target(self, event):
         _dur = self.ui.dsbTgtDur.value()
+        # Check if object param is to be set.
+        if self.ui.radioObjectSim.isChecked():
+            _delposition = self.ui.dsbObjDelPos.value()
+            _position = self.ui.dsbObjPos.value()
+            self.pluto.set_object_param(_delposition, _position)
+            QtCore.QThread.msleep(100)
+            self.pluto.get_object_param()
+            QtCore.QThread.msleep(100)
+            self.pluto.set_diagnostic_mode()
+            print(f"Delta Position: {_delposition}, Position: {_position}")
+            return
+        # Torque or position target is to be set.
         if self.ui.radioTorque.isChecked():
             _tgt = self.ui.dsbTorqTgtValue.value()
-        else:
+        elif self.ui.radioPosition.isChecked() or self.ui.radioPositionLinear.isChecked():
             _tgt = self.ui.dsbPosTgtValue.value()
             _tgt = - _tgt / pdef.HOCScale if self._mech == "HOC" else _tgt
-        # Set control bound.
-        self.pluto.set_control_bound(self.ui.dsbCtrlBndValue.value())
-        # Wait for 250ms
-        QtCore.QThread.msleep(100)
-        # Set control gain.
-        self.pluto.set_control_gain(self.ui.dsbCtrlGainValue.value())
-        # Wait for 250ms
-        QtCore.QThread.msleep(100)
+            # Set control bound.
+            self.pluto.set_control_bound(self.ui.dsbCtrlBndValue.value())
+            # Wait for 100ms
+            QtCore.QThread.msleep(100)
+            # Set control gain.
+            self.pluto.set_control_gain(self.ui.dsbCtrlGainValue.value())
+            # Wait for 100ms
+            QtCore.QThread.msleep(100)
         # Set the control target.
-        print(_tgt, self.pluto.angle, _dur)
         self.pluto.set_control_target(
             target=_tgt,
             target0=self.pluto.angle,
@@ -340,7 +351,7 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     import qtjedi
-    qtjedi._OUTDEBUG = True
+    qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM13")
     pdataview = PlutoControlTesterWindow(plutodev=plutodev,

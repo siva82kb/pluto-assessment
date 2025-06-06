@@ -47,6 +47,8 @@ class QtPluto(QObject):
         self._version = ""
         self._devname = ""
         self._compliedate = ""
+        # Object simulator params
+        self._objparams = {}
         # Limb being used with Pluto
         self._limb = limb
         # Packet decoding functions.
@@ -54,6 +56,7 @@ class QtPluto(QObject):
             pdef.OutDataType["SENSORSTREAM"]: self._handle_stream,
             pdef.OutDataType["DIAGNOSTICS"]: self._handle_stream,
             pdef.OutDataType["VERSION"]: self._handle_version,
+            pdef.OutDataType["OBJECTPARAM"]: self._handle_object_param,
         }
 
         # Call back for newdata_signal
@@ -179,6 +182,14 @@ class QtPluto(QObject):
         return self.currstatedata[9] if len(self.currstatedata) > 0 else None
     
     @property
+    def objectDelPosition(self):
+        return self._objparams["delposition"] if "delposition" in self._objparams else None
+
+    @property
+    def objectPosition(self):
+        return self._objparams["position"] if "position" in self._objparams else None
+    
+    @property
     def button(self):
         return self.currstatedata[10] if len(self.currstatedata) > 0 else None
 
@@ -268,6 +279,25 @@ class QtPluto(QObject):
         Function to handle VERSION data.
         """
         self._devname, self._version, self._compliedate = bytes(newdata[4:]).decode('ascii').split(",")
+    
+    def _handle_object_param(self, newdata):
+        """
+        Function to handle OBJECTPARAM data.
+        """
+        # Robot sensor data. This depends on the datatype.
+        N = pdef.PlutoSensorDataNumber[pdef.get_name(pdef.OutDataType, self.datatype)]
+        print(newdata)
+        print(newdata)
+
+        # pluto sensor data
+        self.currsensordata = [
+            struct.unpack('f', bytes(newdata[i:i+4]))[0]
+            for i in range(4, 4 + N * 4, 4)
+        ]
+        self._objparams = {
+            "delposition": self.currsensordata[0],
+            "position": self.currsensordata[1],
+        }
 
     def close(self):
         """Function to close the connection.
@@ -316,6 +346,17 @@ class QtPluto(QObject):
         _payload += list(struct.pack('f', target))
         _payload += list(struct.pack('f', dur))
         self.dev.send_message(_payload)
+    
+    def set_object_param(self, delposition, position):
+        """Function to set object parameters.
+        """
+        if not self.is_connected():
+            return
+        # Set default values
+        _payload = [pdef.InDataType["SET_OBJECT_PARAM"]]
+        _payload += list(struct.pack('f', delposition))
+        _payload += list(struct.pack('f', position))
+        self.dev.send_message(_payload)
 
     def start_sensorstream(self):
         """Starts sensor stream.
@@ -339,6 +380,12 @@ class QtPluto(QObject):
         """Get the version of the device.
         """
         _payload = [pdef.InDataType["GET_VERSION"]]
+        self.dev.send_message(_payload)
+    
+    def get_object_param(self):
+        """Get the object parameters.
+        """
+        _payload = [pdef.InDataType["GET_OBJECT_PARAM"]]
         self.dev.send_message(_payload)
     
     def set_control_bound(self, bound):

@@ -250,6 +250,6 @@ if __name__ == '__main__':
     plutodev = QtPluto("COM13")
     pcalib = PlutoCalibrationWindow(plutodev=plutodev, limb="LEFT", mechanism="HOC",
                                     dataviewer=True, heartbeat=True, 
-                                    onclosecb=lambda: print(dt.now()))
+                                    onclosecb=lambda data: print(dt.now()))
     pcalib.show()
     sys.exit(app.exec_())

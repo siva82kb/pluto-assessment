@@ -23,6 +23,10 @@ PlutoMaxControlBound = 1.0
 PlutoMinControlGain = 1.0
 PlutoMaxControlGain = 10.0
 
+# Min and Max PWM.
+MINPWM = 410
+MAXPWM = 3686
+
 class PlutoEvents(Enum):
     PRESSED = 0
     RELEASED = 1
@@ -59,6 +63,7 @@ OutDataType = {
     "CONTROLPARAM": 0x01,
     "DIAGNOSTICS":  0x02,
     "VERSION":      0x03,
+    "OBJECTPARAM":  0x04,
 }
 
 InDataType = {
@@ -125,6 +130,7 @@ PlutoTargetRanges = {
 PlutoSensorDataNumber = {
     "SENSORSTREAM": 5,
     "DIAGNOSTICS": 8,
+    "OBJECTPARAM": 2
 }
 
 def get_name(def_dict, code):

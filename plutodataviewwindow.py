@@ -107,9 +107,18 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
         _dispdata += [
             # f"Torque  : {self.pluto.torque:3.1f}Nm",
             f"Control  : {self.pluto.control:3.1f}",
-            f"Target   : {self.pluto.target:3.1f}",
-            f"Desired  : {self.pluto.desired:3.1f}",
         ]
+        # Display target and desired only for NONE, TORQUE, POSITION/AAN/LINEAR controllers.
+        if self.pluto.controltype == pdef.ControlTypes["OBJECTSIM"]:
+            _dispdata += [
+                "Obj dPos  : " + (f"{self.pluto.objectDelPosition:3.1f}" if self.pluto.objectDelPosition is not None else "-"),
+                "Obj Pos   : " + (f"{self.pluto.objectPosition:3.1f}" if self.pluto.objectPosition is not None else "-"),
+            ]
+        else:
+            _dispdata += [
+                f"Target   : {self.pluto.target:3.1f}",
+                f"Desired  : {self.pluto.desired:3.1f}",
+            ]
         # Check if in DIAGNOSTICS mode.
         if pdef.get_name(pdef.OutDataType, self.pluto.datatype) == "DIAGNOSTICS":
             _dispdata += [
