@@ -36,11 +36,14 @@ from plutotestwindow import PlutoTestControlWindow
 from plutoapromwindow import PlutoAPRomAssessWindow
 from plutoromwindow import PlutoRomAssessWindow
 from plutopropassesswindow import PlutoPropAssessWindow
+from plutoforcecontrolwindow import PlutoForceControlWindow
 
 from ui_plutofullassessment import Ui_PlutoFullAssessor
 
 import plutodefs as pdef
 import plutofullassessdef as pfadef
+from plutofullassessdef import ProprioceptionConstants as PropConst
+from plutofullassessdef import ForceControlConstants as FCtrlConst
 from plutofullassessstatemachine import PlutoFullAssessmentStateMachine
 from plutofullassessstatemachine import Events, States
 from plutofullassesssdata import PlutoAssessmentData
@@ -116,6 +119,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pbAPROM.clicked.connect(self._callback_assess_aprom)
         self.pbDiscReach.clicked.connect(self._callback_disc_reach)
         self.pbProp.clicked.connect(self._callback_assess_prop)
+        self.pbForceCtrl.clicked.connect(self._callback_assess_fctrl)
         self.rbWFE.clicked.connect(self._callback_mech_selected)
         self.rbFPS.clicked.connect(self._callback_mech_selected)
         self.rbHOC.clicked.connect(self._callback_mech_selected)
@@ -384,6 +388,36 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._discwnd.show()
         self._currwndclosed = False
 
+    def _callback_assess_fctrl(self):
+        # Check if FCTRL has already been assessed and needs to be reassessed.
+        if self._reassess_requested("FCTRL") is False:
+            return
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            Events.FCTRL_ASSESS,
+            None
+        )
+        # Disable main controls
+        self._maindisable = True
+        self._discwnd = PlutoForceControlWindow(
+            plutodev=self.pluto,
+            assessinfo={
+                "subjid": self.data.subjid,
+                "type": self.data.type,
+                "limb": self.data.limb,
+                "mechanism": self.data.protocol.mech,
+                "session": self.data.session,
+                "ntrials": FCtrlConst.NO_OF_TRIALS,
+                "rawfile": self.data.protocol.rawfilename,
+                "summaryfile": self.data.protocol.summaryfilename,
+                "arom": self.data.romsumry["AROM"][self.data.protocol.mech][-1]["rom"]
+            },
+            modal=True,
+            onclosecb=self._fctrlasswnd_close_event
+        )
+        self._discwnd.show()
+        self._currwndclosed = False
+
     def _callback_subjtype_select(self):
         # Reset AROM and PROM values if the current selection is different.
         if (self._subjdetails["type"] != self.cbSubjectType.currentText()):
@@ -594,6 +628,25 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Set the window closed flag.
         self._currwndclosed = True
         self.update_ui()
+    
+    def _fctrlasswnd_close_event(self, data):
+        # Check if the window is already closed.
+        if self._currwndclosed is True:
+            self._discwnd = None
+            return
+        # Window not closed.
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            Events.FCTRL_DONE if data["done"] else Events.FCTRL_NO_DONE,
+            {}
+        )
+        # Reenable main controls
+        self._maindisable = False
+        # Update the Table.
+        self._updatetable = True
+        # Set the window closed flag.
+        self._currwndclosed = True
+        self.update_ui()
 
     # def _propwnd_close_event(self, data):
     #     # Set device to no control.
@@ -736,6 +789,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Update complete/incomplete status of the mechanisms.
         for i, _m in enumerate(self.data.protocol.mech_enabled):
             _mctrl[_m].setEnabled(True)
+            print(self.data.protocol.mech_completed)
             if _m in self.data.protocol.mech_completed:
                 _mctrl[_m].setText(f"{pfadef.mech_labels[_m]} [C]")
                 _mctrl[_m].setStyleSheet(pfadef.SS_COMPLETE)

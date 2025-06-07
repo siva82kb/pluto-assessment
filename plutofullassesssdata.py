@@ -197,8 +197,10 @@ class PlutoAssessmentProtocolData(object):
     def mech_completed(self) -> list[str]:
         """List of mechanisms for which assessment has been completed.
         """
-        if self._df is None or self._index is None:
+        if self._df is None:
             return None
+        if self._index is None:
+            return list(self._df["mechanism"].unique())
         # Get the list of mechanisms that have been assessed.
         _mechleft = self._df[self._df["session"].isna()]['mechanism'].unique().tolist()
         return list(set(pfadef.mechanisms) - set(_mechleft))
@@ -207,8 +209,10 @@ class PlutoAssessmentProtocolData(object):
     def mech_not_completed(self) -> list[str]:
         """List of mechanisms for which assessment has been completed.
         """
-        if self._df is None or self._index is None:
+        if self._df is None:
             return None
+        if self._index is None:
+            return []
         # Get the list of mechanisms that have been assessed.
         return self._df[self._df["session"].isna()]['mechanism'].unique().tolist()
 
@@ -216,8 +220,10 @@ class PlutoAssessmentProtocolData(object):
     def mech_enabled(self) ->list[str]:
         """Get the list of mechanisms that are to be enabled.
         """
-        if self._df is None and self._index is None:
+        if self._df is None:
             return []
+        if self._index is None:
+            return list(self._df["mechanism"].unique())
         # Get the list of mechanisms that have been assessed.
         return list(self._df[self._df.index <= self._index]["mechanism"].unique())
     
@@ -225,7 +231,7 @@ class PlutoAssessmentProtocolData(object):
     def all_tasks_for_mechanism(self) -> list[str]:
         """Get the list of all tasks for the current mechanism.
         """
-        if self._df is None or self._index is None or self._mech is None:
+        if self._df is None or self._mech is None:
             return []
         # Get the list of mechanisms that have been assessed.
         _mechdf = self._df[self._df["mechanism"] == self._mech]
@@ -346,9 +352,11 @@ class PlutoAssessmentProtocolData(object):
     def update(self, session, rawfile, summaryfile):
         """Set the mechanism task data in the summary file.
         """
-        if self._df is None or self._index is None:
+        if self._df is None:
             raise ValueError("Summary data not initialized or index not set.")
-        
+        # Check if all assessments are done.
+        if self._index is None:
+            return
         # Set the session, rawfile and summaryfile in the summary data.
         _updateindex = (
             (self._df["mechanism"] == self._mech) &

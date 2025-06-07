@@ -419,7 +419,31 @@ class PlutoFullAssessmentStateMachine():
     def _handle_fctrl_assess(self, event, data):
         """
         """
-        pass
+        # Check if proprioceptive assessment is done.
+        if event == Events.FCTRL_DONE:
+            # Update the protocol data.
+            self._data.protocol.update(
+                self._data.session,
+                self._data.protocol.rawfilename,
+                ""
+            )
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"Force Control done for {self._data.protocol.mech}.")
+        elif event == Events.FCTRL_NO_DONE:
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"Force Control not done for {self._data.protocol.mech}.")
 
     def _handle_task_select(self, event, data):
         """
