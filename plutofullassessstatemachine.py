@@ -52,6 +52,7 @@ from plutofullassesssdata import PlutoAssessmentData
 class Events(Enum):
     SUBJECT_SET = 0
     TYPE_LIMB_SET = auto()
+    NOMECH_SET = auto()
     WFE_SET = auto()
     FPS_SET = auto()
     HOC_SET = auto()
@@ -81,7 +82,8 @@ class Events(Enum):
         return [
             Events.WFE_SET,
             Events.FPS_SET,
-            Events.HOC_SET
+            Events.HOC_SET,
+            Events.NOMECH_SET
         ]
     
     @classmethod
@@ -205,9 +207,14 @@ class PlutoFullAssessmentStateMachine():
             Events.WFE_SET: "WFE",
             Events.FPS_SET: "FPS",
             Events.HOC_SET: "HOC",
+            Events.NOMECH_SET: ""
         }
         if event not in _event_mech_map:
-            return   
+            return
+        if event == Events.NOMECH_SET:
+            self._data.protocol.set_mechanism(None)
+            self._data.romsumry.set_mechanism(None)
+            return
         # Set current mechanism.
         self._data.protocol.set_mechanism(_event_mech_map[event])
         self._data.romsumry.set_mechanism(_event_mech_map[event])
@@ -223,7 +230,7 @@ class PlutoFullAssessmentStateMachine():
             self.log(f"Mechanism {self._data.protocol.mech} calibrated.")
             # Check if the chosen mechanism has been assessed.
             if self._data.protocol.mech in self._data.protocol.mech_completed:
-                self._state = States.MECH_DONE
+                self._state = States.MECH_OR_TASK_SELECT
             else:
                 # Jump to the next task state.
                 # Check if the current mechanism has been assessed.

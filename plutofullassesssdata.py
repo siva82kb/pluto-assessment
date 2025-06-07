@@ -241,7 +241,7 @@ class PlutoAssessmentProtocolData(object):
     def task_completed(self) -> list[str]:
         """List of tasks that have been completed.
         """
-        if self._df is None or self._index is None or self._mech is None:
+        if self._df is None or self._mech is None:
             return []
         # Get the list of mechanisms that have been assessed.
         _mechdf = self._df[self._df["mechanism"] == self._mech]
@@ -265,8 +265,11 @@ class PlutoAssessmentProtocolData(object):
     def task_enabled(self) -> list[str]:
         """List of tasks that are to be enabled.
         """
-        if self._df is None and self._index is None:
+        if self._df is None or self._mech is None:
             return []
+        if self._index is None:
+            _inx = self._df["mechanism"] == self._mech
+            return list(self._df[_inx]["task"].unique())    
         # Get the list of mechanisms that have been assessed.
         _inx = ((self._df["mechanism"] == self._mech) &
                 (self._df.index <= self._index))
@@ -324,7 +327,7 @@ class PlutoAssessmentProtocolData(object):
     
     def set_mechanism(self, mechname):
         # Sanity check. Make sure the set mechanism matches the mechnaism in the protocol.
-        if mechname != self._df.iloc[self._index]["mechanism"]:
+        if self._index is not None and mechname != self._df.iloc[self._index]["mechanism"]:
             raise ValueError(f"Mechanism [{mechname}] does not match the protocol mechanism [{self._df.iloc[self._index]['mechanism']}]")
         self._mech = mechname
         self._calibrated = False
@@ -333,6 +336,7 @@ class PlutoAssessmentProtocolData(object):
     
     def set_task(self, taskname):
         # Sanity check. Make sure the set task matches the task in the protocol.
+        print(self._index)
         if taskname != self._df.iloc[self._index]["task"]:
             raise ValueError(f"Task [{taskname}] does not match the protocol task [{self._df.iloc[self._index]['task']}]")
         self._task = taskname
@@ -372,6 +376,35 @@ class PlutoAssessmentProtocolData(object):
         # Update current index.
         # Update current index to first row where 'session' is still NaN
         nan_rows = self._df[self._df["session"].isna()]
+        if not nan_rows.empty:
+            self._index = nan_rows.index[0]
+        else:
+            self._index = None
+    
+    def add_task(self, taskname, mechname):
+        """Add a new task to the protocol summary file.
+        """
+        if self._df is None:
+            raise ValueError("Summary data not initialized or index not set.")
+        # Add the new task to the summary data.
+        _n = pfadef.protocol[taskname]["N"]
+        _newrow = pd.DataFrame.from_dict({
+            "session": [pd.NA] * _n,
+            "mechanism": [mechname] * _n,
+            "task": [taskname] * _n,
+            "trial": list(range(1, 1 + _n)),
+            "rawfile": [pd.NA] * _n,
+            "summaryfile": [pd.NA] * _n,
+        })
+        self._df = pd.concat([self._df, _newrow], ignore_index=True)
+        
+        # Write the updated summary data to the file.
+        self._df.to_csv(self.filename, sep=",", index=None)
+
+        # Update current index.
+        # Update current index to first row where 'session' is still NaN
+        nan_rows = self._df[self._df["session"].isna()]
+        print(nan_rows)
         if not nan_rows.empty:
             self._index = nan_rows.index[0]
         else:
