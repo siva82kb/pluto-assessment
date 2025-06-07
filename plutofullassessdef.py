@@ -122,14 +122,15 @@ class ForceControlConstants:
     TGT_POSITION = 0.4                  # Target positions (fraction of AROM).
     TGT_FORCE = 05.00                   # Target force (N).
     TGT_FORCE_WIDTH = 01.00             # Target force width (N).
-    DURATION = 30.0                     # Task duration (seconds).
+    DURATION = 05.0                     # Task duration (seconds).
+    HOLD_START_DURATION = 1.0           # Duration for holding the target force (seconds).
+    RELAX_DURATION = 1.0                # Duration for relaxing.
     
     # Raw data file header.
     RAW_HEADER = [
-        "systime", "devtime", "packno",  "status", "controltype", "error",
+        "systime", "devtime", "packno", "status", "controltype", "error",
         "limb", "mechanism",
-        "angle", "hocdisp", "torque", "control", "target", "desired", 
-        "controlbound", "controldir", "controlgain", "controlhold", "button",
+        "angle", "hocdisp", "torque", "gripforce", "control", "controlhold", "button",
         "objectPosition", "objectDelPosition",
         "trialno", "assessmentstate"
     ]
@@ -137,8 +138,13 @@ class ForceControlConstants:
     # Summary file header.
     SUMMARY_HEADER = [
         "session", "type", "limb", "mechanism", "trial", 
-        "aromin", "aromax", "targetposition", "targetforce" 
+        "aromin", "aromax", "targetposition", "targetforcemin", "targetforcemax" 
     ]
+
+    # Display constants
+    FREE_COLOR = QColor(128, 128, 255, 128) 
+    HELD_COLOR = QColor(0, 255, 0, 128)
+    CRUSHED_COLOR = QColor(255, 0, 0, 128)
 
 #
 # Display constants

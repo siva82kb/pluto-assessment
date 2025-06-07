@@ -26,6 +26,7 @@ from enum import Enum, auto
 
 import misc
 import plutodefs as pdef
+from plutodefs import PlutoEvents as PlEvnts
 import plutofullassessdef as pfadef
 from plutofullassessdef import ForceControlConstants as FCtrlConst
 from ui_plutoapromassess import Ui_APRomAssessWindow
@@ -62,13 +63,13 @@ class PlutoForceControlData(object):
         self._objparams = self._compute_object_params()
         # Logging variables
         self._logstate: LogState = LogState.WAIT_FOR_LOG
-        self._rawfilewriter: misc.CSVBufferWriter = misc.CSVBufferWriter(
+        self._rawwriter: misc.CSVBufferWriter = misc.CSVBufferWriter(
             self.rawfile, 
-            header=pfadef.RAWDATA_HEADER
+            header=FCtrlConst.RAW_HEADER
         )
-        self._summaryfilewriter: misc.CSVBufferWriter = misc.CSVBufferWriter(
+        self._summwriter: misc.CSVBufferWriter = misc.CSVBufferWriter(
             self.summaryfile, 
-            header=pfadef.ROM_SUMMARY_HEADER,
+            header=FCtrlConst.SUMMARY_HEADER,
             flush_interval=0.0,
             max_rows=1
         )
@@ -145,7 +146,7 @@ class PlutoForceControlData(object):
     
     @property
     def rawfilewriter(self):
-        return self._rawfilewriter
+        return self._rawwriter
     
     def start_newtrial(self, reset: bool = False):
         """Start a new trial.
@@ -153,6 +154,20 @@ class PlutoForceControlData(object):
         if self._currtrial < self.ntrials:
             self._trialdata = {"dt": [], "pos": [], "vel": []}
             self._currtrial = 0 if reset else self._currtrial + 1
+
+    def trial_done(self):
+        self._summwriter.write_row([
+            self.session,
+            self.type,
+            self.limb,
+            self.mechanism,
+            self.current_trial,
+            self.arom[0],
+            self.arom[1],
+            self.target,
+            FCtrlConst.TGT_FORCE - FCtrlConst.TGT_FORCE_WIDTH,
+            FCtrlConst.TGT_FORCE + FCtrlConst.TGT_FORCE_WIDTH,
+        ])
 
     def add_newdata(self, dt, pos):
         """Add new data to the trial data.
@@ -172,12 +187,14 @@ class PlutoForceControlData(object):
     
     def terminate_rawlogging(self):
         self._logstate = LogState.LOGGING_DONE
-        self._rawfilewriter.close()
-        self._rawfilewriter = None
+        if self._rawwriter:
+            self._rawwriter.close()
+            self._rawwriter = None
     
     def terminate_summarylogging(self):
-        self._summaryfilewriter.close()
-        self._summaryfilewriter = None
+        if self._summwriter:
+            self._summwriter.close()
+            self._summwriter = None
 
     def _compute_object_params(self):
         # Compute the target parameters.
@@ -199,8 +216,8 @@ class StateMachine():
             States.REST: self._handle_rest,
             States.WAIT_START: self._handle_wait_start,
             States.HOLDING: self._handle_holding,
-            States.NOT_HOLDING: self._handle_not_holding,
-            States.CRUSHING: self._handle_crushing,
+            States.NOT_HOLDING: self._handle_holding,
+            States.CRUSHING: self._handle_holding,
             States.RELAX: self._handle_relax,
             States.DONE: self._handle_done,
         }
@@ -214,11 +231,11 @@ class StateMachine():
         # State instructions
         self._stateinstructions = {
             States.WAIT_START: "Grab the object and hold to start trial",
-            States.HOLDING: "",
-            States.NOT_HOLDING: "",
-            States.CRUSHING: "",
-            States.RELAX: "",
-            States.DONE: "",
+            States.HOLDING: "Perfect grip",
+            States.NOT_HOLDING: "More grip",
+            States.CRUSHING: "Les grip",
+            States.RELAX: "Relax.",
+            States.DONE: "All done. Press the PLUTO button to exit.",
         }
         # Start a new trial.
         self._data.start_newtrial()
@@ -251,30 +268,62 @@ class StateMachine():
         self._display_instruction()
 
     def _handle_rest(self, event, dt):
-        if event == pdef.PlutoEvents.RELEASED:
+        if not self._data.demomode and self._data.all_trials_done:
+            self._data.terminate_rawlogging()
+            self._data.terminate_summarylogging()
+            if event == PlEvnts.RELEASED:
+                self._state = States.DONE
+                self._statetimer = None
+            return Actions.NO_CONTROL
+        if event == PlEvnts.RELEASED:
             if self.subj_outside_brick() and self.subj_is_holding():
                 self._state = States.WAIT_START
-                self._statetimer = 1.0
+                self._statetimer = FCtrlConst.HOLD_START_DURATION
+                # Set the logging state.
+                if not self._data.demomode: self._data.start_rawlogging()
                 return Actions.SIM_OBJECT
         return Actions.NO_CONTROL
 
     def _handle_wait_start(self, event, dt):
+        if event == PlEvnts.NEWDATA:
+            if not self.is_object_held() or not self.subj_is_holding():
+                self._statetimer = FCtrlConst.HOLD_START_DURATION
+                return Actions.DO_NOTHING
+            self._statetimer -= dt
+            if self._statetimer <= 0:
+                self._state = States.HOLDING    
+                self._statetimer = FCtrlConst.DURATION
+                return Actions.SIM_OBJECT
         return Actions.DO_NOTHING
-    
+ 
     def _handle_holding(self, event, dt):
-        pass
-
-    def _handle_not_holding(self, event, dt):
-        pass
-
-    def _handle_crushing(self, event, dt):
-        pass
+        if event == PlEvnts.NEWDATA:
+            self._statetimer -= dt
+            if not self.is_object_held():
+                self._state = (States.CRUSHING 
+                               if self.is_object_crushed() 
+                               else States.NOT_HOLDING)
+            else:
+                self._state = States.HOLDING
+            if self._statetimer <= 0:
+                self._state = States.RELAX
+                self._statetimer = FCtrlConst.RELAX_DURATION
+                return Actions.DO_NOTHING
+        return Actions.DO_NOTHING
 
     def _handle_relax(self, event, dt):
-        pass
+        if event == PlEvnts.NEWDATA:
+            self._statetimer -= dt
+            if self._statetimer <= 0:
+                self._data.trial_done()
+                self._data.start_newtrial()
+                self._state = States.REST
+                self._statetimer = None
+                return Actions.DISSOLVE_OBJECT
+        return Actions.DISSOLVE_OBJECT
 
     def _handle_done(self, event, dt):
-        pass
+        return Actions.DO_NOTHING
 
     # def _free_running(self, event, dt) -> Actions:
     #     # Check if all trials are done.
@@ -284,7 +333,7 @@ class StateMachine():
     #             self._data.terminate_rawlogging()
     #             self._data.terminate_summarylogging()
     #         self._instruction = f"{self._data.romtype} ROM Assessment Done. Press the PLUTO Button to exit."
-    #         if event == pdef.PlutoEvents.RELEASED:
+    #         if event == PlEvnts.RELEASED:
     #             self._state = States.ROM_DONE
     #             self._statetimer = 0
     #         return Actions.SET_CONTROl_TO_NONE
@@ -294,7 +343,7 @@ class StateMachine():
     #         self._instruction = f"Hold and press PLUTO Button to demo trial."
     #     else:
     #         self._instruction = f"Hold and press PLUTO Button to start trial {self._data._currtrial+1}/{self._data.ntrials}."
-    #     if event == pdef.PlutoEvents.RELEASED:
+    #     if event == PlEvnts.RELEASED:
     #         # Make sure the joint is in rest before we can swtich.
     #         if self.subj_is_holding():
     #             self._data.set_startpos()
@@ -310,7 +359,7 @@ class StateMachine():
     
     # def _trial_active_set_torque_dir(self, event, dt) -> Actions:
     #     self._instruction = f"Applying torque. Relax fully."
-    #     if event == pdef.PlutoEvents.NEWDATA:
+    #     if event == PlEvnts.NEWDATA:
     #         self._statetimer -= dt
     #         if self._statetimer > 0:
     #             return Actions.DO_NOTHING
@@ -320,14 +369,14 @@ class StateMachine():
     # def _trial_active_moving_dir(self, event, dt) -> Actions:
     #     self._instruction = f"Applying torque. Relax fully and hold position."
     #     # New data event
-    #     if event == pdef.PlutoEvents.NEWDATA:
+    #     if event == PlEvnts.NEWDATA:
     #         # Nothing to do if the subject is moving.
     #         if self.subj_is_holding() is False: return Actions.DO_NOTHING
     #         # Subject is holdin away from start.
     #         # Add the current position to trial ROM.
     #         _ = self._data.add_new_trialrom_data()
     #     # PLUTO button release event
-    #     if event == pdef.PlutoEvents.RELEASED:
+    #     if event == PlEvnts.RELEASED:
     #         # Nothing to do if the subject is moving.
     #         if self.subj_is_holding() is False: return Actions.DO_NOTHING
     #         # Subject is holdin away from start.
@@ -346,7 +395,7 @@ class StateMachine():
     #     if self.subj_in_the_stop_zone():
     #         self._instruction = f"Press PLUTO button to apply torque."    
     #     # PLUTO button release event
-    #     if event == pdef.PlutoEvents.RELEASED:
+    #     if event == PlEvnts.RELEASED:
     #         # Subject is holding within from start.
     #         if self.subj_in_the_stop_zone():
     #             self._state = States.TRIAL_ACTIVE_MOVING_OTHER_DIR
@@ -355,7 +404,7 @@ class StateMachine():
 
     # def _trial_active_set_torque_other_dir(self, event, dt) -> Actions:
     #     self._instruction = f"Applying torque. Relax fully."
-    #     if event == pdef.PlutoEvents.NEWDATA:
+    #     if event == PlEvnts.NEWDATA:
     #         self._statetimer -= dt
     #         if self._statetimer > 0:
     #             return Actions.DO_NOTHING
@@ -365,14 +414,14 @@ class StateMachine():
     # def _trial_active_moving_other_dir(self, event, dt) -> Actions:
     #     self._instruction = f"Applying torque. Relax fully and hold position."
     #     # New data event
-    #     if event == pdef.PlutoEvents.NEWDATA:
+    #     if event == PlEvnts.NEWDATA:
     #         # Nothing to do if the subject is moving.
     #         if self.subj_is_holding() is False: return Actions.DO_NOTHING
     #         # Subject is holdin away from start.
     #         # Add the current position to trial ROM.
     #         _ = self._data.add_new_trialrom_data()
     #     # PLUTO button release event
-    #     if event == pdef.PlutoEvents.RELEASED:
+    #     if event == PlEvnts.RELEASED:
     #         # Nothing to do if the subject is moving.
     #         if self.subj_is_holding() is False: return Actions.DO_NOTHING
     #         # Subject is holdin away from start.
@@ -386,7 +435,7 @@ class StateMachine():
     # def _trial_active_assist_other_dir_to_rest(self, event, dt) -> Actions:
     #     self._instruction = f"Move to the starting zone and hold."
     #     # PLUTO new data event
-    #     if event == pdef.PlutoEvents.NEWDATA:
+    #     if event == PlEvnts.NEWDATA:
     #         # Nothing to do if the subject is moving.
     #         if self.subj_is_holding() is False: return Actions.DO_NOTHING
     #         # Subject is holding within from start.
@@ -402,7 +451,7 @@ class StateMachine():
     #                           if not self._data.demomode
     #                           else " in demo mode.")
     #     # PLUTO new data event
-    #     if event == pdef.PlutoEvents.NEWDATA:
+    #     if event == PlEvnts.NEWDATA:
     #         # Nothing to do if the subject is moving.
     #         if self.subj_is_holding() is False:
     #             self._state = States.TRIAL_ACTIVE_ASSIST_OTHER_DIR_TO_REST 
@@ -434,16 +483,24 @@ class StateMachine():
             self._pluto.get_object_param()
 
     def _act_dissolve_object(self):
-        pass
+        if self._pluto.controlhold != pdef.ControlHoldTypes["DECAY"]:
+            self._pluto.decay_control()
 
     def _act_do_nothing(self):
         pass
 
     def _display_instruction(self):
-        if self._state != States.REST:
-            self._instdisp.setText(self._stateinstructions[self._state] 
-                                + f" [{self._statetimer:1.1f}s]" if self._statetimer else "")
+        self._instdisp.setText(self._stateinstructions[self._state] 
+                               + f" [{self._statetimer:1.1f}s]" if self._statetimer else "")
+        _trialstate = (self._state == States.HOLDING
+                       or self._state == States.NOT_HOLDING
+                       or self._state == States.CRUSHING)
+        if self._state != States.REST and not _trialstate:
+            self._instdisp.setPos(0, 20)
+        elif _trialstate:
+            self._instdisp.setPos(0, -5)
         else:
+            self._instdisp.setPos(0, 20)
             if self._data.demomode:
                 self._instdisp.setText(f"Press the PLUTO button to start demo trial.")
             elif self._data.all_trials_done:
@@ -463,7 +520,13 @@ class StateMachine():
         return bool(np.all(np.abs(self._data.trialdata['vel']) < _th))
     
     def subj_outside_brick(self):
-        return np.abs(self._pluto.hocdisp - self._data.target) > 1.0 
+        return self._pluto.hocdisp - self._data.target > 1.0
+    
+    def is_object_held(self):
+        return np.abs(self._pluto.gripforce - FCtrlConst.TGT_FORCE) < FCtrlConst.TGT_FORCE_WIDTH
+    
+    def is_object_crushed(self):
+        return self._pluto.gripforce - FCtrlConst.TGT_FORCE > FCtrlConst.TGT_FORCE_WIDTH
     
     def away_from_start(self):
         """Check if the subject has moved away from the start position.
@@ -609,6 +672,16 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
                 [-self.pluto.hocdisp, -self.pluto.hocdisp],
                 [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
             )
+            # Update object
+            _objparams = self._compute_display_object_params(self.pluto.gripforce)
+            self.ui._brick.setRect(_objparams["x"], _objparams["y"],
+                                _objparams["width"], _objparams["height"])
+            if self.pluto.gripforce < FCtrlConst.TGT_FORCE - FCtrlConst.TGT_FORCE_WIDTH:
+                self.ui._brick.setBrush(QtGui.QBrush(FCtrlConst.FREE_COLOR))
+            elif self.pluto.gripforce > FCtrlConst.TGT_FORCE + FCtrlConst.TGT_FORCE_WIDTH:
+                self.ui._brick.setBrush(QtGui.QBrush(FCtrlConst.CRUSHED_COLOR))
+            else:
+                self.ui._brick.setBrush(QtGui.QBrush(FCtrlConst.HELD_COLOR))
         else:
             if self.pluto.angle is None:
                 return
@@ -773,19 +846,32 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
         _pgobj.addItem(self.ui.currPosLine2)
 
         self.ui._brick = QGraphicsRectItem()
-        self.ui._brick.setRect(-self.data.object_params["Position"] * pdef.HOCScale, -10,
-                               2 * self.data.object_params["Position"] * pdef.HOCScale, 20)
-        self.ui._brick.setBrush(QtGui.QBrush(QtGui.QColor("green")))  # Filled color
+        _objparams = self._compute_display_object_params(self.pluto.gripforce)
+        self.ui._brick.setRect(_objparams["x"], _objparams["y"],
+                               _objparams["width"], _objparams["height"])
+        self.ui._brick.setBrush(QtGui.QBrush(FCtrlConst.FREE_COLOR))
         self.ui._brick.setPen(pg.mkPen(None))
         _pgobj.addItem(self.ui._brick)
 
         # Instruction text
-        self.ui.subjInst = pg.TextItem(text='', color='w', anchor=(pfadef.INST_X_POSITION, pfadef.INST_Y_POSITION))
-        self.ui.subjInst.setPos(0, 0)  # Set position (x, y)
+        self.ui.subjInst = pg.TextItem(text='', color='w', anchor=(0.5, 0.5))
+        self.ui.subjInst.setPos(0, 20)
         # Set font and size
         self.ui.subjInst.setFont(QtGui.QFont("Bahnschrift Light", 18))
         _pgobj.addItem(self.ui.subjInst)
     
+    def _compute_display_object_params(self, force):
+        # Object width
+        _tgtmid = np.cbrt(FCtrlConst.TGT_FORCE / pdef.MAX_HOC_FORCE)
+        if force is None or force < FCtrlConst.TGT_FORCE - FCtrlConst.TGT_FORCE_WIDTH:
+            _tgtlow = np.cbrt((FCtrlConst.TGT_FORCE - FCtrlConst.TGT_FORCE_WIDTH) / pdef.MAX_HOC_FORCE)
+        else:
+            _tgtlow = np.cbrt(force / pdef.MAX_HOC_FORCE)
+        _objwidth = float(self.data.target + (_tgtmid - _tgtlow) * FCtrlConst.FULL_RANGE_WIDTH)
+        # Object height
+        _objheight = float(10 * self.data.target  / _objwidth)
+        return {"width": 2 * _objwidth, "height": 2 * _objheight,
+                "x": -_objwidth, "y": -_objheight-5}
 
     #
     # Device PlutoForceControlData Viewer Functions 
@@ -814,7 +900,7 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
         )
         # Run the statemachine
         _action = self._smachine.run_statemachine(
-            pdef.PlutoEvents.NEWDATA,
+            PlEvnts.NEWDATA,
             dt=self.pluto.delt()
         )
         # Update the GUI only at 1/10 the data rate
@@ -824,10 +910,23 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
         # Log data
         if self.data.logstate == LogState.LOG_DATA:        
             self.data.rawfilewriter.write_row([
-                self.pluto.systime, self.pluto.currt, self.pluto.packetnumber,
-                self.pluto.status, self.pluto.controltype, self.pluto.error, self.pluto.limb, self.pluto.mechanism,
-                self.pluto.angle, self.pluto.hocdisp, self.pluto.torque, self.pluto.control, self.pluto.target, self.pluto.desired,
-                self.pluto.controlbound, self.pluto.controldir, self.pluto.controlgain, self.pluto.button,
+                self.pluto.systime,
+                self.pluto.currt,
+                self.pluto.packetnumber,
+                self.pluto.status,
+                self.pluto.controltype,
+                self.pluto.error,
+                self.pluto.limb,
+                self.pluto.mechanism,
+                self.pluto.angle,
+                self.pluto.hocdisp,
+                self.pluto.torque,
+                self.pluto.gripforce,
+                self.pluto.control,
+                self.pluto.controlhold,
+                self.pluto.button,
+                self.pluto.objectPosition,
+                self.pluto.objectDelPosition,
                 self.data.currtrial,
                 f"{self._smachine.state.name}"
             ])
@@ -835,7 +934,7 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
     def _callback_pluto_btn_released(self):
         # Run the statemachine
         _action = self._smachine.run_statemachine(
-            pdef.PlutoEvents.RELEASED,
+            PlEvnts.RELEASED,
             dt=self.pluto.delt()
         )
         self.update_ui()
@@ -877,7 +976,7 @@ if __name__ == '__main__':
             "limb": "Left",
             "mechanism": "HOC",
             "session": "testing",
-            "ntrials": 1,
+            "ntrials": 3,
             "rawfile": "rawfiletest.csv",
             "summaryfile": "summaryfiletest.csv",
             "arom": [0, 6],

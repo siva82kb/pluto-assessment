@@ -111,7 +111,7 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         # Enable/disable control buttons
         self.ui.pbSetTarget.setEnabled(_torqcontrol or _poscontrol or _objsimcontrol)
         self.ui.pbCtrlHold.setEnabled(_poscontrol)
-        self.ui.pbCtrlDecay.setEnabled(_poscontrol)
+        self.ui.pbCtrlDecay.setEnabled(_poscontrol or _objsimcontrol)
         
         # Check the status of the radio buttons.
         if not (_torqcontrol or _poscontrol or _objsimcontrol):

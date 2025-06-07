@@ -130,7 +130,7 @@ class QtPluto(QObject):
     @property
     def gripforce(self):
         if self.control is None: return None
-        return 0.5 * self.torque / pdef.HOC_PINION_SCALE
+        return 0.5 * abs(self.torque) / pdef.HOC_PINION_SCALE
     
     @property
     def control(self):
