@@ -52,29 +52,55 @@ from plutofullassesssdata import PlutoAssessmentData
 class Events(Enum):
     SUBJECT_SET = 0
     TYPE_LIMB_SET = auto()
+    #
+    # Mechanisms events
+    #
     NOMECH_SET = auto()
     WFE_SET = auto()
     FPS_SET = auto()
     HOC_SET = auto()
+    WFE_SKIP = auto()
+    FPS_SKIP = auto()
+    HOC_SKIP = auto()
+    #
+    # Calibration events
+    #
     CALIB_DONE = auto()
     CALIB_NO_DONE = auto()
+    #
+    # ROM events
+    #
     AROM_ASSESS = auto()
-    PROM_ASSESS = auto()
-    APROM_ASSESS = auto()
-    DISCREACH_ASSESS = auto()
-    PROP_ASSESS = auto()
-    FCTRL_ASSESS = auto()
     AROM_DONE = auto()
-    PROM_DONE = auto()
-    APROM_DONE = auto()
-    DISCREACH_DONE = auto()
-    PROP_DONE = auto()
-    FCTRL_DONE = auto()
     AROM_NO_DONE = auto()
+    PROM_ASSESS = auto()
+    PROM_DONE = auto()
     PROM_NO_DONE = auto()
+    APROM_ASSESS = auto()
+    APROM_DONE = auto()
     APROM_NO_DONE = auto()
+    #
+    # Position hold events
+    #
+    POSHOLD_ASSESS = auto()
+    POSHOLD_DONE = auto()
+    POSHOLD_NO_DONE = auto()
+    #
+    # Discrete reaching events
+    #
+    DISCREACH_ASSESS = auto()
+    DISCREACH_DONE = auto()
     DISCREACH_NO_DONE = auto()
+    #
+    # Proprioception events
+    #
+    PROP_ASSESS = auto()
+    PROP_DONE = auto()
     PROP_NO_DONE = auto()
+    #
+    # Force control events
+    FCTRL_ASSESS = auto()
+    FCTRL_DONE = auto()
     FCTRL_NO_DONE = auto()
 
     @classmethod
@@ -84,6 +110,14 @@ class Events(Enum):
             Events.FPS_SET,
             Events.HOC_SET,
             Events.NOMECH_SET
+        ]
+    
+    @classmethod
+    def mech_skip_events(cls):
+        return [
+            Events.WFE_SKIP,
+            Events.FPS_SKIP,
+            Events.HOC_SKIP
         ]
     
     @classmethod
@@ -107,6 +141,7 @@ class States(Enum):
     AROM_ASSESS = auto()
     PROM_ASSESS = auto()
     APROM_ASSESS = auto()
+    POSHOLD_ASSESS = auto()
     DISC_ASSESS = auto()
     PROP_ASSESS = auto()
     FCTRL_ASSESS = auto()
@@ -135,6 +170,7 @@ class PlutoFullAssessmentStateMachine():
             States.AROM_ASSESS: self._handle_arom_assess,
             States.PROM_ASSESS: self._handle_prom_assess,
             States.APROM_ASSESS: self._handle_aprom_assess,
+            States.POSHOLD_ASSESS: self._handle_poshold_assess,
             States.DISC_ASSESS: self._handle_discreach_assess,
             States.PROP_ASSESS: self._handle_prop_assess,
             States.FCTRL_ASSESS: self._handle_fctrl_assess,
@@ -149,6 +185,7 @@ class PlutoFullAssessmentStateMachine():
             "AROM": States.AROM_ASSESS,
             "PROM": States.PROM_ASSESS,
             "APROM": States.APROM_ASSESS,
+            "POSHOLD": States.POSHOLD_ASSESS,
             "DISC": States.DISC_ASSESS,
             "PROP": States.PROP_ASSESS,
             "FCTRL": States.FCTRL_ASSESS
@@ -158,6 +195,7 @@ class PlutoFullAssessmentStateMachine():
             Events.AROM_ASSESS: States.AROM_ASSESS,
             Events.PROM_ASSESS: States.PROM_ASSESS,
             Events.APROM_ASSESS: States.APROM_ASSESS,
+            Events.POSHOLD_ASSESS: States.POSHOLD_ASSESS,
             Events.DISCREACH_ASSESS: States.DISC_ASSESS,
             Events.PROP_ASSESS: States.PROP_ASSESS,
             Events.FCTRL_ASSESS: States.FCTRL_ASSESS
@@ -202,24 +240,38 @@ class PlutoFullAssessmentStateMachine():
     def _handle_mechanism_select(self, event, data):
         """
         """
-        # Check which mechanism is selected.
-        _event_mech_map = {
-            Events.WFE_SET: "WFE",
-            Events.FPS_SET: "FPS",
-            Events.HOC_SET: "HOC",
-            Events.NOMECH_SET: ""
-        }
-        if event not in _event_mech_map:
+        # Check if a mechanism is skipped.
+        if event in Events.mech_skip_events():
+            _event_mech_map = {
+                Events.WFE_SKIP: "WFE",
+                Events.FPS_SKIP: "FPS",
+                Events.HOC_SKIP: "HOC"
+            }
+            # Set current mechanism.
+            self._data.protocol.skip_mechanism(_event_mech_map[event],
+                                               session=data["session"],
+                                               comment=data["comment"])
+            self._data.romsumry.skip_mechanism(_event_mech_map[event])
+            self.log(f"Mechanism {self._data.protocol.mech} skipped.")
             return
-        if event == Events.NOMECH_SET:
-            self._data.protocol.set_mechanism(None)
-            self._data.romsumry.set_mechanism(None)
-            return
-        # Set current mechanism.
-        self._data.protocol.set_mechanism(_event_mech_map[event])
-        self._data.romsumry.set_mechanism(_event_mech_map[event])
-        self._state = States.CALIBRATE
-        self.log(f"Mechanism set to {self._data.protocol.mech}.")
+        # Check if a mechanism is selected.
+        if event in Events.mech_selected_events():
+            _event_mech_map = {
+                Events.WFE_SET: "WFE",
+                Events.FPS_SET: "FPS",
+                Events.HOC_SET: "HOC",
+                Events.NOMECH_SET: ""
+            }
+            if event == Events.NOMECH_SET:
+                self._data.protocol.set_mechanism(None)
+                self._data.romsumry.set_mechanism(None)
+                return
+            # Set current mechanism.
+            self._data.protocol.set_mechanism(_event_mech_map[event])
+            self._data.romsumry.set_mechanism(_event_mech_map[event])
+            self._state = States.CALIBRATE
+            self.log(f"Mechanism set to {self._data.protocol.mech}.")
+        return
 
     def _handle_calibrate(self, event, data):
         """
@@ -364,6 +416,35 @@ class PlutoFullAssessmentStateMachine():
                 else States.TASK_SELECT
             )
             self.log(f"APROM not done for {self._data.protocol.mech}.")
+    
+    def _handle_poshold_assess(self, event, data):
+        """
+        """
+        # Check if discrete reaching is done.
+        if event == Events.DISCREACH_DONE:
+            # Update the protocol data.
+            self._data.protocol.update(
+                self._data.session,
+                self._data.protocol.rawfilename,
+                ""
+            )
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"Discrete reaching done for {self._data.protocol.mech}.")
+        elif event == Events.DISCREACH_NO_DONE:
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"Dsicrete reaching not done for {self._data.protocol.mech}.")
     
     def _handle_discreach_assess(self, event, data):
         """

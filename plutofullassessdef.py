@@ -15,6 +15,25 @@ import misc
 from PyQt5.QtGui import QColor
 
 
+class ROMType(Enum):
+    ACTIVE = "Active"
+    PASSIVE = "Passive"
+    ASSISTED_PASSIVE = "Assisted Passive"
+
+    def __str__(self):
+        return self.value
+
+
+class AssessStatus(Enum):
+    INCOMPLETE = "Incomplete"
+    COMPLETE = "Complete"
+    PARTIALCOMPLETE = "Partially Complete"
+    SKIPPED = "Skipped"
+
+    def __str__(self):
+        return self.value
+
+
 #
 # Full Assessment Constant
 #
@@ -61,34 +80,41 @@ MECH_TASKS = {
     "HOC": [["AROM", "PROM", "APROMSlow", "APROMFast"], ["PROP", "FCTRL"]]
 }
 
-# Stylesheet for complete/incomplete mech/task
-SS_COMPLETE = "color: rgb(0, 100, 0);"
-SS_INCOMPLETE = "color: rgb(170, 0, 0);"
+# Mech/task status stylesheet
+STATUS_STYLESHEET = {
+    AssessStatus.INCOMPLETE: "color: rgb(170, 0, 0);",          # Dark red
+    AssessStatus.COMPLETE: "color: rgb(0, 100, 0);",            # Dark green
+    AssessStatus.PARTIALCOMPLETE: "color: rgb(255, 165, 0);",   # Orange
+    AssessStatus.SKIPPED: "color: rgb(100, 149, 237);"          # Light blue (Cornflower Blue)
+}
+STATUS_TEXT = {
+    AssessStatus.INCOMPLETE: "",
+    AssessStatus.COMPLETE: "[C]",
+    AssessStatus.PARTIALCOMPLETE: "[*C]",
+    AssessStatus.SKIPPED: "[S]"
+}
 
 # Full assessment summary file header.
 FA_SUMMARY_HEADER = ["session", "mechanism", "task", "trial", "rawfile", 
-                     "summaryfile", "comments", "status"]
-
+                     "summaryfile", "mechcomment", "taskcomment", "status"]
+# Pandas DataFrame column format for the full assessment summary.
+# This is used to define the data types of each column in the summary DataFrame.
+SUMMARY_COLUMN_FORMAT = {
+    "session": "string",
+    "mechanism": "string",
+    "task": "string",
+    "trial": "int64",
+    "rawfile": "string",
+    "summaryfile": "string",
+    "mechcomment": "string",
+    "taskcomment": "string",
+    "status": "string"
+}
 #
 # Main GUI relted constants
 #
-DISPLAY_INTERVAL = 200          # ms
-
-class ROMType(Enum):
-    ACTIVE = "Active"
-    PASSIVE = "Passive"
-    ASSISTED_PASSIVE = "Assisted Passive"
-
-    def __str__(self):
-        return self.value
-
-
-class MechAssessmentStatus(Enum):
-    COMPLETE = "Complete"
-    SKIPPED = "Skipped"
-
-    def __str__(self):
-        return self.value
+DISPLAY_INTERVAL = 200                  # ms
+VISUAL_FEEDBACK_UPDATE_INTERVAL = 33    # ms
 
 
 class _ROMConstants:
@@ -100,14 +126,14 @@ class _ROMConstants:
     VEL_HOC_THRESHOLD = 1               # cm/sec
     VEL_NOT_HOC_THRESHOLD = 5           # deg/sec
     STOP_ZONE_DURATION_THRESHOLD = 1    # sec
-    HOC_NEW_ROM_TH = 0.25               # cm
-    NOT_HOC_NEW_ROM_TH = 2.5            # deg
+    HOC_NEW_ROM_TH = 0.10               # cm
+    NOT_HOC_NEW_ROM_TH = 1.0            # deg
     
     # Data logging constants
     RAW_HEADER = [
-        "systime", "devtime", "packno",  "status", "controltype", "error",
+        "systime", "devtime", "packno", "status", "controltype", "error",
         "limb", "mechanism", "angle", "hocdisp", "torque", "gripforce",
-        "control", "target", "desired",  "controlbound", "cotnroldir",
+        "control", "target", "desired", "controlbound", "controldir",
         "controlgain", "button", "trialno", "assessmentstate"
     ]
     # AROM/PROM/APROM SUMMARY HEADER
@@ -115,6 +141,12 @@ class _ROMConstants:
         "session", "type", "limb", "mechanism", "trial", "startpos", "rommin",
         "rommax", "romrange", "torqmin", "torqmax"
     ]
+
+    #
+    # Display constants
+    #
+    CURSOR_LOWER_LIMIT = -30
+    CURSOR_UPPER_LIMIT = 10
 
 
 #
@@ -262,13 +294,6 @@ class ForceControl:
     HELD_COLOR = QColor(0, 255, 0, 128)
     CRUSHED_COLOR = QColor(255, 0, 0, 128)
 
-#
-# Display constants
-#
-CURSOR_LOWER_LIMIT = -30
-CURSOR_UPPER_LIMIT = 10
-INST_X_POSITION = 0.5
-INST_Y_POSITION = 2.75
 
 
 # Some useful functions

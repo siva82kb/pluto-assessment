@@ -146,7 +146,8 @@ class PlutoAssessmentProtocolData(object):
         self.create_assessment_summary_file()
         
         # Read the summary file.
-        self._df = pd.read_csv(self.filename, header=0, index_col=None)
+        self._df = pd.read_csv(self.filename, header=0, index_col=None,
+                               dtype=pfadef.SUMMARY_COLUMN_FORMAT)
         # Change session, rawfile, and summaryfile columns to strings
         for col in ["session", "rawfile", "summaryfile"]:
             if col in self._df.columns:
@@ -334,9 +335,27 @@ class PlutoAssessmentProtocolData(object):
         self._task = None
         self._tasktime = None
     
+    def skip_mechanism(self, mechname, session, comment):
+        _mechinx = self._df["mechanism"] == mechname
+        self._df.loc[_mechinx, "session"] = session
+        self._df.loc[_mechinx, "rawfile"] = pd.NA
+        self._df.loc[_mechinx, "summaryfile"] = pd.NA
+        self._df.loc[_mechinx, "status"] = pfadef.AssessStatus.SKIPPED.value
+        self._df.loc[_mechinx, "mechcomment"] = comment
+        self._df.loc[_mechinx, "taskcomment"] = pd.NA
+        # Update the summary file.
+        self._df.to_csv(self.filename, sep=",", index=None)
+        # Reset mechanism selection.
+        self._mech = None
+        self._calibrated = False
+        self._task = None
+        self._tasktime = None
+        # Update current index.
+        # Update current index to first row where 'session' is still NaN
+        self._update_index()
+    
     def set_task(self, taskname):
         # Sanity check. Make sure the set task matches the task in the protocol.
-        print(self._index)
         if taskname != self._df.iloc[self._index]["task"]:
             raise ValueError(f"Task [{taskname}] does not match the protocol task [{self._df.iloc[self._index]['task']}]")
         self._task = taskname
@@ -347,11 +366,33 @@ class PlutoAssessmentProtocolData(object):
             raise ValueError("Mechanism not set or the mechanism name is wrong.")
         self._calibrated = True
     
-    def is_mechanism_assessed(self, mechname):
-        # Check if the task entries are all filled.
-        # _taskcompleted = [len(_task[2]) == _task[1] for _task in self.protocol if mechname not in _task[0]]
-        # return False if len(_taskcompleted) == 0 else np.all(_taskcompleted)
-        return False
+    def get_mech_status(self, mechname) -> pfadef.AssessStatus:
+        _mechinx = self._df["mechanism"] == mechname
+        # If any NA sessions, then its not completed.
+        if self._df.loc[_mechinx, "session"].isna().any():
+            return pfadef.AssessStatus.INCOMPLETE
+        # Check if the number of rows with Completed status is equal to the number of trials.
+        _skipinx = (self._df.loc[_mechinx, "status"] == pfadef.AssessStatus.SKIPPED.value)
+        if _skipinx.sum() == _mechinx.sum():
+            return pfadef.AssessStatus.SKIPPED
+        _compinx = (self._df.loc[_mechinx, "status"] == pfadef.AssessStatus.COMPLETE.value)
+        if _compinx.sum() == _mechinx.sum():
+            return pfadef.AssessStatus.COMPLETE
+        else:
+            return pfadef.AssessStatus.PARTIALCOMPLETE
+    
+    def get_task_status(self, taskname) -> pfadef.AssessStatus:
+        _mechtaskinx = ((self._df["mechanism"] == self._mech) &
+                        (self._df["task"] == taskname))
+        # If any NA sessions, then its not completed.
+        if self._df.loc[_mechtaskinx, "session"].isna().any():
+            return pfadef.AssessStatus.INCOMPLETE
+        # Check if the number of rows with Completed status is equal to the number of trials.
+        _skipinx = (self._df.loc[_mechtaskinx, "status"] == pfadef.AssessStatus.SKIPPED.value)
+        if _skipinx.sum() == _mechtaskinx.sum():
+            return pfadef.AssessStatus.SKIPPED
+        else:
+            return pfadef.AssessStatus.COMPLETE
     
     def update(self, session, rawfile, summaryfile):
         """Set the mechanism task data in the summary file.
@@ -375,11 +416,7 @@ class PlutoAssessmentProtocolData(object):
 
         # Update current index.
         # Update current index to first row where 'session' is still NaN
-        nan_rows = self._df[self._df["session"].isna()]
-        if not nan_rows.empty:
-            self._index = nan_rows.index[0]
-        else:
-            self._index = None
+        self._update_index()
     
     def add_task(self, taskname, mechname):
         """Add a new task to the protocol summary file.
@@ -404,8 +441,10 @@ class PlutoAssessmentProtocolData(object):
 
         # Update current index.
         # Update current index to first row where 'session' is still NaN
+        self._update_index()
+
+    def _update_index(self):
         nan_rows = self._df[self._df["session"].isna()]
-        print(nan_rows)
         if not nan_rows.empty:
             self._index = nan_rows.index[0]
         else:
@@ -427,14 +466,34 @@ class PlutoAssessmentProtocolData(object):
                 _dframe = pd.concat([
                     _dframe,
                     pd.DataFrame.from_dict({
-                        "session": [pd.NA] * _n,
-                        "mechanism": [_m] * _n,
-                        "task": [_t] * _n,
-                        "trial": list(range(1, 1 + _n)),
-                        "rawfile": [pd.NA] * _n,
-                        "summaryfile": [pd.NA] * _n,
-                        "comments": [pd.NA] * _n,
-                        "status": [pd.NA] * _n,
+                        "session": pd.Series([pd.NA] * _n, dtype="string"),
+                        "mechanism": pd.Series([_m] * _n, dtype="string"),
+                        "task": pd.Series([_t] * _n, dtype="string"),
+                        "trial": pd.Series(list(range(1, 1 + _n)), dtype="Int64"),
+                        "rawfile": pd.Series([pd.NA] * _n, dtype="string"),
+                        "summaryfile": pd.Series([pd.NA] * _n, dtype="string"),
+                        "mechcomment": pd.Series([pd.NA] * _n, dtype="string"),
+                        "taskcomment": pd.Series([pd.NA] * _n, dtype="string"),
+                        "status": pd.Series([pd.NA] * _n, dtype="string"),
+                    })
+                ], ignore_index=True)
+            # Second set of tasks are to be randomized.
+            _tasks = pfadef.MECH_TASKS[_m][1].copy()
+            random.shuffle(_tasks)
+            for _t in _tasks:
+                # Create the rows.
+                _n = pfadef.get_task_constants(_t).NO_OF_TRIALS
+                _dframe = pd.concat([
+                    _dframe,
+                    pd.DataFrame.from_dict({
+                        "session": pd.Series([pd.NA] * _n, dtype="string"),
+                        "mechanism": pd.Series([_m] * _n, dtype="string"),
+                        "task": pd.Series([_t] * _n, dtype="string"),
+                        "trial": pd.Series(list(range(1, 1 + _n)), dtype="Int64"),
+                        "rawfile": pd.Series([pd.NA] * _n, dtype="string"),
+                        "summaryfile": pd.Series([pd.NA] * _n, dtype="string"),
+                        "comments": pd.Series([pd.NA] * _n, dtype="string"),
+                        "status": pd.Series([pd.NA] * _n, dtype="string"),
                     })
                 ], ignore_index=True)
         # Write file to disk
@@ -500,8 +559,15 @@ class PlutoAssessmentROMData(object):
     def set_mechanism(self, value):
         self._mech = value
         for k in self._val.keys():
-            if k in pfadef.tasks and self._mech not in self._val[k]:
+            if k in pfadef.ALLTASKS and self._mech not in self._val[k]:
                 self._val[k][self._mech] = []
+        self.write_to_disk()
+    
+    def skip_mechanism(self, value):
+        self._mech = value
+        for k in self._val.keys():
+            if k in pfadef.ALLTASKS and self._mech not in self._val[k]:
+                self._val[k][self._mech] = None
         self.write_to_disk()
     
     def set_task(self, value):

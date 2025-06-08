@@ -39,7 +39,7 @@ from ui_plutoapromassess import Ui_APRomAssessWindow
 from plutodataviewwindow import PlutoDataViewWindow
 import plutoassessdef as passdef
 import plutofullassessdef as pfadef
-from plutoapromwindow import APROMRawDataLoggingState as LogState
+from plutoapromwindow import RawDataLoggingState as LogState
 import plutoapromwindow as apromwnd
 from misc import CSVBufferWriter as CSVWriter
 
@@ -170,7 +170,7 @@ class PlutoPropAssessData():
 
     @property
     def ntrials(self):
-        return pfadef.ProprioceptionConstants.NO_OF_TRIALS
+        return pfadef.Proprioception.NO_OF_TRIALS
     
     @property
     def rawfile(self):

@@ -31,7 +31,7 @@ import plutofullassessdef as pfadef
 from plutofullassessdef import ForceControl as FCtrl
 from ui_plutoapromassess import Ui_APRomAssessWindow
 from plutodataviewwindow import PlutoDataViewWindow
-from plutoapromwindow import APROMRawDataLoggingState as LogState
+from plutoapromwindow import RawDataLoggingState as LogState
 
 
 class States(Enum):
