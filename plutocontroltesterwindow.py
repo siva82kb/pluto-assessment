@@ -353,7 +353,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM13")
+    plutodev = QtPluto("COM12")
     pdataview = PlutoControlTesterWindow(plutodev=plutodev,
                                        mech="HOC",
                                        dataviewer=True,

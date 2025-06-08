@@ -908,7 +908,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    mywin = PlutoFullAssesor("COM13")
+    mywin = PlutoFullAssesor("COM12")
     # ImageUpdate()
     mywin.show()
     sys.exit(app.exec_())

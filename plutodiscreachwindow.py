@@ -1037,7 +1037,7 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM13")
+    plutodev = QtPluto("COM12")
     pcalib = PlutoDiscReachAssessWindow(
         plutodev=plutodev, 
         assessinfo={

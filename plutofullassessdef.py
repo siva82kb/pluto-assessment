@@ -120,7 +120,7 @@ class ForceControlConstants:
     NO_OF_TRIALS = 3                    # Number of trials.
     FULL_RANGE_WIDTH = 2.0              # The full force range in position. (cm) 
     TGT_POSITION = 0.4                  # Target positions (fraction of AROM).
-    TGT_FORCE = 05.00                   # Target force (N).
+    TGT_FORCE = 8.00                   # Target force (N).
     TGT_FORCE_WIDTH = 01.00             # Target force width (N).
     DURATION = 05.0                     # Task duration (seconds).
     HOLD_START_DURATION = 1.0           # Duration for holding the target force (seconds).

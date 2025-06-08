@@ -1,4 +1,0 @@
-session,type,limb,mechanism,trial,aromin,aromax,targetposition,targetforcemin,targetforcemax
-testing,Stroke,Left,HOC,0,0,6,2.4000000000000004,4.0,6.0
-testing,Stroke,Left,HOC,1,0,6,2.4000000000000004,4.0,6.0
-testing,Stroke,Left,HOC,2,0,6,2.4000000000000004,4.0,6.0
