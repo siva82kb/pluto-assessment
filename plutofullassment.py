@@ -42,8 +42,6 @@ from ui_plutofullassessment import Ui_PlutoFullAssessor
 
 import plutodefs as pdef
 import plutofullassessdef as pfadef
-from plutofullassessdef import ProprioceptionConstants as PropConst
-from plutofullassessdef import ForceControlConstants as FCtrlConst
 from plutofullassessstatemachine import PlutoFullAssessmentStateMachine
 from plutofullassessstatemachine import Events, States
 from plutofullassesssdata import PlutoAssessmentData
@@ -82,10 +80,15 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.data:PlutoAssessmentData  = PlutoAssessmentData()
 
         # Initialize timers.
-        self.apptimer = QTimer()
-        self.apptimer.timeout.connect(self._callback_app_timer)
-        self.apptimer.start(1000)
+        # Status timer
+        self.statustimer = QTimer()
+        self.statustimer.timeout.connect(self._callback_status_timer)
+        self.statustimer.start(1000)
         self.apptime = 0
+        # Display timer
+        self.displaytimer = QTimer()
+        self.displaytimer.timeout.connect(self._callback_display_timer)
+        self.displaytimer.start(pfadef.DISPLAY_INTERVAL)
         # Heartbeat timer
         self.heartbeattimer = QTimer()
         self.heartbeattimer.timeout.connect(lambda: self.pluto.send_heartbeat())
@@ -116,7 +119,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pbCalibrate.clicked.connect(self._callback_calibrate)
         self.pbAROM.clicked.connect(self._callback_assess_arom)
         self.pbPROM.clicked.connect(self._callback_assess_prom)
-        self.pbAPROM.clicked.connect(self._callback_assess_aprom)
+        self.pbAPROMSlow.clicked.connect(self._callback_assess_apromslow)
+        self.pbAPROMFast.clicked.connect(self._callback_assess_apromfast)
         self.pbDiscReach.clicked.connect(self._callback_disc_reach)
         self.pbProp.clicked.connect(self._callback_assess_prop)
         self.pbForceCtrl.clicked.connect(self._callback_assess_fctrl)
@@ -308,12 +312,46 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._romwnd.show()
         self._currwndclosed = False
 
-    def _callback_assess_aprom(self):
+    def _callback_assess_apromslow(self):
         # Check if AROM has already been assessed and needs to be reassessed.
-        _reassess = self._reassess_requested("APROM")
+        _reassess = self._reassess_requested("APROMSlow")
         if _reassess is True:
             # Add new task to the protocol.
-            self.data.protocol.add_task(taskname="APROM", mechname=self.data.protocol.mech)
+            self.data.protocol.add_task(taskname="APROMSlow", mechname=self.data.protocol.mech)
+        elif _reassess is False:
+            # If reassessment is not requested, return.
+            return
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            Events.APROM_ASSESS,
+            None
+        )
+        # Disable main controls
+        self._maindisable = True
+        self._romwnd = PlutoAssistPRomAssessWindow(
+            plutodev=self.pluto,
+            assessinfo={
+                "type": self.data.type,
+                "limb": self.data.limb,
+                "mechanism": self.data.protocol.mech,
+                "session": self.data.session,
+                "ntrials": pfadef.protocol["APROM"]["N"],
+                "rawfile": self.data.protocol.rawfilename,
+                "summaryfile": self.data.protocol.summaryfilename,
+                "arom": self.data.romsumry["AROM"][self.data.protocol.mech][-1]["rom"]
+            },
+            modal=True,
+            onclosecb=self._apromwnd_close_event
+        )
+        self._romwnd.show()
+        self._currwndclosed = False
+
+    def _callback_assess_apromfast(self):
+        # Check if AROM has already been assessed and needs to be reassessed.
+        _reassess = self._reassess_requested("APROMFast")
+        if _reassess is True:
+            # Add new task to the protocol.
+            self.data.protocol.add_task(taskname="APROMFast", mechname=self.data.protocol.mech)
         elif _reassess is False:
             # If reassessment is not requested, return.
             return
@@ -437,7 +475,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "limb": self.data.limb,
                 "mechanism": self.data.protocol.mech,
                 "session": self.data.session,
-                "ntrials": FCtrlConst.NO_OF_TRIALS,
+                "ntrials": FCtrl.NO_OF_TRIALS,
                 "rawfile": self.data.protocol.rawfilename,
                 "summaryfile": self.data.protocol.summaryfilename,
                 "arom": self.data.romsumry["AROM"][self.data.protocol.mech][-1]["rom"]
@@ -506,7 +544,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     # 
     # Timer callbacks
     #
-    def _callback_app_timer(self):
+    def _callback_status_timer(self):
         self.apptime += 1
         _con = self.pluto.is_connected()
         self.statusBar().showMessage(
@@ -519,17 +557,53 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             ))
         )
     
+    def _callback_display_timer(self):
+        # Check if new data is available
+        if self.pluto.is_data_available() is False:
+            self.textPlutoData.setText("No data available.")
+            return
+        # New data available. Format and display
+        _dispdata = [
+            f"Dev Name  : {self.pluto.devname} | {self.pluto.version} ({self.pluto.compliedate})",
+            f"Time      : {self.pluto.systime} | {self.pluto.currt:6.3f}s | {self.pluto.packetnumber:06d}",
+        ]
+        _statusstr = ' | '.join((pdef.get_name(pdef.OutDataType, self.pluto.datatype),
+                                 pdef.get_name(pdef.ControlTypes, self.pluto.controltype),
+                                 pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)))
+        _dispdata += [
+            f"Status    : {_statusstr}",
+            f"Error     : {pdef.get_name(pdef.ErrorTypes, self.pluto.error)}",
+            f"Limb-Mech : {pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<6s} | {pdef.get_name(pdef.LimbType, self.pluto.limb):<6s} | {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
+            f"Button    : {self.pluto.button}",
+            ""
+        ]
+        _dispdata += [
+            "~ SENSOR DATA ~",
+            f"Angle     : {self.pluto.angle:-07.2f}deg"
+            + (f" [{self.pluto.hocdisp:05.2f}cm]" if self.pluto.calibration == 1 else "")
+        ]
+        _dispdata += [
+            f"Control   : {self.pluto.control:3.1f}",
+            f"Target    : {self.pluto.target:3.1f} | Desired  : {self.pluto.desired:3.1f}",
+        ]
+        # Check if in DIAGNOSTICS mode.
+        if pdef.get_name(pdef.OutDataType, self.pluto.datatype) == "DIAGNOSTICS":
+            _dispdata += [
+                f"Err       : {self.pluto.err:3.1f}",
+                f"ErrDiff   : {self.pluto.errdiff:3.1f}",
+                f"ErrSum    : {self.pluto.errsum:3.1f}",
+            ]
+        self.textPlutoData.setText('\n'.join(_dispdata))
+
+    
     #
     # Signal callbacks
     #
     def _callback_newdata(self):
         """Update the UI of the appropriate window.
         """
-        # Update PLUTO data display.
-        if np.random.rand() < 0.05:
-            self._display_pluto_data()
         # Update data viewer window.
-        if np.random.rand() < 0.1:
+        if np.random.rand() < 0.05:
             self.update_ui()
             
     def _callback_btn_pressed(self):
@@ -780,34 +854,36 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         for i, _m in enumerate(self.data.protocol.mech_enabled):
             _mctrl[_m].setEnabled(True)
             if _m in self.data.protocol.mech_completed:
-                _mctrl[_m].setText(f"{pfadef.mech_labels[_m]} [C]")
+                _mctrl[_m].setText(f"{pfadef.MECH_LABELS[_m]} [C]")
                 _mctrl[_m].setStyleSheet(pfadef.SS_COMPLETE)
             else:
-                _mctrl[_m].setText(f"{pfadef.mech_labels[_m]}")
+                _mctrl[_m].setText(f"{pfadef.MECH_LABELS[_m]}")
                 _mctrl[_m].setStyleSheet(pfadef.SS_INCOMPLETE)
         
     def _update_task_controls(self):
         _tctrl = {
             "AROM": self.pbAROM,
             "PROM": self.pbPROM,
-            "APROM": self.pbAPROM,
+            "APROMSlow": self.pbAPROMSlow,
+            "APROMFast": self.pbAPROMFast,
+            "POSHOLD": self.pbPosHold,
             "DISC": self.pbDiscReach,
             "PROP": self.pbProp,
             "FCTRL": self.pbForceCtrl,
         }
         # Go through all tasks for the mechanism and enable/disable them appropriately.
-        for i, _t in enumerate(pfadef.tasks):
+        for i, _t in enumerate(pfadef.ALLTASKS):
             if self.data.protocol.calibrated and _t in self.data.protocol.task_enabled:
                 _tctrl[_t].setEnabled(True)
                 if _t in self.data.protocol.task_completed:
-                    _tctrl[_t].setText(f"{pfadef.task_labels[_t]} [C]")
+                    _tctrl[_t].setText(f"{pfadef.TASK_LABELS[_t]} [C]")
                     _tctrl[_t].setStyleSheet(pfadef.SS_COMPLETE)
                 else:
-                    _tctrl[_t].setText(f"{pfadef.task_labels[_t]}")
+                    _tctrl[_t].setText(f"{pfadef.TASK_LABELS[_t]}")
                     _tctrl[_t].setStyleSheet(pfadef.SS_INCOMPLETE)
             else:
                 _tctrl[_t].setEnabled(False)
-                _tctrl[_t].setText(f"{pfadef.task_labels[_t]}")
+                _tctrl[_t].setText(f"{pfadef.TASK_LABELS[_t]}")
                 _tctrl[_t].setStyleSheet("")
     
     def _any_mechanism_selected(self):
@@ -850,44 +926,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return Events.HOC_SET
         else:
             return Events.NOMECH_SET
-        
-    def _display_pluto_data(self):
-        # Check if new data is available
-        if self.pluto.is_data_available() is False:
-            self.textPlutoData.setText("No data available.")
-            return
-        # New data available. Format and display
-        _dispdata = [
-            f"Dev Name  : {self.pluto.devname} | {self.pluto.version} ({self.pluto.compliedate})",
-            f"Time      : {self.pluto.systime} | {self.pluto.currt:6.3f}s | {self.pluto.packetnumber:06d}",
-        ]
-        _statusstr = ' | '.join((pdef.get_name(pdef.OutDataType, self.pluto.datatype),
-                                 pdef.get_name(pdef.ControlTypes, self.pluto.controltype),
-                                 pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)))
-        _dispdata += [
-            f"Status    : {_statusstr}",
-            f"Error     : {pdef.get_name(pdef.ErrorTypes, self.pluto.error)}",
-            f"Limb-Mech : {pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<6s} | {pdef.get_name(pdef.LimbType, self.pluto.limb):<6s} | {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
-            f"Button    : {self.pluto.button}",
-            ""
-        ]
-        _dispdata += [
-            "~ SENSOR DATA ~",
-            f"Angle     : {self.pluto.angle:-07.2f}deg"
-            + (f" [{self.pluto.hocdisp:05.2f}cm]" if self.pluto.calibration == 1 else "")
-        ]
-        _dispdata += [
-            f"Control   : {self.pluto.control:3.1f}",
-            f"Target    : {self.pluto.target:3.1f} | Desired  : {self.pluto.desired:3.1f}",
-        ]
-        # Check if in DIAGNOSTICS mode.
-        if pdef.get_name(pdef.OutDataType, self.pluto.datatype) == "DIAGNOSTICS":
-            _dispdata += [
-                f"Err       : {self.pluto.err:3.1f}",
-                f"ErrDiff   : {self.pluto.errdiff:3.1f}",
-                f"ErrSum    : {self.pluto.errsum:3.1f}",
-            ]
-        self.textPlutoData.setText('\n'.join(_dispdata))
 
     #
     # Device Data Viewer Functions 

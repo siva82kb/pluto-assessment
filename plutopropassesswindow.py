@@ -43,7 +43,7 @@ from plutoapromwindow import APROMRawDataLoggingState as LogState
 import plutoapromwindow as apromwnd
 from misc import CSVBufferWriter as CSVWriter
 
-from plutofullassessdef import ProprioceptionConstants as PropConst
+from plutofullassessdef import Proprioception as Prop
 
 
 # Module level constants
@@ -146,9 +146,9 @@ class PlutoPropAssessData():
         # Logging variables
         self._logstate: LogState = LogState.WAIT_FOR_LOG
         self._rawwriter: CSVWriter = CSVWriter(fname=self.rawfile,
-                                               header=PropConst.RAW_HEADER)
+                                               header=Prop.RAW_HEADER)
         self._summwriter: CSVWriter = CSVWriter(fname=self.summaryfile, 
-                                                header=PropConst.SUMMARY_HEADER,
+                                                header=Prop.SUMMARY_HEADER,
                                                 flush_interval=0.0,
                                                 max_rows=1)
     
@@ -332,12 +332,12 @@ class PlutoPropAssessData():
             self._summwriter = None
     
     def _generate_targets(self):
-        _tgtsep = PropConst.TGT_POSITIONS[0] * self.prom[1]
-        _tgts = (PropConst.TGT_POSITIONS
-                 if _tgtsep >= PropConst.MIN_TGT_SEP
-                 else PropConst.TGT_POSITIONS[1:2])
+        _tgtsep = Prop.TGT_POSITIONS[0] * self.prom[1]
+        _tgts = (Prop.TGT_POSITIONS
+                 if _tgtsep >= Prop.MIN_TGT_SEP
+                 else Prop.TGT_POSITIONS[1:2])
         # Generate the randomly order targets
-        _tgts = PropConst.NO_OF_TRIALS * _tgts
+        _tgts = Prop.NO_OF_TRIALS * _tgts
         random.shuffle(_tgts)
         self._targets = (self.prom[1] * np.array(_tgts)).tolist()
     
@@ -452,7 +452,7 @@ class PlutoPropAssessmentStateMachine():
         # Check if all trials are done or if we are in the demo mode.
         if event == PlEvnts.RELEASED:
             # Check to make sure the angle is close to zero.
-            if self._pluto.hocdisp < PropConst.START_POSITION_TH:
+            if self._pluto.hocdisp < Prop.START_POSITION_TH:
                 self._data.set_startpos()
                 self._state = States.DEMO_WAIT
                 self._statetimer = 0.5
@@ -480,13 +480,13 @@ class PlutoPropAssessmentStateMachine():
     def _handle_demo_holding(self, event, dt) -> Actions:
         if event == PlEvnts.NEWDATA:
             if not (self.subj_in_target() and self.subj_is_holding()):
-                self._statetimer = PropConst.DEMO_DURATION
+                self._statetimer = Prop.DEMO_DURATION
                 return Actions.CTRL_HOLD
             self._statetimer -= dt
             if self._statetimer <= 0:
                 self._data.set_shownpostorq()
                 self._state = States.INTRA_TRIAL_REST
-                self._statetimer = PropConst.INTRA_TRIAL_REST_DURATION
+                self._statetimer = Prop.INTRA_TRIAL_REST_DURATION
                 return Actions.CTRL_HOLD
         return Actions.CTRL_HOLD
 
@@ -519,7 +519,7 @@ class PlutoPropAssessmentStateMachine():
             if self._statetimer <= 0:
                 self._data.set_sensedpostorq()
                 self._state = States.INTER_TRIAL_REST
-                self._statetimer = PropConst.INTER_TRIAL_REST_DURATION
+                self._statetimer = Prop.INTER_TRIAL_REST_DURATION
                 return Actions.GO_HOME
         return Actions.CTRL_HOLD
 
@@ -529,14 +529,14 @@ class PlutoPropAssessmentStateMachine():
             if self._statetimer <= 0:
                 self._data.set_sensedpostorq(success=False)
                 self._state = States.INTER_TRIAL_REST
-                self._statetimer = PropConst.INTER_TRIAL_REST_DURATION
+                self._statetimer = Prop.INTER_TRIAL_REST_DURATION
                 return Actions.GO_HOME
         return Actions.GO_HOME
 
     def _handle_inter_trial_rest(self, event, dt) -> Actions:
         if event == PlEvnts.NEWDATA:
             if not self.subj_near_start_position():
-                self._statetimer = PropConst.INTER_TRIAL_REST_DURATION
+                self._statetimer = Prop.INTER_TRIAL_REST_DURATION
                 return Actions.GO_HOME
             self._statetimer -= dt
             if self._statetimer <= 0:
@@ -622,9 +622,9 @@ class PlutoPropAssessmentStateMachine():
         self._tgt_set= lambda tgt : np.isclose(self._pluto.target, tgt, rtol=1e-03, atol=1e-03)
         self._ctrl_hold = lambda : self._pluto.controlhold == pdef.ControlHoldTypes["HOLD"]
         self._ctrl_decay = lambda : self._pluto.controlhold == pdef.ControlHoldTypes["DECAY"]
-        self.subj_in_target = lambda : np.abs(self._data.current_target - self._pluto.hocdisp) < PropConst.TGT_ERR_TH
-        self.subj_near_start_position = lambda : self._pluto.hocdisp - self._data.startpos < PropConst.TGT_ERR_TH
-        self.subj_near_prom = lambda : np.abs(self._pluto.hocdisp - self._data.prom[1]) < PropConst.TGT_ERR_TH
+        self.subj_in_target = lambda : np.abs(self._data.current_target - self._pluto.hocdisp) < Prop.TGT_ERR_TH
+        self.subj_near_start_position = lambda : self._pluto.hocdisp - self._data.startpos < Prop.TGT_ERR_TH
+        self.subj_near_prom = lambda : np.abs(self._pluto.hocdisp - self._data.prom[1]) < Prop.TGT_ERR_TH
 
     def subj_is_holding(self):
         """Check if the subject is holding the position.
@@ -640,7 +640,7 @@ class PlutoPropAssessmentStateMachine():
         _initpos = self._pluto.angle
         _finalpos = - tgtpos / pdef.HOCScale - 4 if tgtpos != 0  else 0
         _strtt = 0
-        _speed = (1 if not demomode else (2.0 + np.random.rand())) * PropConst.MOVE_SPEED
+        _speed = (1 if not demomode else (2.0 + np.random.rand())) * Prop.MOVE_SPEED
         _dur = float(np.abs(tgtpos - pdef.HOCScale * np.abs(_initpos)) / _speed)
         return {
             "target": _finalpos,

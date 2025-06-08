@@ -10,19 +10,19 @@
     <x>0</x>
     <y>0</y>
     <width>1200</width>
-    <height>500</height>
+    <height>536</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>1200</width>
-    <height>500</height>
+    <height>536</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
     <width>1200</width>
-    <height>500</height>
+    <height>536</height>
    </size>
   </property>
   <property name="font">
@@ -160,12 +160,12 @@
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_4">
            <item>
-            <widget class="QRadioButton" name="rbWFE">
+            <widget class="QRadioButton" name="rbFPS">
              <property name="enabled">
               <bool>false</bool>
              </property>
              <property name="text">
-              <string>Wrist Flexion/Extension</string>
+              <string>Forearm Pronation/Supination</string>
              </property>
              <attribute name="buttonGroup">
               <string notr="true">mechButtonGroup</string>
@@ -173,12 +173,12 @@
             </widget>
            </item>
            <item>
-            <widget class="QRadioButton" name="rbFPS">
+            <widget class="QRadioButton" name="rbWFE">
              <property name="enabled">
               <bool>false</bool>
              </property>
              <property name="text">
-              <string>Forearm Pronation/Supination</string>
+              <string>Wrist Flexion/Extension</string>
              </property>
              <attribute name="buttonGroup">
               <string notr="true">mechButtonGroup</string>
@@ -199,14 +199,25 @@
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="pbStartMechAssessment">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>Start Mechanism Assessment</string>
-             </property>
-            </widget>
+            <layout class="QHBoxLayout" name="horizontalLayout_5">
+             <item>
+              <widget class="QPushButton" name="pbStartMechAssessment">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>Assess</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pbSkipMechanismAssessment">
+               <property name="text">
+                <string>Skip</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
           </layout>
          </widget>
@@ -272,7 +283,26 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="pbAPROM">
+         <widget class="QPushButton" name="pbAPROMSlow">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <family>Bahnschrift Light</family>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
+          <property name="text">
+           <string>Assess APROM</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pbAPROMFast">
           <property name="enabled">
            <bool>false</bool>
           </property>
@@ -292,6 +322,25 @@
         </item>
         <item>
          <widget class="QPushButton" name="pbDiscReach">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="font">
+           <font>
+            <family>Bahnschrift Light</family>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
+          <property name="text">
+           <string>Discrete Reaching</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pbPosHold">
           <property name="enabled">
            <bool>false</bool>
           </property>

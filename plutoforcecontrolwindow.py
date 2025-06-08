@@ -28,7 +28,7 @@ import misc
 import plutodefs as pdef
 from plutodefs import PlutoEvents as PlEvnts
 import plutofullassessdef as pfadef
-from plutofullassessdef import ForceControlConstants as FCtrlConst
+from plutofullassessdef import ForceControl as FCtrl
 from ui_plutoapromassess import Ui_APRomAssessWindow
 from plutodataviewwindow import PlutoDataViewWindow
 from plutoapromwindow import APROMRawDataLoggingState as LogState
@@ -65,11 +65,11 @@ class PlutoForceControlData(object):
         self._logstate: LogState = LogState.WAIT_FOR_LOG
         self._rawwriter: misc.CSVBufferWriter = misc.CSVBufferWriter(
             self.rawfile, 
-            header=FCtrlConst.RAW_HEADER
+            header=FCtrl.RAW_HEADER
         )
         self._summwriter: misc.CSVBufferWriter = misc.CSVBufferWriter(
             self.summaryfile, 
-            header=FCtrlConst.SUMMARY_HEADER,
+            header=FCtrl.SUMMARY_HEADER,
             flush_interval=0.0,
             max_rows=1
         )
@@ -104,7 +104,7 @@ class PlutoForceControlData(object):
     
     @property
     def target(self):
-        return self.arom[1] * FCtrlConst.TGT_POSITION
+        return self.arom[1] * FCtrl.TGT_POSITION
     
     @property
     def rawfile(self):
@@ -165,8 +165,8 @@ class PlutoForceControlData(object):
             self.arom[0],
             self.arom[1],
             self.target,
-            FCtrlConst.TGT_FORCE - FCtrlConst.TGT_FORCE_WIDTH,
-            FCtrlConst.TGT_FORCE + FCtrlConst.TGT_FORCE_WIDTH,
+            FCtrl.TGT_FORCE - FCtrl.TGT_FORCE_WIDTH,
+            FCtrl.TGT_FORCE + FCtrl.TGT_FORCE_WIDTH,
         ])
 
     def add_newdata(self, dt, pos):
@@ -198,8 +198,8 @@ class PlutoForceControlData(object):
 
     def _compute_object_params(self):
         # Compute the target parameters.
-        _objdelpos = FCtrlConst.FULL_RANGE_WIDTH / pdef.HOCScale
-        _adjust = FCtrlConst.FULL_RANGE_WIDTH * np.cbrt(FCtrlConst.TGT_FORCE / pdef.MAX_HOC_FORCE)
+        _objdelpos = FCtrl.FULL_RANGE_WIDTH / pdef.HOCScale
+        _adjust = FCtrl.FULL_RANGE_WIDTH * np.cbrt(FCtrl.TGT_FORCE / pdef.MAX_HOC_FORCE)
         _objpos = (self.target + _adjust) / pdef.HOCScale
         return {"Position": -_objpos, "DelPosition": _objdelpos}
 
@@ -278,7 +278,7 @@ class StateMachine():
         if event == PlEvnts.RELEASED:
             if self.subj_outside_brick() and self.subj_is_holding():
                 self._state = States.WAIT_START
-                self._statetimer = FCtrlConst.HOLD_START_DURATION
+                self._statetimer = FCtrl.HOLD_START_DURATION
                 # Set the logging state.
                 if not self._data.demomode: self._data.start_rawlogging()
                 return Actions.SIM_OBJECT
@@ -287,12 +287,12 @@ class StateMachine():
     def _handle_wait_start(self, event, dt):
         if event == PlEvnts.NEWDATA:
             if not self.is_object_held() or not self.subj_is_holding():
-                self._statetimer = FCtrlConst.HOLD_START_DURATION
+                self._statetimer = FCtrl.HOLD_START_DURATION
                 return Actions.DO_NOTHING
             self._statetimer -= dt
             if self._statetimer <= 0:
                 self._state = States.HOLDING    
-                self._statetimer = FCtrlConst.DURATION
+                self._statetimer = FCtrl.DURATION
                 return Actions.SIM_OBJECT
         return Actions.DO_NOTHING
  
@@ -307,7 +307,7 @@ class StateMachine():
                 self._state = States.HOLDING
             if self._statetimer <= 0:
                 self._state = States.RELAX
-                self._statetimer = FCtrlConst.RELAX_DURATION
+                self._statetimer = FCtrl.RELAX_DURATION
                 return Actions.DO_NOTHING
         return Actions.DO_NOTHING
 
@@ -523,10 +523,10 @@ class StateMachine():
         return self._pluto.hocdisp - self._data.target > 1.0
     
     def is_object_held(self):
-        return np.abs(self._pluto.gripforce - FCtrlConst.TGT_FORCE) < FCtrlConst.TGT_FORCE_WIDTH
+        return np.abs(self._pluto.gripforce - FCtrl.TGT_FORCE) < FCtrl.TGT_FORCE_WIDTH
     
     def is_object_crushed(self):
-        return self._pluto.gripforce - FCtrlConst.TGT_FORCE > FCtrlConst.TGT_FORCE_WIDTH
+        return self._pluto.gripforce - FCtrl.TGT_FORCE > FCtrl.TGT_FORCE_WIDTH
     
     def away_from_start(self):
         """Check if the subject has moved away from the start position.
@@ -676,12 +676,12 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
             _objparams = self._compute_display_object_params(self.pluto.gripforce)
             self.ui._brick.setRect(_objparams["x"], _objparams["y"],
                                 _objparams["width"], _objparams["height"])
-            if self.pluto.gripforce < FCtrlConst.TGT_FORCE - FCtrlConst.TGT_FORCE_WIDTH:
-                self.ui._brick.setBrush(QtGui.QBrush(FCtrlConst.FREE_COLOR))
-            elif self.pluto.gripforce > FCtrlConst.TGT_FORCE + FCtrlConst.TGT_FORCE_WIDTH:
-                self.ui._brick.setBrush(QtGui.QBrush(FCtrlConst.CRUSHED_COLOR))
+            if self.pluto.gripforce < FCtrl.TGT_FORCE - FCtrl.TGT_FORCE_WIDTH:
+                self.ui._brick.setBrush(QtGui.QBrush(FCtrl.FREE_COLOR))
+            elif self.pluto.gripforce > FCtrl.TGT_FORCE + FCtrl.TGT_FORCE_WIDTH:
+                self.ui._brick.setBrush(QtGui.QBrush(FCtrl.CRUSHED_COLOR))
             else:
-                self.ui._brick.setBrush(QtGui.QBrush(FCtrlConst.HELD_COLOR))
+                self.ui._brick.setBrush(QtGui.QBrush(FCtrl.HELD_COLOR))
         else:
             if self.pluto.angle is None:
                 return
@@ -849,7 +849,7 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
         _objparams = self._compute_display_object_params(self.pluto.gripforce)
         self.ui._brick.setRect(_objparams["x"], _objparams["y"],
                                _objparams["width"], _objparams["height"])
-        self.ui._brick.setBrush(QtGui.QBrush(FCtrlConst.FREE_COLOR))
+        self.ui._brick.setBrush(QtGui.QBrush(FCtrl.FREE_COLOR))
         self.ui._brick.setPen(pg.mkPen(None))
         _pgobj.addItem(self.ui._brick)
 
@@ -862,12 +862,12 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
     
     def _compute_display_object_params(self, force):
         # Object width
-        _tgtmid = np.cbrt(FCtrlConst.TGT_FORCE / pdef.MAX_HOC_FORCE)
-        if force is None or force < FCtrlConst.TGT_FORCE - FCtrlConst.TGT_FORCE_WIDTH:
-            _tgtlow = np.cbrt((FCtrlConst.TGT_FORCE - FCtrlConst.TGT_FORCE_WIDTH) / pdef.MAX_HOC_FORCE)
+        _tgtmid = np.cbrt(FCtrl.TGT_FORCE / pdef.MAX_HOC_FORCE)
+        if force is None or force < FCtrl.TGT_FORCE - FCtrl.TGT_FORCE_WIDTH:
+            _tgtlow = np.cbrt((FCtrl.TGT_FORCE - FCtrl.TGT_FORCE_WIDTH) / pdef.MAX_HOC_FORCE)
         else:
             _tgtlow = np.cbrt(force / pdef.MAX_HOC_FORCE)
-        _objwidth = float(self.data.target + (_tgtmid - _tgtlow) * FCtrlConst.FULL_RANGE_WIDTH)
+        _objwidth = float(self.data.target + (_tgtmid - _tgtlow) * FCtrl.FULL_RANGE_WIDTH)
         # Object height
         _objheight = float(10 * self.data.target  / _objwidth)
         return {"width": 2 * _objwidth, "height": 2 * _objheight,

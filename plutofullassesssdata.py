@@ -203,7 +203,7 @@ class PlutoAssessmentProtocolData(object):
             return list(self._df["mechanism"].unique())
         # Get the list of mechanisms that have been assessed.
         _mechleft = self._df[self._df["session"].isna()]['mechanism'].unique().tolist()
-        return list(set(pfadef.mechanisms) - set(_mechleft))
+        return list(set(pfadef.MECHANISMS) - set(_mechleft))
     
     @property
     def mech_not_completed(self) -> list[str]:
@@ -387,7 +387,8 @@ class PlutoAssessmentProtocolData(object):
         if self._df is None:
             raise ValueError("Summary data not initialized or index not set.")
         # Add the new task to the summary data.
-        _n = pfadef.protocol[taskname]["N"]
+        # _n = pfadef.protocol[taskname]["N"]
+        _n = pfadef.get_task_constants(taskname).NO_OF_TRIALS
         _newrow = pd.DataFrame.from_dict({
             "session": [pd.NA] * _n,
             "mechanism": [mechname] * _n,
@@ -417,25 +418,23 @@ class PlutoAssessmentProtocolData(object):
         if pathlib.Path(self.filename).exists():
             return
         # Create the protocol summary file.
-        _dframe = pd.DataFrame(columns=["session", "mechanism", "task", "trial", 
-                                        "rawfile", "summaryfile"])
-        _mechs = pfadef.mechanisms.copy()
-        random.shuffle(_mechs)
-        for _m in _mechs:
-            for _t in pfadef.tasks:
-                if _m not in pfadef.protocol[_t]["mech"]:
-                    continue
+        _dframe = pd.DataFrame(columns=pfadef.FA_SUMMARY_HEADER)
+        for _m in pfadef.MECHANISMS:
+            # First set of tasks in the given order.
+            for _t in pfadef.MECH_TASKS[_m][0]:
                 # Create the rows.
-                _n = pfadef.protocol[_t]["N"]
+                _n = pfadef.get_task_constants(_t).NO_OF_TRIALS
                 _dframe = pd.concat([
                     _dframe,
                     pd.DataFrame.from_dict({
-                        "session": [''] * _n,
+                        "session": [pd.NA] * _n,
                         "mechanism": [_m] * _n,
                         "task": [_t] * _n,
                         "trial": list(range(1, 1 + _n)),
-                        "rawfile": [''] * _n,
-                        "summaryfile": [''] * _n,
+                        "rawfile": [pd.NA] * _n,
+                        "summaryfile": [pd.NA] * _n,
+                        "comments": [pd.NA] * _n,
+                        "status": [pd.NA] * _n,
                     })
                 ], ignore_index=True)
         # Write file to disk
