@@ -85,13 +85,15 @@ STATUS_STYLESHEET = {
     AssessStatus.INCOMPLETE: "color: rgb(170, 0, 0);",          # Dark red
     AssessStatus.COMPLETE: "color: rgb(0, 100, 0);",            # Dark green
     AssessStatus.PARTIALCOMPLETE: "color: rgb(255, 165, 0);",   # Orange
-    AssessStatus.SKIPPED: "color: rgb(100, 149, 237);"          # Light blue (Cornflower Blue)
+    AssessStatus.SKIPPED: "color: rgb(100, 149, 237);",         # Light blue (Cornflower Blue)
+    None: ""                                                    # Default color (black)
 }
 STATUS_TEXT = {
     AssessStatus.INCOMPLETE: "",
     AssessStatus.COMPLETE: "[C]",
     AssessStatus.PARTIALCOMPLETE: "[*C]",
-    AssessStatus.SKIPPED: "[S]"
+    AssessStatus.SKIPPED: "[S]",
+    None: "",
 }
 
 # Full assessment summary file header.
@@ -117,7 +119,7 @@ DISPLAY_INTERVAL = 200                  # ms
 VISUAL_FEEDBACK_UPDATE_INTERVAL = 33    # ms
 
 
-class _ROMConstants:
+class ROMConstants:
     POS_VEL_WINDOW_LENGHT = 50
     START_POS_HOC_THRESHOLD = 0.25      # cm
     START_POS_NOT_HOC_THRESHOLD = 2.5   # deg
@@ -132,14 +134,13 @@ class _ROMConstants:
     # Data logging constants
     RAW_HEADER = [
         "systime", "devtime", "packno", "status", "controltype", "error",
-        "limb", "mechanism", "angle", "hocdisp", "torque", "gripforce",
-        "control", "target", "desired", "controlbound", "controldir",
-        "controlgain", "button", "trialno", "assessmentstate"
+        "limb", "mechanism", "angle", "hocdisp", "button", "trialno",
+        "assessmentstate"
     ]
     # AROM/PROM/APROM SUMMARY HEADER
     SUMMARY_HEADER = [
         "session", "type", "limb", "mechanism", "trial", "startpos", "rommin",
-        "rommax", "romrange", "torqmin", "torqmax"
+        "rommax", "romrange"
     ]
 
     #
@@ -152,33 +153,49 @@ class _ROMConstants:
 #
 # Active Range of Motion Constants
 #
-class AROM(_ROMConstants):
+class AROM(ROMConstants):
     NO_OF_TRIALS = 3                   # Number of trials.
 
 
 #
 # Passive Range of Motion Constants
 #
-class PROM(_ROMConstants):
+class PROM(ROMConstants):
     NO_OF_TRIALS = 1                   # Number of trials.
+
+
+class APROM(ROMConstants):
+    TORQUE_DIR1 = +1.0                  # Toque to apply in direction 1
+    TORQUE_DIR2 = -1.0                  # Toque to apply in direction 2
+    NO_OF_TRIALS = 3                    # Number of trials
+    
+    # Data logging constants
+    RAW_HEADER = [
+        "systime", "devtime", "packno", "status", "controltype", "error",
+        "limb", "mechanism", "angle", "hocdisp", "torque", "gripforce",
+        "control", "target", "desired", "controlbound", "controldir",
+        "controlgain", "button", "trialno", "assessmentstate"
+    ]
+    # AROM/PROM/APROM SUMMARY HEADER
+    SUMMARY_HEADER = [
+        "session", "type", "limb", "mechanism", "apromtype", "trial",
+        "startpos", "rommin", "rommax", "romrange", "torqdir1",
+        "torqdir2", "duration"
+    ]
 
 
 #
 # Assisted Passive Range of Motion Constants (Slow)
 #
-class APROMSlow(_ROMConstants):
-    NO_OF_TRIALS = 1                   # Number of trials.
-    MAX_TORUQ = 1.0                    # Maximum torque to be applied (Nm)
-    DURATION = 05.0                    # Duration of torque application (seconds).
+class APROMSlow(APROM):
+    DURATION = 05.0                     # Duration of torque application (seconds).
 
 
 #
 # Assisted Passive Range of Motion Constants (Fast)
 #
-class APROMFast(_ROMConstants):
-    NO_OF_TRIALS = 1                   # Number of trials.
-    MAX_TORUQ = 1.0                    # Maximum torque to be applied (Nm)
-    DURATION = 05.0                    # Duration of torque application (seconds).
+class APROMFast(APROM):
+    DURATION = 02.0                     # Duration of torque application (seconds).
 
 
 #
@@ -206,7 +223,7 @@ class PositionHold:
 #
 # Discrete Reaching Constants
 #
-class DiscreteReach:
+class DiscreteReach(ROMConstants):
     NO_OF_TRIALS = 3                # Number of trials.
     TGT1_POSITION = 0.20            # Fraction of AROM range
     TGT2_POSITION = 0.80            # Fraction of AROM range
@@ -224,11 +241,18 @@ class DiscreteReach:
     TARGET_REACHED_COLOR = QColor(255, 255, 0, 128)
     HIDE_COLOR = QColor(0, 0, 0, 0)
 
+    # Data logging constants
+    RAW_HEADER = [
+        "systime", "devtime", "packno", "status", "controltype", "error",
+        "limb", "mechanism", "angle", "hocdisp", "button", "trialno",
+        "assessmentstate"
+    ]
+
 
 #
 # Prioprioceptive Assessment Constants
 #
-class Proprioception:
+class Proprioception(ROMConstants):
     NO_OF_TRIALS = 1                    # Number of trials.
     # NO_OF_TRIALS = 3                    # Number of trials.
     START_POSITION_TH = 0.25            # Start position of the hanbd (cm).       
@@ -264,7 +288,7 @@ class Proprioception:
 #
 # Force Control Assessment Constants
 #
-class ForceControl:
+class ForceControl(ROMConstants):
     NO_OF_TRIALS = 3                    # Number of trials.
     FULL_RANGE_WIDTH = 2.0              # The full force range in position. (cm) 
     TGT_POSITION = 0.4                  # Target positions (fraction of AROM).
@@ -290,9 +314,13 @@ class ForceControl:
     ]
 
     # Display constants
+    CURSOR_LOWER_LIMIT = -30
+    CURSOR_UPPER_LIMIT = 10
+    
     FREE_COLOR = QColor(128, 128, 255, 128) 
     HELD_COLOR = QColor(0, 255, 0, 128)
     CRUSHED_COLOR = QColor(255, 0, 0, 128)
+
 
 
 

@@ -38,7 +38,7 @@ class CommentDialog(QDialog):
 
         # Set global font
         font = QtGui.QFont()
-        font.setFamily("Bahnschrift Light")
+        font.setFamily("Cascadia Mono Light")
         font.setPointSize(10)
         self.setFont(font)
 

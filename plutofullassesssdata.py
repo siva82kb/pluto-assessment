@@ -394,7 +394,7 @@ class PlutoAssessmentProtocolData(object):
         else:
             return pfadef.AssessStatus.COMPLETE
     
-    def update(self, session, rawfile, summaryfile):
+    def update(self, session, rawfile, summaryfile, taskcomment, status):
         """Set the mechanism task data in the summary file.
         """
         if self._df is None:
@@ -410,6 +410,8 @@ class PlutoAssessmentProtocolData(object):
         self._df.loc[_updateindex, "session"] = session
         self._df.loc[_updateindex, "rawfile"] = rawfile
         self._df.loc[_updateindex, "summaryfile"] = summaryfile
+        self._df.loc[_updateindex, "taskcomment"] = taskcomment
+        self._df.loc[_updateindex, "status"] = status
         
         # Write the updated summary data to the file.
         self._df.to_csv(self.filename, sep=",", index=None)
@@ -517,7 +519,8 @@ class PlutoAssessmentROMData(object):
             "limb": self._limb,
             "AROM": {},
             "PROM": {},
-            "APROM": {}
+            "APROMSlow": {},
+            "APROMFast": {}
         }
         
         # Create the protocol summary file.
@@ -573,19 +576,23 @@ class PlutoAssessmentROMData(object):
     def set_task(self, value):
         self._task = value
 
-    def update(self, romval: list, session: str, tasktime: str, rawfile: str, summaryfile: str):
+    def update(self, romval: list, session: str, tasktime: str, rawfile: str,
+               summaryfile: str, taskcomment: str="", status: str=""):
         """Update the ROM summary data.
         """
         if self._mech is None or self._task is None:
             raise ValueError("Mechanism or task not set. Cannot update ROM data.")
         # Update value
+        _temp = [_v for _v in romval if len(_v) == 2]
         self._val[self._task][self._mech].append({
             "session": session,
             "tasktime": tasktime,
             "rawfile": rawfile,
             "summaryfile": summaryfile,
             "romval": romval,
-            "rom": np.mean(np.array(romval), axis=0).tolist(),
+            "rom": np.mean(np.array(_temp), axis=0).tolist() if len(_temp) != 0 else float('nan'),
+            "taskcomment": taskcomment,
+            "status": status
         })
 
         # Write to disk

@@ -247,8 +247,8 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     import qtjedi
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM12")
-    pcalib = PlutoCalibrationWindow(plutodev=plutodev, limb="LEFT", mechanism="HOC",
+    plutodev = QtPluto("COM13")
+    pcalib = PlutoCalibrationWindow(plutodev=plutodev, limb="LEFT", mechanism="WFE",
                                     dataviewer=True, heartbeat=True, 
                                     onclosecb=lambda data: print(dt.now()))
     pcalib.show()

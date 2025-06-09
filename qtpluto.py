@@ -293,8 +293,6 @@ class QtPluto(QObject):
         """
         # Robot sensor data. This depends on the datatype.
         N = pdef.PlutoSensorDataNumber[pdef.get_name(pdef.OutDataType, self.datatype)]
-        print(newdata)
-        print(newdata)
 
         # pluto sensor data
         self.currsensordata = [

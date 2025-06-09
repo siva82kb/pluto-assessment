@@ -51,6 +51,7 @@ ControlTypes = {
     "POSITIONAAN":      0x04,
     "POSITIONLINEAR":   0x05,
     "OBJECTSIM":        0x06,
+    "TORQUELINEAR":     0x07,
 }
 
 Mehcanisms = {

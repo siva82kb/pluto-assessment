@@ -353,11 +353,11 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM12")
+    plutodev = QtPluto("COM13")
     pdataview = PlutoControlTesterWindow(plutodev=plutodev,
-                                       mech="HOC",
-                                       dataviewer=True,
-                                       onclosedb=lambda: print("Window closed"),
-                                       heartbeat=True)
+                                         mech="WFE",
+                                         dataviewer=True,
+                                         onclosedb=lambda: print("Window closed"),
+                                         heartbeat=True)
     pdataview.show()
     sys.exit(app.exec_())

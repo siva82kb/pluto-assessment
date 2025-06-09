@@ -242,9 +242,7 @@ class APRomData(object):
             self._startpos,
             self._trialrom[0],
             self._trialrom[-1],
-            self._trialrom[-1] - self._trialrom[0],
-            0,
-            0
+            self._trialrom[-1] - self._trialrom[0]
         ])
         
     def set_startpos(self):
@@ -810,14 +808,6 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
                 self.pluto.mechanism,
                 self.pluto.angle,
                 self.pluto.hocdisp,
-                self.pluto.torque,
-                self.pluto.gripforce,
-                self.pluto.control,
-                self.pluto.target,
-                self.pluto.desired,
-                self.pluto.controlbound,
-                self.pluto.controldir,
-                self.pluto.controlgain,
                 self.pluto.button,
                 self.data.currtrial,
                 f"{self._smachine.state.name}"
@@ -844,16 +834,18 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
     
     def closeEvent(self, event):
         # Get comment from the experimenter.
-        data = {"rom": self.data.rom,
+        data = {"romval": self.data.rom,
                 "done": self.data.all_trials_done}
         if self.data.all_trials_done:
             _comment = CommentDialog(label="AROM completed. Add optional comment.",
                                      commentrequired=False)
+            data["status"] = pfadef.AssessStatus.COMPLETE.value
         else:
             _comment = CommentDialog(label="AROM incomplete. Why?",
                                      commentrequired=True)
+            data["status"] = pfadef.AssessStatus.SKIPPED.value
         if (_comment.exec_() == QtWidgets.QDialog.Accepted):
-            data["trialcomment"] = _comment.getText()
+            data["taskcomment"] = _comment.getText()
         if self.on_close_callback:
             self.on_close_callback(data=data)
         # Detach PLUTO callbacks.

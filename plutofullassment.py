@@ -62,6 +62,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         """View initializer."""
         super(PlutoFullAssesor, self).__init__(*args, **kwargs)
         self.setupUi(self)
+        self._flag = False
 
         # Move close to top left corner
         self.move(50, 100)
@@ -115,6 +116,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
 
         # One time set up
         self._one_time_setup()
+
     
     @property
     def protocol(self):
@@ -298,7 +300,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # Run the state machine.
         self._smachine.run_statemachine(
-            Events.APROM_ASSESS,
+            Events.APROMSLOW_ASSESS,
             None
         )
         # Disable main controls
@@ -313,7 +315,9 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "ntrials": pfadef.get_task_constants("APROMSlow").NO_OF_TRIALS,
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
-                "arom": self.data.romsumry["AROM"][self.protocol.mech][-1]["rom"]
+                "arom": self.data.romsumry["AROM"][self.protocol.mech][-1]["rom"],
+                "duration": pfadef.get_task_constants("APROMSlow").DURATION,
+                "apromtype": "Slow",
             },
             modal=True,
             onclosecb=self._apromslowwnd_close_event
@@ -332,7 +336,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # Run the state machine.
         self._smachine.run_statemachine(
-            Events.APROM_ASSESS,
+            Events.APROMFAST_ASSESS,
             None
         )
         # Disable main controls
@@ -347,7 +351,9 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "ntrials": pfadef.get_task_constants("APROMFast").NO_OF_TRIALS,
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
-                "arom": self.data.romsumry["AROM"][self.protocol.mech][-1]["rom"]
+                "arom": self.data.romsumry["AROM"][self.protocol.mech][-1]["rom"],
+                "duration": pfadef.get_task_constants("APROMFast").DURATION,
+                "apromtype": "Fast",
             },
             modal=True,
             onclosecb=self._apromfastwnd_close_event
@@ -514,7 +520,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     def _callback_start_mech_assess(self):
         # Check if the chosen mechanism is already assessed.
         _mechchosen = self._get_chosen_mechanism()
-        _mechstatus = self.protocol.get_mech_status(_mechchosen) 
+        _mechstatus = self.protocol.get_mech_status(_mechchosen)
+        print(_mechchosen, _mechstatus)
         if (_mechstatus == pfadef.AssessStatus.COMPLETE 
             or _mechstatus == pfadef.AssessStatus.PARTIALCOMPLETE):
             # Ask if the user wants to continue with this mechanism.
@@ -546,20 +553,22 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             self._reset_mech_selection()
         # Run the state machine.
         # Get the appropriate event.
+        print(self._get_chosen_mechanism_set_event())
         self._smachine.run_statemachine(
             self._get_chosen_mechanism_set_event(),
             {}
         )
+        self._flag = True
         self.update_ui()
     
     def _callback_skip_mech_assess(self):
         # Check if the chosen mechanism is already assessed.
         _mechchosen = self._get_chosen_mechanism()
-        _comment = CommentDialog(assessinfo={
-            "subjid": self.data.subjid,
-            "limb": self.data.limb,
-            "mechanism": _mechchosen,
-        })
+        _comment = CommentDialog(
+            label="Sure you want to skip? If so give the reason.",
+            commentrequired=True,
+            optionyesno=True,
+        )
         if _comment.exec_() == QtWidgets.QDialog.Accepted:
             _skipcomment = _comment.getText()
             # Run the state machine.
@@ -733,7 +742,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.AROM_DONE if data["done"] else Events.AROM_NO_DONE,
-            {"romval": data["rom"]}
+            data
         )
         # Reenable main controls
         self._maindisable = False
@@ -752,7 +761,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.PROM_DONE if data["done"] else Events.PROM_NO_DONE,
-            {"romval": data["rom"]}
+            data
         )
         # Reenable main controls
         self._maindisable = False
@@ -770,8 +779,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Window not closed.
         # Run the state machine.
         self._smachine.run_statemachine(
-            Events.APROM_DONE if data["done"] else Events.APROM_NO_DONE,
-            {"romval": data["rom"]}
+            Events.APROMSLOW_DONE if data["done"] else Events.APROMSLOW_NO_DONE,
+            data
         )
         # Reenable main controls
         self._maindisable = False
@@ -789,8 +798,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Window not closed.
         # Run the state machine.
         self._smachine.run_statemachine(
-            Events.APROM_DONE if data["done"] else Events.APROM_NO_DONE,
-            {"romval": data["rom"]}
+            Events.APROMFAST_DONE if data["done"] else Events.APROMFAST_NO_DONE,
+            data
         )
         # Reenable main controls
         self._maindisable = False
@@ -809,7 +818,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.DISCREACH_DONE if data["done"] else Events.DISCREACH_NO_DONE,
-            {}
+            data
         )
         # Reenable main controls
         self._maindisable = False
@@ -828,7 +837,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.DISCREACH_DONE if data["done"] else Events.DISCREACH_NO_DONE,
-            {}
+            data
         )
         # Reenable main controls
         self._maindisable = False
@@ -847,7 +856,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.PROP_DONE if data["done"] else Events.PROP_NO_DONE,
-            {}
+            data
         )
         # Reenable main controls
         self._maindisable = False
@@ -866,7 +875,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.FCTRL_DONE if data["done"] else Events.FCTRL_NO_DONE,
-            {}
+            data
         )
         # Reenable main controls
         self._maindisable = False
@@ -962,9 +971,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             f"{'' if self.data.session is None else self.data.session:<20}",
             f"{'' if self.data.subjid is None else self.data.subjid:<8}",
             f"{self.data.type if self.data.type is not None else '':<8}",
-            f"{self.data.limb if self.data.limb is not None else '':<8}",
-            # f"{self.data.mech if self.data.mech is not None else '':<8}",
-            # f"{self.data.task if self.data.task is not None else '':<8}",
+            f"{self.data.limb if self.data.limb is not None else '':<8}"
         ]
         return ":".join(_str)
     
@@ -1008,12 +1015,19 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             "FCTRL": self.pbForceCtrl,
         }
         # Go through all tasks for the mechanism and enable/disable them appropriately.
+        if self._flag:
+            print("->", self.protocol.mech, self.protocol.index, self.protocol.task_enabled)
+            self._flag = False
         for i, _t in enumerate(pfadef.ALLTASKS):
             if self.protocol.calibrated and _t in self.protocol.task_enabled:
                 _tctrl[_t].setEnabled(True)
                 _taskstatus = self.protocol.get_task_status(_t)
                 _tctrl[_t].setStyleSheet(pfadef.STATUS_STYLESHEET[_taskstatus])
-                _tctrl[_t].setText(f"{pfadef.TASK_LABELS[_t]} {pfadef.STATUS_TEXT[_taskstatus]}")
+                _tctrl[_t].setText(f"{pfadef.TASK_LABELS[_t]}{pfadef.STATUS_TEXT[_taskstatus]}")
+            else:
+                _tctrl[_t].setEnabled(False)
+                _tctrl[_t].setStyleSheet(pfadef.STATUS_STYLESHEET[None])
+                _tctrl[_t].setText(f"{pfadef.TASK_LABELS[_t]}{pfadef.STATUS_TEXT[None]}")
     
     def _any_mechanism_selected(self):
         """Check if any mechanism is selected.
@@ -1075,10 +1089,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return Events.HOC_SKIP
         else:
             return None
-
-    #
-    # Device Data Viewer Functions 
-    #
 
     #
     # Main window close event

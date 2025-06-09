@@ -28,35 +28,36 @@ import plutodefs as pdef
 import plutofullassessdef as pfadef
 import misc
 from ui_plutoapromassess import Ui_APRomAssessWindow
+from myqt import CommentDialog
 
 from plutodataviewwindow import PlutoDataViewWindow
 
 import plutoapromwindow as apromwnd 
 
 
-class PlutoAssistPRomAssessStates(Enum):
-    FREE_RUNNING = 0
-    TRIAL_ACTIVE_WAIT_TO_MOVE = 1
-    TRIAL_ACTIVE_SET_TORQUE_DIR = 2
-    TRIAL_ACTIVE_SET_TORQUE_OTHER_DIR = 3
-    TRIAL_ACTIVE_MOVING_DIR = 4
-    TRIAL_ACTIVE_ASSIST_DIR_TO_REST = 5
-    TRIAL_ACTIVE_MOVING_OTHER_DIR = 6
-    TRIAL_ACTIVE_ASSIST_OTHER_DIR_TO_REST = 7
-    TRIAL_ACTIVE_HOLDING_IN_STOP_ZONE = 8
-    ROM_DONE = 9
+class States(Enum):
+    REST = 0
+    WAIT_TO_MOVE = 1
+    TORQ_DIR1 = 2
+    TORQ_DIR2 = 3
+    MOVING_DIR1 = 4
+    DIR1_TO_REST = 5
+    MOVING_DIR2 = 6
+    DIR2_TO_REST = 7
+    IN_STOPZONE = 8
+    DONE = 9
 
 
-class PlutoAssistPRomAssessAction(Enum):
-    SET_CONTROl_TO_NONE = 0
-    SET_CONTROL_TO_TORQUE = 1
-    SET_TORQUE_TARGET_TO_DIR = 2
-    SET_TORQUE_TARGET_TO_OTHER_DIR = 3
-    SET_TORQUE_TARGET_TO_ZERO = 4
+class Actions(Enum):
+    NO_CTRL = 0
+    TORQ_CTRL = 1
+    TORQ_TGT_DIR1 = 2
+    TORQ_TGT_DIR2 = 3
+    TORQ_TGT_ZERO = 4
     DO_NOTHING = 5
 
 
-class PlutoAssistPRomData(object):
+class AssistPRomData(object):
     def __init__(self, assessinfo: dict):
         self._assessinfo = assessinfo
         self._demomode = None
@@ -69,14 +70,14 @@ class PlutoAssistPRomData(object):
         # ROM data
         self._rom = [[] for _ in range(self.ntrials)]
         # Logging variables
-        self._logstate: apromwnd.APROMRawDataLoggingState = apromwnd.APROMRawDataLoggingState.WAIT_FOR_LOG
+        self._logstate: apromwnd.RawDataLoggingState = apromwnd.RawDataLoggingState.WAIT_FOR_LOG
         self._rawfilewriter: misc.CSVBufferWriter = misc.CSVBufferWriter(
             self.rawfile, 
-            header=pfadef.RAWDATA_HEADER
+            header=pfadef.APROM.RAW_HEADER
         )
         self._summaryfilewriter: misc.CSVBufferWriter = misc.CSVBufferWriter(
             self.summaryfile, 
-            header=pfadef.ROM_SUMMARY_HEADER,
+            header=pfadef.APROM.SUMMARY_HEADER,
             flush_interval=0.0,
             max_rows=1
         )
@@ -106,6 +107,14 @@ class PlutoAssistPRomData(object):
         return self._assessinfo['ntrials']
     
     @property
+    def duration(self):
+        return self._assessinfo['duration']
+    
+    @property
+    def apromtype(self):
+        return self._assessinfo['apromtype']
+    
+    @property
     def rawfile(self):
         return self._assessinfo['rawfile']
     
@@ -120,7 +129,7 @@ class PlutoAssistPRomData(object):
                 else None)
 
     @property
-    def currtrial(self):
+    def current_trial(self):
         return self._currtrial
     
     @property
@@ -174,7 +183,7 @@ class PlutoAssistPRomData(object):
         self._trialdata['vel'].append((pos - self._trialdata['pos'][-2]) / dt
                                       if len(self._trialdata['pos']) > 1
                                       else 0)
-        if len(self._trialdata['dt']) > pfadef.POS_VEL_WINDOW_LENGHT:
+        if len(self._trialdata['dt']) > pfadef.ROMConstants.POS_VEL_WINDOW_LENGHT:
             self._trialdata['dt'].pop(0)
             self._trialdata['pos'].pop(0)
             self._trialdata['vel'].pop(0)
@@ -185,9 +194,9 @@ class PlutoAssistPRomData(object):
         """
         _pos = float(np.mean(self._trialdata['pos']))
         # Check of the _pos is well outside the current limits of trialrom
-        _th = (pfadef.HOC_NEW_ROM_TH 
+        _th = (pfadef.ROMConstants.HOC_NEW_ROM_TH 
                if self.mechanism == "HOC"
-               else pfadef.NOT_HOC_NEW_ROM_TH)
+               else pfadef.ROMConstants.NOT_HOC_NEW_ROM_TH)
         _out_of_rom = misc.is_out_of_range(
             val=_pos,
             minval=self._trialrom[0],
@@ -225,13 +234,15 @@ class PlutoAssistPRomData(object):
             self.type,
             self.limb,
             self.mechanism,
-            self.currtrial,
+            self.apromtype,
+            self.current_trial,
             self._startpos,
             self._trialrom[0],
             self._trialrom[-1],
             self._trialrom[-1] - self._trialrom[0],
-            0,
-            0
+            pfadef.APROM.TORQUE_DIR1,
+            pfadef.APROM.TORQUE_DIR2,
+            self.duration
         ])
         
     def set_startpos(self):
@@ -241,10 +252,10 @@ class PlutoAssistPRomData(object):
         self._trialrom = [self._startpos]
 
     def start_rawlogging(self):
-        self._logstate = apromwnd.APROMRawDataLoggingState.LOG_DATA
+        self._logstate = apromwnd.RawDataLoggingState.LOG_DATA
     
     def terminate_rawlogging(self):
-        self._logstate = apromwnd.APROMRawDataLoggingState.LOGGING_DONE
+        self._logstate = apromwnd.RawDataLoggingState.LOGGING_DONE
         self._rawfilewriter.close()
         self._rawfilewriter = None
     
@@ -254,26 +265,50 @@ class PlutoAssistPRomData(object):
 
 
 class PlutoAssistPRomAssessmentStateMachine():
-    def __init__(self, plutodev, data: PlutoAssistPRomData, instdisp):
-        self._state = PlutoAssistPRomAssessStates.FREE_RUNNING
+    def __init__(self, plutodev, data: AssistPRomData, instdisp):
+        self._state = States.REST
         self._statetimer = 0
         self._data = data
         self._instruction = f""
         self._instdisp = instdisp
         self._pluto = plutodev
         self._stateactions = {
-            PlutoAssistPRomAssessStates.FREE_RUNNING: self._free_running,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_SET_TORQUE_DIR: self._trial_active_set_torque_dir,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_SET_TORQUE_OTHER_DIR: self._trial_active_set_torque_other_dir,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_MOVING_DIR: self._trial_active_moving_dir,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_ASSIST_DIR_TO_REST: self._trial_active_assist_dir_to_rest,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_MOVING_OTHER_DIR: self._trial_active_moving_other_dir,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_ASSIST_OTHER_DIR_TO_REST: self._trial_active_assist_other_dir_to_rest,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_HOLDING_IN_STOP_ZONE: self._trial_active_holding_in_stop_zone,
-            PlutoAssistPRomAssessStates.ROM_DONE: self._rom_done,
+            States.REST: self._handle_rest,
+            States.TORQ_DIR1: self._handle_torq_dir1,
+            States.TORQ_DIR2: self._handle_torq_dir2,
+            States.MOVING_DIR1: self._handle_moving_dir1,
+            States.DIR1_TO_REST: self._handle_dir1_to_rest,
+            States.MOVING_DIR2: self._handle_moving_dir2,
+            States.DIR2_TO_REST: self._handle_dir2_to_rest,
+            States.IN_STOPZONE: self._handle_in_stopzone,
+            States.DONE: self._handle_done,
+        }
+        # Instructions.
+        self._stateinstructions = {
+            States.REST: "Rest and press PLUTO Button to start.",
+            States.TORQ_DIR1: "Relax and let the robot move you.",
+            States.TORQ_DIR2: "Relax and let the robot move you.",
+            States.MOVING_DIR1: "Relax and let the robot move you.",
+            States.DIR1_TO_REST: "Relax and let the robot move you.",
+            States.MOVING_DIR2: "Relax and let the robot move you.",
+            States.DIR2_TO_REST: "Relax and let the robot move you.",
+            States.IN_STOPZONE: "Hold position in the stop zone.",
+            States.DONE: f"Assisted PROM {self._data.apromtype} assessment done."
+        }
+        # Action handlers
+        self._actionhandlers = {
+            Actions.NO_CTRL: self._act_no_ctrl,
+            Actions.TORQ_CTRL: self._act_torq_ctrl,
+            Actions.TORQ_TGT_DIR1: self._act_torq_tgt_dir1,
+            Actions.TORQ_TGT_DIR2: self._act_torq_tgt_dir2,
+            Actions.TORQ_TGT_ZERO: self._act_torq_tgt_zero,
+            Actions.DO_NOTHING: self._act_do_nothing 
         }
         # Start a new trial.
         self._data.start_newtrial()
+        
+        # Defining a few useful lambda functions.
+        self._define_me_some_lambdas()
 
     @property
     def state(self):
@@ -282,30 +317,30 @@ class PlutoAssistPRomAssessmentStateMachine():
     @property
     def in_a_trial_state(self):
         return self._state in [
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_WAIT_TO_MOVE,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_SET_TORQUE_DIR,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_SET_TORQUE_OTHER_DIR,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_MOVING_DIR,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_ASSIST_DIR_TO_REST,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_MOVING_OTHER_DIR,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_ASSIST_OTHER_DIR_TO_REST,
-            PlutoAssistPRomAssessStates.TRIAL_ACTIVE_HOLDING_IN_STOP_ZONE,
+            States.WAIT_TO_MOVE,
+            States.TORQ_DIR1,
+            States.TORQ_DIR2,
+            States.MOVING_DIR1,
+            States.DIR1_TO_REST,
+            States.MOVING_DIR2,
+            States.DIR2_TO_REST,
+            States.IN_STOPZONE,
         ]
     
     def reset_statemachine(self):
-        self._state = PlutoAssistPRomAssessStates.FREE_RUNNING
+        self._state = States.REST
         self._statetimer = 0
         self._instruction = f""
         self._data.start_newtrial(reset=True)
     
-    def run_statemachine(self, event, dt) -> PlutoAssistPRomAssessAction:
+    def run_statemachine(self, event, dt):
         """Execute the state machine depending on the given even that has occured.
         """
-        retval = self._stateactions[self._state](event, dt)
-        self._instdisp.setText(self._instruction)
-        return retval
-
-    def _free_running(self, event, dt) -> PlutoAssistPRomAssessAction:
+        _action  = self._stateactions[self._state](event, dt)
+        self._actionhandlers[_action]()
+        self._display_instruction()
+        
+    def _handle_rest(self, event, dt) -> Actions:
         # Check if all trials are done.
         if not self._data.demomode and self._data.all_trials_done:
             # Set the logging state.
@@ -314,118 +349,117 @@ class PlutoAssistPRomAssessmentStateMachine():
                 self._data.terminate_summarylogging()
             self._instruction = f"{self._data.romtype} ROM Assessment Done. Press the PLUTO Button to exit."
             if event == pdef.PlutoEvents.RELEASED:
-                self._state = PlutoAssistPRomAssessStates.ROM_DONE
+                self._state = States.DONE
                 self._statetimer = 0
-            return PlutoAssistPRomAssessAction.SET_CONTROl_TO_NONE
+            return Actions.NO_CTRL
         
         # Wait for start.
-        if self._data.demomode:
-            self._instruction = f"Hold and press PLUTO Button to demo trial."
-        else:
-            self._instruction = f"Hold and press PLUTO Button to start trial {self._data._currtrial+1}/{self._data.ntrials}."
         if event == pdef.PlutoEvents.RELEASED:
             # Make sure the joint is in rest before we can swtich.
             if self.subj_is_holding():
                 self._data.set_startpos()
                 if self._data.mechanism == "HOC":
-                    self._state = PlutoAssistPRomAssessStates.TRIAL_ACTIVE_SET_TORQUE_OTHER_DIR
+                    self._state = States.TORQ_DIR2
                 else:
-                    self._state = PlutoAssistPRomAssessStates.TRIAL_ACTIVE_SET_TORQUE_DIR
+                    self._state = States.TORQ_DIR1
                 self._statetimer = 0.5
                 # Set the logging state.
                 if not self._data.demomode: self._data.start_rawlogging()
-                return PlutoAssistPRomAssessAction.SET_CONTROL_TO_TORQUE
-        return PlutoAssistPRomAssessAction.SET_CONTROl_TO_NONE
+                return Actions.TORQ_CTRL
+        return Actions.NO_CTRL
     
-    def _trial_active_set_torque_dir(self, event, dt) -> PlutoAssistPRomAssessAction:
-        self._instruction = f"Applying torque. Relax fully."
+    def _handle_torq_dir1(self, event, dt) -> Actions:
         if event == pdef.PlutoEvents.NEWDATA:
             self._statetimer -= dt
             if self._statetimer > 0:
-                return PlutoAssistPRomAssessAction.DO_NOTHING
-            self._state = PlutoAssistPRomAssessStates.TRIAL_ACTIVE_MOVING_DIR
-            return PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_DIR
+                return Actions.DO_NOTHING
+            self._state = States.MOVING_DIR1
+            self._statetimer = self._data.duration
+            return Actions.TORQ_TGT_DIR1
 
-    def _trial_active_moving_dir(self, event, dt) -> PlutoAssistPRomAssessAction:
-        self._instruction = f"Applying torque. Relax fully and hold position."
+    def _handle_moving_dir1(self, event, dt) -> Actions:
         # New data event
         if event == pdef.PlutoEvents.NEWDATA:
+            self._statetimer -= dt
             # Nothing to do if the subject is moving.
-            if self.subj_is_holding() is False: return PlutoAssistPRomAssessAction.DO_NOTHING
+            if self.subj_is_holding() is False: return Actions.DO_NOTHING
             # Subject is holdin away from start.
             # Add the current position to trial ROM.
             _ = self._data.add_new_trialrom_data()
         # PLUTO button release event
-        if event == pdef.PlutoEvents.RELEASED:
+        if self._statetimer < 0 and event == pdef.PlutoEvents.RELEASED:
             # Nothing to do if the subject is moving.
-            if self.subj_is_holding() is False: return PlutoAssistPRomAssessAction.DO_NOTHING
+            if self.subj_is_holding() is False: return Actions.DO_NOTHING
             # Subject is holdin away from start.
             # Add the current position to trial ROM.
             _ = self._data.add_new_trialrom_data()
             if len(self._data._trialrom) > 1:
                 # Check the mechanism.
-                self._state = PlutoAssistPRomAssessStates.TRIAL_ACTIVE_ASSIST_DIR_TO_REST
-                return PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_ZERO
-        return PlutoAssistPRomAssessAction.DO_NOTHING
+                self._state = States.DIR1_TO_REST
+                self._statetimer = self._data.duration
+                return Actions.TORQ_TGT_ZERO
+        return Actions.DO_NOTHING
     
-    def _trial_active_assist_dir_to_rest(self, event, dt) -> PlutoAssistPRomAssessAction:
-        self._instruction = f"Move to the starting zone and hold."
-        # Nothing to do if the subject is moving.
-        if self.subj_is_holding() is False: return PlutoAssistPRomAssessAction.DO_NOTHING
-        if self.subj_in_the_stop_zone():
-            self._instruction = f"Press PLUTO button to apply torque."    
-        # PLUTO button release event
-        if event == pdef.PlutoEvents.RELEASED:
-            # Subject is holding within from start.
-            if self.subj_in_the_stop_zone():
-                self._state = PlutoAssistPRomAssessStates.TRIAL_ACTIVE_MOVING_OTHER_DIR
-                return PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_OTHER_DIR
-        return PlutoAssistPRomAssessAction.DO_NOTHING
-
-    def _trial_active_set_torque_other_dir(self, event, dt) -> PlutoAssistPRomAssessAction:
-        self._instruction = f"Applying torque. Relax fully."
+    def _handle_dir1_to_rest(self, event, dt) -> Actions:
         if event == pdef.PlutoEvents.NEWDATA:
             self._statetimer -= dt
-            if self._statetimer > 0:
-                return PlutoAssistPRomAssessAction.DO_NOTHING
-            self._state = PlutoAssistPRomAssessStates.TRIAL_ACTIVE_MOVING_OTHER_DIR
-            return PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_OTHER_DIR
+            # Nothing to do if the subject is moving.
+            if self.subj_is_holding() is False: return Actions.DO_NOTHING
+        # PLUTO button release event
+        if self._statetimer < 0 and event == pdef.PlutoEvents.RELEASED:
+            # Subject is holding within from start.
+            if self.subj_in_the_stop_zone():
+                self._state = States.TORQ_DIR2
+                self._statetimer = 0.5
+                return Actions.TORQ_TGT_DIR2
+        return Actions.DO_NOTHING
 
-    def _trial_active_moving_other_dir(self, event, dt) -> PlutoAssistPRomAssessAction:
-        self._instruction = f"Applying torque. Relax fully and hold position."
+    def _handle_torq_dir2(self, event, dt) -> Actions:
+        if event == pdef.PlutoEvents.NEWDATA:
+            self._statetimer -= dt
+            if self._statetimer > 0: return Actions.DO_NOTHING
+            self._state = States.MOVING_DIR2
+            self._statetimer = self._data.duration
+            return Actions.TORQ_TGT_DIR2
+        return Actions.DO_NOTHING
+
+    def _handle_moving_dir2(self, event, dt) -> Actions:
         # New data event
         if event == pdef.PlutoEvents.NEWDATA:
+            self._statetimer -= dt
             # Nothing to do if the subject is moving.
-            if self.subj_is_holding() is False: return PlutoAssistPRomAssessAction.DO_NOTHING
+            if self.subj_is_holding() is False: return Actions.DO_NOTHING
             # Subject is holdin away from start.
             # Add the current position to trial ROM.
             _ = self._data.add_new_trialrom_data()
         # PLUTO button release event
-        if event == pdef.PlutoEvents.RELEASED:
+        if self._statetimer < 0 and event == pdef.PlutoEvents.RELEASED:
             # Nothing to do if the subject is moving.
-            if self.subj_is_holding() is False: return PlutoAssistPRomAssessAction.DO_NOTHING
+            if self.subj_is_holding() is False: return Actions.DO_NOTHING
             # Subject is holdin away from start.
             # Add the current position to trial ROM.
             _ = self._data.add_new_trialrom_data()
             if len(self._data._trialrom) > 1:
-                self._state = PlutoAssistPRomAssessStates.TRIAL_ACTIVE_ASSIST_OTHER_DIR_TO_REST
-                return PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_ZERO
-        return PlutoAssistPRomAssessAction.DO_NOTHING
+                self._state = States.DIR2_TO_REST
+                self._statetimer = self._data.duration
+                return Actions.TORQ_TGT_ZERO
+        return Actions.DO_NOTHING
 
-    def _trial_active_assist_other_dir_to_rest(self, event, dt) -> PlutoAssistPRomAssessAction:
+    def _handle_dir2_to_rest(self, event, dt) -> Actions:
         self._instruction = f"Move to the starting zone and hold."
         # PLUTO new data event
         if event == pdef.PlutoEvents.NEWDATA:
+            self._statetimer -= dt
             # Nothing to do if the subject is moving.
-            if self.subj_is_holding() is False: return PlutoAssistPRomAssessAction.DO_NOTHING
+            if self.subj_is_holding() is False: return Actions.DO_NOTHING
             # Subject is holding within from start.
-            if self.subj_in_the_stop_zone():
-                self._statetimer = pfadef.STOP_ZONE_DURATION_THRESHOLD
-                self._state = PlutoAssistPRomAssessStates.TRIAL_ACTIVE_HOLDING_IN_STOP_ZONE
-                return PlutoAssistPRomAssessAction.DO_NOTHING
-        return PlutoAssistPRomAssessAction.DO_NOTHING
+            if self._statetimer < 0 and self.subj_in_the_stop_zone():
+                self._statetimer = pfadef.APROM.STOP_ZONE_DURATION_THRESHOLD
+                self._state = States.IN_STOPZONE
+                return Actions.DO_NOTHING
+        return Actions.DO_NOTHING
 
-    def _trial_active_holding_in_stop_zone(self, event, dt) -> PlutoAssistPRomAssessAction:
+    def _handle_in_stopzone(self, event, dt) -> Actions:
         self._instruction = f"Hold for {self._statetimer:1.1f}s to complete trial" 
         self._instruction += (f"{self._data._currtrial+1}/{self._data.ntrials}."
                               if not self._data.demomode
@@ -434,46 +468,98 @@ class PlutoAssistPRomAssessmentStateMachine():
         if event == pdef.PlutoEvents.NEWDATA:
             # Nothing to do if the subject is moving.
             if self.subj_is_holding() is False:
-                self._state = PlutoAssistPRomAssessStates.TRIAL_ACTIVE_ASSIST_OTHER_DIR_TO_REST 
-                return PlutoAssistPRomAssessAction.DO_NOTHING
+                self._state = States.DIR2_TO_REST 
+                return Actions.DO_NOTHING
             self._statetimer -= dt
             if self._statetimer <= 0:
                 # Set the ROM for the current trial.
                 if not self._data.demomode:
                     self._data.set_rom()
                     self._data.start_newtrial()
-                self._state = PlutoAssistPRomAssessStates.FREE_RUNNING
-                return PlutoAssistPRomAssessAction.DO_NOTHING
+                self._state = States.REST
+                return Actions.DO_NOTHING
+        return Actions.DO_NOTHING
 
-    def _rom_done(self, event, dt):
+    def _handle_done(self, event, dt):
+        return Actions.DO_NOTHING
+
+    #
+    # Actions handlers
+    #
+    def _act_no_ctrl(self):
+        if self._ctrl_is_none(): return
+        self._pluto.set_control_type("NONE")
+
+    def _act_torq_ctrl(self):
+        if self._ctrl_is_torqlinear(): return
+        self._pluto.set_control_type("TORQUELINEAR")
+
+    def _act_torq_tgt_dir1(self):
+        if self._tgt_set(pfadef.APROM.TORQUE_DIR1): return
+        self._pluto.set_control_target(target=pfadef.APROM.TORQUE_DIR1,
+                                       dur=self._data.duration)
+
+    def _act_torq_tgt_dir2(self):
+        if self._tgt_set(pfadef.APROM.TORQUE_DIR2): return
+        self._pluto.set_control_target(target=pfadef.APROM.TORQUE_DIR2,
+                                       dur=self._data.duration)
+
+    def _act_torq_tgt_zero(self):
+        if self._tgt_set(0): return
+        self._pluto.set_control_target(target=0, dur=self._data.duration)
+
+    def _act_do_nothing(self):
         pass
+    
+    def _display_instruction(self):
+        if self._state != States.REST:
+            self._instdisp.setText(
+                self._stateinstructions[self._state] 
+                + (f" [{np.max([0.0, self._statetimer]):1.1f}s]"
+                   if self._statetimer is not None else "")
+            )
+        else:
+            if self._data.demomode:
+                self._instdisp.setText(f"Press the PLUTO button to start demo trial.")
+            elif self._data.all_trials_done:
+                self._instdisp.setText(f"All trials done. Press the PLUTO button to quit.")
+            else:
+                self._instdisp.setText(f"PLUTO button to start trial {self._data.current_trial + 1} / {self._data.ntrials}.")
 
     #
     # Supporting functions
     #
+    def _define_me_some_lambdas(self):
+        self._ctrl_is_none = lambda : self._pluto.controltype == pdef.ControlTypes["NONE"]
+        self._ctrl_is_torqlinear = lambda : self._pluto.controltype == pdef.ControlTypes["TORQUELINEAR"]
+        self._tgt_set= lambda tgt : np.isclose(self._pluto.target, tgt, rtol=1e-03, atol=1e-03)
+        # self._tgt_set= lambda tgt : np.isclose(self._pluto.target, tgt, rtol=1e-03, atol=1e-03)
+        # self._ctrl_hold = lambda : self._pluto.controlhold == pdef.ControlHoldTypes["HOLD"]
+        # self._ctrl_decay = lambda : self._pluto.controlhold == pdef.ControlHoldTypes["DECAY"]
+    
     def subj_is_holding(self):
         """Check if the subject is holding the position.
         """
-        _th = (pfadef.VEL_HOC_THRESHOLD
+        _th = (pfadef.ROMConstants.VEL_HOC_THRESHOLD
                if self._data.mechanism == "HOC"
-               else pfadef.VEL_NOT_HOC_THRESHOLD)
+               else pfadef.ROMConstants.VEL_NOT_HOC_THRESHOLD)
         return bool(np.all(np.abs(self._data.trialdata['vel']) < _th))
     
     def away_from_start(self):
         """Check if the subject has moved away from the start position.
         """
         if self._data.mechanism == "HOC":
-            return np.abs(self._pluto.hocdisp - self._data.startpos) > pfadef.START_POS_HOC_THRESHOLD
+            return np.abs(self._pluto.hocdisp - self._data.startpos) > pfadef.ROMConstants.START_POS_HOC_THRESHOLD
         else:
-            return np.abs(self._pluto.angle - self._data.startpos) > pfadef.START_POS_NOT_HOC_THRESHOLD
+            return np.abs(self._pluto.angle - self._data.startpos) > pfadef.ROMConstants.START_POS_NOT_HOC_THRESHOLD
     
     def subj_in_the_stop_zone(self):
         """Check if the subject is in the stop zone.
         """
         if self._data.mechanism == "HOC":
-            return (self._pluto.hocdisp - self._data.startpos) < pfadef.STOP_POS_HOC_THRESHOLD
+            return (self._pluto.hocdisp - self._data.startpos) < pfadef.ROMConstants.STOP_POS_HOC_THRESHOLD
         else:
-            return np.abs(self._pluto.angle - self._data.startpos) < pfadef.STOP_POS_NOT_HOC_THRESHOLD
+            return np.abs(self._pluto.angle - self._data.startpos) < pfadef.ROMConstants.STOP_POS_NOT_HOC_THRESHOLD
 
 
 class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
@@ -502,11 +588,20 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
                 f"{assessinfo['limb'] if 'limb' in assessinfo else ''}",
                 f"{assessinfo['mechanism'] if 'mechanism' in assessinfo else ''}",
                 f"{assessinfo['session'] if 'session' in assessinfo else ''}",
+                f"{assessinfo['apromtype'] if 'apromtype' in assessinfo else ''}",
             ))
         )
         
         # PLUTO device
         self._pluto = plutodev
+
+        # Set control to NONE
+        self._pluto.set_control_type("NONE")
+
+        # Visual feedback display timer
+        self._visfeedtimer = QTimer()
+        self._visfeedtimer.timeout.connect(self._update_visual_feedabck)
+        self._visfeedtimer.start(pfadef.VISUAL_FEEDBACK_UPDATE_INTERVAL)
 
         # Heartbeat timer
         self._heartbeat = heartbeat
@@ -516,10 +611,8 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
             self.heartbeattimer.start(250)
 
         # APROM assessment data
-        self.data: PlutoAssistPRomData = PlutoAssistPRomData(assessinfo=assessinfo)
+        self.data: AssistPRomData = AssistPRomData(assessinfo=assessinfo)
 
-        # Set control to NONE
-        self._pluto.set_control_type("NONE")
 
         # Initialize graph for plotting
         self._romassess_add_graph()
@@ -560,21 +653,9 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
         if self.ui.cbTrialRun.isEnabled():
             _cond1 = self.data.demomode is False
             _cond2 = (self.data.demomode is None
-                      and self._smachine.state == PlutoAssistPRomAssessStates.TRIAL_ACTIVE_SET_TORQUE_DIR)
+                      and self._smachine.state == States.TORQ_DIR1)
             if _cond1 or _cond2:
                 self.ui.cbTrialRun.setEnabled(False)
-
-        # Update the graph display
-        # Current position
-        self._update_current_position_cursor()
-        # if self._smachine.state == PlutoAssistPRomAssessStates.TRIAL_ACTIVE_WAIT_TO_MOVE:
-        if self._smachine.in_a_trial_state:
-            self._draw_stop_zone_lines()
-            self._highlight_start_zone()
-            self._update_arom_cursor_position()
-        elif self._smachine.state == PlutoAssistPRomAssessStates.FREE_RUNNING:
-            # Reset arom cursor position.
-            self._reset_display()
         
         # Update main text
         if self.pluto.angle is None: return
@@ -587,8 +668,18 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
         self.ui.lblStatus.setText(f"{self.pluto.error} | {self.pluto.controltype} | {self._smachine.state}")
 
         # Close if needed
-        if self._smachine.state == PlutoAssistPRomAssessStates.ROM_DONE:
+        if self._smachine.state == States.DONE:
             self.close()
+    
+    def _update_visual_feedabck(self):
+        self._update_current_position_cursor()
+        if self._smachine.in_a_trial_state:
+            self._draw_stop_zone_lines()
+            self._highlight_start_zone()
+            self._update_arom_cursor_position()
+        elif self._smachine.state == States.REST:
+            # Reset arom cursor position.
+            self._reset_display()
     
     def _update_current_position_cursor(self):
         if self.data.mechanism == "HOC":
@@ -597,11 +688,11 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
             # Plot when there is data to be shown
             self.ui.currPosLine1.setData(
                 [self.pluto.hocdisp, self.pluto.hocdisp],
-                [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
+                [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
             )
             self.ui.currPosLine2.setData(
                 [-self.pluto.hocdisp, -self.pluto.hocdisp],
-                [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
+                [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
             )
         else:
             if self.pluto.angle is None:
@@ -609,45 +700,45 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
             self.ui.currPosLine1.setData(
                 [self._dispsign * self.pluto.angle,
                  self._dispsign * self.pluto.angle],
-                [pfadef.CURSOR_LOWER_LIMIT,
-                 pfadef.CURSOR_UPPER_LIMIT]
+                [pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                 pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
             )
             self.ui.currPosLine2.setData(
                 [self._dispsign * self.pluto.angle,
                  self._dispsign * self.pluto.angle],
-                [pfadef.CURSOR_LOWER_LIMIT,
-                 pfadef.CURSOR_UPPER_LIMIT]
+                [pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                 pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
             )
 
     def _draw_stop_zone_lines(self):
-        _th = (pfadef.STOP_POS_HOC_THRESHOLD
+        _th = (pfadef.ROMConstants.STOP_POS_HOC_THRESHOLD
                if self.data.mechanism == "HOC"
-               else pfadef.STOP_POS_NOT_HOC_THRESHOLD)
+               else pfadef.ROMConstants.STOP_POS_NOT_HOC_THRESHOLD)
         if self.data.mechanism == "HOC":
             self.ui.stopLine1.setData(
                 [self.data.startpos + _th,
                  self.data.startpos + _th],
-                [pfadef.CURSOR_LOWER_LIMIT,
-                 pfadef.CURSOR_UPPER_LIMIT]
+                [pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                 pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
             )
             self.ui.stopLine2.setData(
                 [-self.data.startpos - _th,
                  -self.data.startpos - _th],
-                [pfadef.CURSOR_LOWER_LIMIT,
-                 pfadef.CURSOR_UPPER_LIMIT]
+                [pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                 pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
             )
         else:
             self.ui.stopLine1.setData(
                 [self._dispsign * (self.data.startpos - _th),
                  self._dispsign * (self.data.startpos - _th)],
-                [pfadef.CURSOR_LOWER_LIMIT,
-                 pfadef.CURSOR_UPPER_LIMIT]
+                [pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                 pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
             )
             self.ui.stopLine2.setData(
                 [self._dispsign * (self.data.startpos + _th),
                  self._dispsign * (self.data.startpos + _th)],
-                [pfadef.CURSOR_LOWER_LIMIT,
-                 pfadef.CURSOR_UPPER_LIMIT]
+                [pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                 pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
             )
     
     def _update_arom_cursor_position(self):
@@ -655,81 +746,81 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
         if self.data.mechanism == "HOC":
             if len(self.data._trialrom) > 1:
                 self.ui.romLine1.setData([-self.data._trialrom[-1], -self.data._trialrom[-1]],
-                                         [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
+                                         [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT])
                 self.ui.romLine2.setData([self.data._trialrom[-1], self.data._trialrom[-1]],
-                                         [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-                self.ui.romFill.setRect(-self.data._trialrom[-1], pfadef.CURSOR_LOWER_LIMIT,
-                                        2 * self.data._trialrom[-1], pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
+                                         [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT])
+                self.ui.romFill.setRect(-self.data._trialrom[-1], pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                                        2 * self.data._trialrom[-1], pfadef.ROMConstants.CURSOR_UPPER_LIMIT - pfadef.ROMConstants.CURSOR_LOWER_LIMIT)
             else:
-                self.ui.romLine1.setData([0, 0], [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-                self.ui.romLine2.setData([0, 0], [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT])
-                self.ui.romFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT, 0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
+                self.ui.romLine1.setData([0, 0], [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT])
+                self.ui.romLine2.setData([0, 0], [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT])
+                self.ui.romFill.setRect(0, pfadef.ROMConstants.CURSOR_LOWER_LIMIT, 0, pfadef.ROMConstants.CURSOR_UPPER_LIMIT - pfadef.ROMConstants.CURSOR_LOWER_LIMIT)
         else:
             _romdisp = list(map(lambda x: self._dispsign * x, self.data._trialrom))
             _romdisp.sort()
             self.ui.romLine1.setData(
                 [_romdisp[0], _romdisp[0]],
-                [pfadef.CURSOR_LOWER_LIMIT,
-                 pfadef.CURSOR_UPPER_LIMIT]
+                [pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                 pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
             )
             self.ui.romLine2.setData(
                 [_romdisp[-1], _romdisp[-1]],
-                [pfadef.CURSOR_LOWER_LIMIT,
-                 pfadef.CURSOR_UPPER_LIMIT]
+                [pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                 pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
             )
             # Fill between the two AROM lines
             self.ui.romFill.setRect(
-                _romdisp[0], pfadef.CURSOR_LOWER_LIMIT,
+                _romdisp[0], pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
                 _romdisp[-1] - _romdisp[0],
-                pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT
+                pfadef.ROMConstants.CURSOR_UPPER_LIMIT - pfadef.ROMConstants.CURSOR_LOWER_LIMIT
             )
     
     def _highlight_start_zone(self):
         if len(self.data._trialrom) == 0: return
         # Fill the start zone
-        if self._smachine.state == PlutoAssistPRomAssessStates.TRIAL_ACTIVE_HOLDING_IN_STOP_ZONE:
+        if self._smachine.state == States.IN_STOPZONE:
             if self.data.mechanism == "HOC":
                 self.ui.strtZoneFill.setRect(
-                    -self.data.startpos - pfadef.STOP_POS_HOC_THRESHOLD,
-                    pfadef.CURSOR_LOWER_LIMIT,
-                    2 * (self.data.startpos + pfadef.STOP_POS_HOC_THRESHOLD),
-                    pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT
+                    -self.data.startpos - pfadef.ROMConstants.STOP_POS_HOC_THRESHOLD,
+                    pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                    2 * (self.data.startpos + pfadef.ROMConstants.STOP_POS_HOC_THRESHOLD),
+                    pfadef.ROMConstants.CURSOR_UPPER_LIMIT - pfadef.ROMConstants.CURSOR_LOWER_LIMIT
                 )
             else:
                 self.ui.strtZoneFill.setRect(
-                    self._dispsign * self.data.startpos - pfadef.STOP_POS_NOT_HOC_THRESHOLD,
-                    pfadef.CURSOR_LOWER_LIMIT,
-                    2 * pfadef.STOP_POS_NOT_HOC_THRESHOLD,
-                    pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT
+                    self._dispsign * self.data.startpos - pfadef.ROMConstants.STOP_POS_NOT_HOC_THRESHOLD,
+                    pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                    2 * pfadef.ROMConstants.STOP_POS_NOT_HOC_THRESHOLD,
+                    pfadef.ROMConstants.CURSOR_UPPER_LIMIT - pfadef.ROMConstants.CURSOR_LOWER_LIMIT
                 )
         else:
-            self.ui.strtZoneFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT,
-                                         0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
+            self.ui.strtZoneFill.setRect(0, pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                                         0, pfadef.ROMConstants.CURSOR_UPPER_LIMIT - pfadef.ROMConstants.CURSOR_LOWER_LIMIT)
     
     def _reset_display(self):
         # Reset ROM display
         self.ui.romLine1.setData(
             [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
+            [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
         )
         self.ui.romLine2.setData(
             [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
+            [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
         )
         # Fill between the two AROM lines
-        self.ui.romFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT,
-                                0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
+        self.ui.romFill.setRect(0, pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                                0, pfadef.ROMConstants.CURSOR_UPPER_LIMIT - pfadef.ROMConstants.CURSOR_LOWER_LIMIT)
         # Reset stop zone.
         self.ui.stopLine1.setData(
             [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
+            [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
         )
         self.ui.stopLine2.setData(
             [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT]
+            [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT]
         )
-        self.ui.strtZoneFill.setRect(0, pfadef.CURSOR_LOWER_LIMIT,
-                                     0, pfadef.CURSOR_UPPER_LIMIT - pfadef.CURSOR_LOWER_LIMIT)
+        self.ui.strtZoneFill.setRect(0, pfadef.ROMConstants.CURSOR_LOWER_LIMIT,
+                                     0, pfadef.ROMConstants.CURSOR_UPPER_LIMIT - pfadef.ROMConstants.CURSOR_LOWER_LIMIT)
 
     #
     # Graph plot initialization
@@ -754,12 +845,12 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
         # Current position lines
         self.ui.currPosLine1 = pg.PlotDataItem(
             [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
+            [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT],
             pen=pg.mkPen(color = '#FFFFFF',width=2)
         )
         self.ui.currPosLine2 = pg.PlotDataItem(
             [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
+            [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT],
             pen=pg.mkPen(color = '#FFFFFF',width=2)
         )
         _pgobj.addItem(self.ui.currPosLine1)
@@ -768,12 +859,12 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
         # ROM Lines
         self.ui.romLine1 = pg.PlotDataItem(
             [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
+            [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT],
             pen=pg.mkPen(color = '#FF8888',width=2)
         )
         self.ui.romLine2 = pg.PlotDataItem(
             [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
+            [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT],
             pen=pg.mkPen(color = '#FF8888',width=2)
         )
         _pgobj.addItem(self.ui.romLine1)
@@ -788,12 +879,12 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
         # Stop zone Lines
         self.ui.stopLine1 = pg.PlotDataItem(
             [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
+            [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT],
             pen=pg.mkPen(color = '#FFFFFF', width=1, style=QtCore.Qt.PenStyle.DotLine)
         )
         self.ui.stopLine2 = pg.PlotDataItem(
             [0, 0],
-            [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
+            [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT],
             pen=pg.mkPen(color = '#FFFFFF', width=1, style=QtCore.Qt.PenStyle.DotLine)
         )
         _pgobj.addItem(self.ui.stopLine1)
@@ -815,7 +906,7 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
                     else [self._dispsign * self.data.arom[0], self._dispsign * self.data.arom[0]])
             self.ui.aromPosLine1 = pg.PlotDataItem(
                 _pos,
-                [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
+                [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT],
                 pen=pg.mkPen(color = "#1EFF00", width=1, style=QtCore.Qt.PenStyle.DotLine)
             )
             _pos = ([self.data.arom[1], self.data.arom[1]]
@@ -823,7 +914,7 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
                     else [self._dispsign * self.data.arom[1], self._dispsign * self.data.arom[1]])
             self.ui.aromPosLine2 = pg.PlotDataItem(
                 _pos,
-                [pfadef.CURSOR_LOWER_LIMIT, pfadef.CURSOR_UPPER_LIMIT],
+                [pfadef.ROMConstants.CURSOR_LOWER_LIMIT, pfadef.ROMConstants.CURSOR_UPPER_LIMIT],
                 pen=pg.mkPen(color = '#1EFF00', width=1, style=QtCore.Qt.PenStyle.DotLine)
             )
             _pgobj.addItem(self.ui.aromPosLine1)
@@ -833,10 +924,10 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
         self._dispsign = 1.0 if self.data.limb.upper() == "RIGHT" else -1.0
         
         # Instruction text
-        self.ui.subjInst = pg.TextItem(text='', color='w', anchor=(pfadef.INST_X_POSITION, pfadef.INST_Y_POSITION))
-        self.ui.subjInst.setPos(0, 0)  # Set position (x, y)
+        self.ui.subjInst = pg.TextItem(text='', color='w', anchor=(0.5, 0.5))
+        self.ui.subjInst.setPos(0, 15)  # Set position (x, y)
         # Set font and size
-        self.ui.subjInst.setFont(QtGui.QFont("Bahnschrift Light", 18))
+        self.ui.subjInst.setFont(QtGui.QFont("Cascadia Mono Light", 18))
         _pgobj.addItem(self.ui.subjInst)
 
     #
@@ -869,19 +960,34 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
             pdef.PlutoEvents.NEWDATA,
             dt=self.pluto.delt()
         )
-        self._perform_action(_action)
+        # self._perform_action(_action)
         # Update the GUI only at 1/10 the data rate
         if np.random.rand() < 0.1:
             self.update_ui()
         #
         # Log data
-        if self.data.logstate == apromwnd.APROMRawDataLoggingState.LOG_DATA:        
+        if self.data.logstate == apromwnd.RawDataLoggingState.LOG_DATA:        
             self.data.rawfilewriter.write_row([
-                self.pluto.systime, self.pluto.currt, self.pluto.packetnumber,
-                self.pluto.status, self.pluto.controltype, self.pluto.error, self.pluto.limb, self.pluto.mechanism,
-                self.pluto.angle, self.pluto.hocdisp, self.pluto.torque, self.pluto.control, self.pluto.target, self.pluto.desired,
-                self.pluto.controlbound, self.pluto.controldir, self.pluto.controlgain, self.pluto.button,
-                self.data.currtrial,
+                self.pluto.systime,
+                self.pluto.currt,
+                self.pluto.packetnumber,
+                self.pluto.status,
+                self.pluto.controltype,
+                self.pluto.error,
+                self.pluto.limb,
+                self.pluto.mechanism,
+                self.pluto.angle,
+                self.pluto.hocdisp,
+                self.pluto.torque,
+                self.pluto.gripforce,
+                self.pluto.control,
+                self.pluto.target,
+                self.pluto.desired,
+                self.pluto.controlbound,
+                self.pluto.controldir,
+                self.pluto.controlgain,
+                self.pluto.button,
+                self.data.current_trial,
                 f"{self._smachine.state.name}"
             ])
 
@@ -891,34 +997,34 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
             pdef.PlutoEvents.RELEASED,
             dt=self.pluto.delt()
         )
-        self._perform_action(_action)
+        # self._perform_action(_action)
         self.update_ui()
 
     #
     # Others
     #
-    def _perform_action(self, action: PlutoAssistPRomAssessAction) -> None:
-        if action == PlutoAssistPRomAssessAction.SET_CONTROl_TO_NONE:
-            # Check if the current control type is not NONE.
-            if self.pluto.controltype != pdef.ControlTypes["NONE"]:
-                self.pluto.set_control_type("NONE")
-        elif action == PlutoAssistPRomAssessAction.SET_CONTROL_TO_TORQUE:
-            # Check if the current control type is not TORQUE.
-            if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
-                self.pluto.set_control_type("TORQUE")
-            self.pluto.set_control_target(target=0, dur=2.0)
-        elif action == PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_ZERO:
-            if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
-                self.pluto.set_control_type("TORQUE")
-            self.pluto.set_control_target(target=0, dur=2.0)
-        elif action == PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_DIR:
-            if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
-                self.pluto.set_control_type("TORQUE")
-            self.pluto.set_control_target(target=1.0, dur=2.0)
-        elif action == PlutoAssistPRomAssessAction.SET_TORQUE_TARGET_TO_OTHER_DIR:
-            if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
-                self.pluto.set_control_type("TORQUE")
-            self.pluto.set_control_target(target=-1.0, dur=2.0)
+    # def _perform_action(self, action: Actions) -> None:
+    #     if action == Actions.NO_CTRL:
+    #         # Check if the current control type is not NONE.
+    #         if self.pluto.controltype != pdef.ControlTypes["NONE"]:
+    #             self.pluto.set_control_type("NONE")
+    #     elif action == Actions.TORQ_CTRL:
+    #         # Check if the current control type is not TORQUE.
+    #         if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
+    #             self.pluto.set_control_type("TORQUE")
+    #         self.pluto.set_control_target(target=0, dur=2.0)
+    #     elif action == Actions.TORQ_TGT_ZERO:
+    #         if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
+    #             self.pluto.set_control_type("TORQUE")
+    #         self.pluto.set_control_target(target=0, dur=2.0)
+    #     elif action == Actions.TORQ_TGT_DIR1:
+    #         if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
+    #             self.pluto.set_control_type("TORQUE")
+    #         self.pluto.set_control_target(target=1.0, dur=2.0)
+    #     elif action == Actions.TORQ_TGT_DIR2:
+    #         if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
+    #             self.pluto.set_control_type("TORQUE")
+    #         self.pluto.set_control_target(target=-1.0, dur=2.0)
 
     #
     # Control Callbacks
@@ -932,10 +1038,22 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
             self._smachine.reset_statemachine()
     
     def closeEvent(self, event):
+        # Get comment from the experimenter.
+        data = {"romval": self.data.rom,
+                "done": self.data.all_trials_done}
         self.pluto.set_control_type("NONE")
+        if self.data.all_trials_done:
+            _comment = CommentDialog(label="Assisted PROM completed. Add optional comment.",
+                                     commentrequired=False)
+            data["status"] = pfadef.AssessStatus.COMPLETE.value
+        else:
+            _comment = CommentDialog(label="Assisted PROM incomplete. Why?",
+                                     commentrequired=True)
+            data["status"] = pfadef.AssessStatus.SKIPPED.value
+        if (_comment.exec_() == QtWidgets.QDialog.Accepted):
+            data["taskcomment"] = _comment.getText()
         if self.on_close_callback:
-            self.on_close_callback(data={"rom": self.data.rom,
-                                         "done": self.data.all_trials_done})
+            self.on_close_callback(data=data)
         # Detach PLUTO callbacks.
         self._detach_pluto_callbacks()
         try:
@@ -949,7 +1067,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM12")
+    plutodev = QtPluto("COM13")
     pcalib = PlutoAssistPRomAssessWindow(
         plutodev=plutodev, 
         assessinfo={
@@ -962,8 +1080,10 @@ if __name__ == '__main__':
             "rawfile": "rawfiletest.csv",
             "summaryfile": "summaryfiletest.csv",
             "arom": [-20, 30],
+            "duration": pfadef.get_task_constants("APROMSlow").DURATION,
+            "apromtype": "Slow",
         },
-        dataviewer=False,
+        dataviewer=True,
         onclosecb=lambda data: print(f"ROM set: {data}"),
         heartbeat=True
     )

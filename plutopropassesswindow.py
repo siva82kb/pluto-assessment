@@ -36,14 +36,16 @@ import plutodefs as pdef
 from plutodefs import PlutoEvents as PlEvnts
 from ui_plutopropassessctrl import Ui_ProprioceptionAssessWindow
 from ui_plutoapromassess import Ui_APRomAssessWindow
+from myqt import CommentDialog
 from plutodataviewwindow import PlutoDataViewWindow
 import plutoassessdef as passdef
 import plutofullassessdef as pfadef
+from plutofullassessdef import Proprioception
 from plutoapromwindow import RawDataLoggingState as LogState
 import plutoapromwindow as apromwnd
 from misc import CSVBufferWriter as CSVWriter
 
-from plutofullassessdef import Proprioception as Prop
+# from plutofullassessdef import Proprioception as Prop
 
 
 # Module level constants
@@ -146,9 +148,9 @@ class PlutoPropAssessData():
         # Logging variables
         self._logstate: LogState = LogState.WAIT_FOR_LOG
         self._rawwriter: CSVWriter = CSVWriter(fname=self.rawfile,
-                                               header=Prop.RAW_HEADER)
+                                               header=Proprioception.RAW_HEADER)
         self._summwriter: CSVWriter = CSVWriter(fname=self.summaryfile, 
-                                                header=Prop.SUMMARY_HEADER,
+                                                header=Proprioception.SUMMARY_HEADER,
                                                 flush_interval=0.0,
                                                 max_rows=1)
     
@@ -269,7 +271,7 @@ class PlutoPropAssessData():
                                       if len(self._buffer['pos']) > 1
                                       else 0)
         self._buffer['ctrl'].append(ctrl)
-        if len(self._buffer['dt']) > pfadef.POS_VEL_WINDOW_LENGHT:
+        if len(self._buffer['dt']) > Proprioception.POS_VEL_WINDOW_LENGHT:
             self._buffer['dt'].pop(0)
             self._buffer['pos'].pop(0)
             self._buffer['vel'].pop(0)
@@ -332,12 +334,12 @@ class PlutoPropAssessData():
             self._summwriter = None
     
     def _generate_targets(self):
-        _tgtsep = Prop.TGT_POSITIONS[0] * self.prom[1]
-        _tgts = (Prop.TGT_POSITIONS
-                 if _tgtsep >= Prop.MIN_TGT_SEP
-                 else Prop.TGT_POSITIONS[1:2])
+        _tgtsep = Proprioception.TGT_POSITIONS[0] * self.prom[1]
+        _tgts = (Proprioception.TGT_POSITIONS
+                 if _tgtsep >= Proprioception.MIN_TGT_SEP
+                 else Proprioception.TGT_POSITIONS[1:2])
         # Generate the randomly order targets
-        _tgts = Prop.NO_OF_TRIALS * _tgts
+        _tgts = Proprioception.NO_OF_TRIALS * _tgts
         random.shuffle(_tgts)
         self._targets = (self.prom[1] * np.array(_tgts)).tolist()
     
@@ -384,7 +386,6 @@ class PlutoPropAssessmentStateMachine():
             States.ASSESS_HOLDING: self._handle_assess_holding,
             States.ASSESS_NORESPONSE: self._handle_assess_noresponse,
             States.INTER_TRIAL_REST: self._handle_inter_trial_rest,
-            States.STOP: self._handle_stop,
             States.DONE: self._handle_done
         }
         # Instructions.
@@ -452,7 +453,7 @@ class PlutoPropAssessmentStateMachine():
         # Check if all trials are done or if we are in the demo mode.
         if event == PlEvnts.RELEASED:
             # Check to make sure the angle is close to zero.
-            if self._pluto.hocdisp < Prop.START_POSITION_TH:
+            if self._pluto.hocdisp < Proprioception.START_POSITION_TH:
                 self._data.set_startpos()
                 self._state = States.DEMO_WAIT
                 self._statetimer = 0.5
@@ -480,13 +481,13 @@ class PlutoPropAssessmentStateMachine():
     def _handle_demo_holding(self, event, dt) -> Actions:
         if event == PlEvnts.NEWDATA:
             if not (self.subj_in_target() and self.subj_is_holding()):
-                self._statetimer = Prop.DEMO_DURATION
+                self._statetimer = Proprioception.DEMO_DURATION
                 return Actions.CTRL_HOLD
             self._statetimer -= dt
             if self._statetimer <= 0:
                 self._data.set_shownpostorq()
                 self._state = States.INTRA_TRIAL_REST
-                self._statetimer = Prop.INTRA_TRIAL_REST_DURATION
+                self._statetimer = Proprioception.INTRA_TRIAL_REST_DURATION
                 return Actions.CTRL_HOLD
         return Actions.CTRL_HOLD
 
@@ -519,7 +520,7 @@ class PlutoPropAssessmentStateMachine():
             if self._statetimer <= 0:
                 self._data.set_sensedpostorq()
                 self._state = States.INTER_TRIAL_REST
-                self._statetimer = Prop.INTER_TRIAL_REST_DURATION
+                self._statetimer = Proprioception.INTER_TRIAL_REST_DURATION
                 return Actions.GO_HOME
         return Actions.CTRL_HOLD
 
@@ -529,14 +530,14 @@ class PlutoPropAssessmentStateMachine():
             if self._statetimer <= 0:
                 self._data.set_sensedpostorq(success=False)
                 self._state = States.INTER_TRIAL_REST
-                self._statetimer = Prop.INTER_TRIAL_REST_DURATION
+                self._statetimer = Proprioception.INTER_TRIAL_REST_DURATION
                 return Actions.GO_HOME
         return Actions.GO_HOME
 
     def _handle_inter_trial_rest(self, event, dt) -> Actions:
         if event == PlEvnts.NEWDATA:
             if not self.subj_near_start_position():
-                self._statetimer = Prop.INTER_TRIAL_REST_DURATION
+                self._statetimer = Proprioception.INTER_TRIAL_REST_DURATION
                 return Actions.GO_HOME
             self._statetimer -= dt
             if self._statetimer <= 0:
@@ -546,19 +547,9 @@ class PlutoPropAssessmentStateMachine():
                 self._statetimer = None
                 return Actions.GO_HOME
         return Actions.GO_HOME
-    
-    def _protocol_pause(self, event, dt) -> Actions:
-        return False
-
-    def _handle_stop(self, event, dt) -> Actions:
-        if event == Events.ALL_TARGETS_DONE:
-            self._addn_info = False
-            self._state = States.DONE
-            return True
-        return False
 
     def _handle_done(self, event, dt) -> Actions:
-        return False
+        return Actions.DO_NOTHING
     
     #
     # Action handlers
@@ -622,25 +613,25 @@ class PlutoPropAssessmentStateMachine():
         self._tgt_set= lambda tgt : np.isclose(self._pluto.target, tgt, rtol=1e-03, atol=1e-03)
         self._ctrl_hold = lambda : self._pluto.controlhold == pdef.ControlHoldTypes["HOLD"]
         self._ctrl_decay = lambda : self._pluto.controlhold == pdef.ControlHoldTypes["DECAY"]
-        self.subj_in_target = lambda : np.abs(self._data.current_target - self._pluto.hocdisp) < Prop.TGT_ERR_TH
-        self.subj_near_start_position = lambda : self._pluto.hocdisp - self._data.startpos < Prop.TGT_ERR_TH
-        self.subj_near_prom = lambda : np.abs(self._pluto.hocdisp - self._data.prom[1]) < Prop.TGT_ERR_TH
+        self.subj_in_target = lambda : np.abs(self._data.current_target - self._pluto.hocdisp) < Proprioception.TGT_ERR_TH
+        self.subj_near_start_position = lambda : self._pluto.hocdisp - self._data.startpos < Proprioception.TGT_ERR_TH
+        self.subj_near_prom = lambda : np.abs(self._pluto.hocdisp - self._data.prom[1]) < Proprioception.TGT_ERR_TH
 
     def subj_is_holding(self):
         """Check if the subject is holding the position.
         """
-        _th = (pfadef.VEL_HOC_THRESHOLD
+        _th = (Proprioception.VEL_HOC_THRESHOLD
                if self._data.mechanism == "HOC"
-               else pfadef.VEL_NOT_HOC_THRESHOLD)
+               else Proprioception.VEL_NOT_HOC_THRESHOLD)
         return bool(np.all(np.abs(self._data.trialdata['vel']) < _th))
     
     def _compute_target_details(self, tgtpos, demomode=False) -> dict:
         """Compute the target details for the given target position.
         """
         _initpos = self._pluto.angle
-        _finalpos = - tgtpos / pdef.HOCScale - 4 if tgtpos != 0  else 0
+        _finalpos = - tgtpos / pdef.HOCScale - 2 if tgtpos != 0  else 0
         _strtt = 0
-        _speed = (1 if not demomode else (2.0 + np.random.rand())) * Prop.MOVE_SPEED
+        _speed = (1 if not demomode else (2.0 + np.random.rand())) * Proprioception.MOVE_SPEED
         _dur = float(np.abs(tgtpos - pdef.HOCScale * np.abs(_initpos)) / _speed)
         return {
             "target": _finalpos,
@@ -764,10 +755,21 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
     # Window close event
     # 
     def closeEvent(self, event):
-        if self.on_close_callback:
-            self.on_close_callback(data={"done": self.data.all_trials_done})
-        # Set device to no control.
+        # Get comment from the experimenter.
+        data = {"done": self.data.all_trials_done}
         self.pluto.set_control_type("NONE")
+        if self.data.all_trials_done:
+            _comment = CommentDialog(label="Proprioception completed. Add optional comment.",
+                                     commentrequired=False)
+            data["status"] = pfadef.AssessStatus.COMPLETE.value
+        else:
+            _comment = CommentDialog(label="Proprioception incomplete. Why?",
+                                     commentrequired=True)
+            data["status"] = pfadef.AssessStatus.SKIPPED.value
+        if (_comment.exec_() == QtWidgets.QDialog.Accepted):
+            data["taskcomment"] = _comment.getText()
+        if self.on_close_callback:
+            self.on_close_callback(data=data)
         # Detach PLUTO callbacks.
         self._detach_pluto_callbacks()
         try:
@@ -937,73 +939,7 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             PlEvnts.RELEASED,
             self.pluto.delt()
         )
-        self.update_ui()
-
-    #
-    # Control Callbacks
-    #
-    
-    #
-    # Others
-    #
-    # def _perform_action(self, action: Actions) -> None:
-    #     if action == Actions.NO_CTRL:
-    #         # Check if the current control type is not NONE.
-    #         if self.pluto.controltype != pdef.ControlTypes["NONE"]:
-    #             self.pluto.set_control_type("NONE")
-    #     elif action == Actions.POS_CTRL:
-    #         if self.pluto.controltype != pdef.ControlTypes["POSITIONLINEAR"]:
-    #             self.pluto.set_control_type("POSITIONLINEAR")
-    #             self.pluto.set_control_bound(1.0)
-    #             self.pluto.set_control_gain(2.0)
-    #             # Set the assessment torque targets.
-    #             _tgtdetails = self._compute_target_details(self.data.current_target, demomode=True)
-    #             if self.pluto.target != _tgtdetails["target"]:
-    #                 self.pluto.set_control_target(**_tgtdetails)
-    #     elif action == Actions.DEMO_MOVE:
-    #         _tgtdetails = self._compute_target_details(self.data.current_target, demomode=True)
-    #         _tgtset = np.isclose(self.pluto.target, _tgtdetails["target"], rtol=1e-03, atol=1e-03)
-    #         if np.random.rand() < 0.1 and not _tgtset:
-    #             self.pluto.set_control_target(**_tgtdetails)
-    #     elif action == Actions.CTRL_HOLD:
-    #         if self.pluto.controlhold != pdef.ControlHoldTypes["HOLD"]:
-    #             self.pluto.hold_control()
-    #     elif action == Actions.GO_HOME:
-    #         if self.pluto.controlhold != pdef.ControlHoldTypes["DECAY"]:
-    #             self.pluto.decay_control()
-    #     elif action == Actions.ASSESS_MOVE:
-    #         # Set the assessment torque targets.
-    #         _tgtdetails = self._compute_target_details(self.data.prom[1])
-    #         _tgtset = np.isclose(self.pluto.target, _tgtdetails["target"], rtol=1e-03, atol=1e-03)
-    #         if np.random.rand() < 0.1 and not _tgtset:
-    #             self.pluto.set_control_target(**_tgtdetails)
-    #     elif action == Actions.CTRL_HOLD:
-    #         # Set the assessment torque targets.
-    #         _tgtdetails = self._compute_target_details(self.data.trialpostorq["holdtgt"], intantaneous=True)
-    #         _tgtset = np.isclose(self.pluto.target, _tgtdetails["target"], rtol=1e-03, atol=1e-03)
-    #         if np.random.rand() < 0.1 and not _tgtset:
-    #             self.pluto.set_control_target(**_tgtdetails)
-
-    #     # elif action == Actions.SET_CONTROL_TO_TORQUE:
-    #     #     # Check if the current control type is not TORQUE.
-    #     #     if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
-    #     #         self.pluto.set_control_type("TORQUE")
-    #     #     self.pluto.set_control_target(target=0, dur=2.0)
-    #     # elif action == Actions.SET_TORQUE_TARGET_TO_ZERO:
-    #     #     if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
-    #     #         self.pluto.set_control_type("TORQUE")
-    #     #     self.pluto.set_control_target(target=0, dur=2.0)
-    #     # elif action == Actions.SET_TORQUE_TARGET_TO_DIR:
-    #     #     if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
-    #     #         self.pluto.set_control_type("TORQUE")
-    #     #     self.pluto.set_control_target(target=1.0, dur=2.0)
-    #     # elif action == Actions.SET_TORQUE_TARGET_TO_OTHER_DIR:
-    #     #     if self.pluto.controltype != pdef.ControlTypes["TORQUE"]:
-    #     #         self.pluto.set_control_type("TORQUE")
-    #     #     self.pluto.set_control_target(target=-1.0, dur=2.0)
-    #     # Display instruction.
-    #     self.ui.subjInst.setText(self._smachine.instruction)
-    
+        self.update_ui()    
 
     #
     # Device Data Viewer Functions 
@@ -1018,7 +954,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM13")
+    plutodev = QtPluto("COM12")
     pcalib = PlutoPropAssessWindow(
         plutodev=plutodev, 
         assessinfo={
@@ -1027,6 +963,7 @@ if __name__ == '__main__':
             "limb": "Left",
             "mechanism": "HOC",
             "session": "testing",
+            "ntrials": 1,
             "rawfile": "rawfiletest.csv",
             "summaryfile": "summaryfiletest.csv",
             "arom": [0, 3],
@@ -1034,7 +971,7 @@ if __name__ == '__main__':
         },
         dataviewer=True,
         heartbeat=False,
-        onclosecb=lambda data: print("Done.")
+        onclosecb=lambda data: print(data)
     )
     pcalib.show()
     sys.exit(app.exec_())

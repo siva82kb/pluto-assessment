@@ -68,17 +68,29 @@ class Events(Enum):
     CALIB_DONE = auto()
     CALIB_NO_DONE = auto()
     #
-    # ROM events
+    # AROM events
     #
     AROM_ASSESS = auto()
     AROM_DONE = auto()
     AROM_NO_DONE = auto()
+    #
+    # PROM events
+    #
     PROM_ASSESS = auto()
     PROM_DONE = auto()
     PROM_NO_DONE = auto()
-    APROM_ASSESS = auto()
-    APROM_DONE = auto()
-    APROM_NO_DONE = auto()
+    #
+    # APROM Slow events
+    #
+    APROMSLOW_ASSESS = auto()
+    APROMSLOW_DONE = auto()
+    APROMSLOW_NO_DONE = auto()
+    #
+    # APROM Fast events
+    #
+    APROMFAST_ASSESS = auto()
+    APROMFAST_DONE = auto()
+    APROMFAST_NO_DONE = auto()
     #
     # Position hold events
     #
@@ -140,7 +152,8 @@ class States(Enum):
     CALIBRATE = auto()
     AROM_ASSESS = auto()
     PROM_ASSESS = auto()
-    APROM_ASSESS = auto()
+    APROMSLOW_ASSESS = auto()
+    APROMFAST_ASSESS = auto()
     POSHOLD_ASSESS = auto()
     DISC_ASSESS = auto()
     PROP_ASSESS = auto()
@@ -169,7 +182,8 @@ class PlutoFullAssessmentStateMachine():
             States.CALIBRATE: self._handle_calibrate,
             States.AROM_ASSESS: self._handle_arom_assess,
             States.PROM_ASSESS: self._handle_prom_assess,
-            States.APROM_ASSESS: self._handle_aprom_assess,
+            States.APROMSLOW_ASSESS: self._handle_apromslow_assess,
+            States.APROMFAST_ASSESS: self._handle_apromfast_assess,
             States.POSHOLD_ASSESS: self._handle_poshold_assess,
             States.DISC_ASSESS: self._handle_discreach_assess,
             States.PROP_ASSESS: self._handle_prop_assess,
@@ -184,7 +198,8 @@ class PlutoFullAssessmentStateMachine():
         self._task_to_nextstate = {
             "AROM": States.AROM_ASSESS,
             "PROM": States.PROM_ASSESS,
-            "APROM": States.APROM_ASSESS,
+            "APROMSlow": States.APROMSLOW_ASSESS,
+            "APROMFast": States.APROMFAST_ASSESS,
             "POSHOLD": States.POSHOLD_ASSESS,
             "DISC": States.DISC_ASSESS,
             "PROP": States.PROP_ASSESS,
@@ -194,7 +209,8 @@ class PlutoFullAssessmentStateMachine():
         self._event_to_nextstate = {
             Events.AROM_ASSESS: States.AROM_ASSESS,
             Events.PROM_ASSESS: States.PROM_ASSESS,
-            Events.APROM_ASSESS: States.APROM_ASSESS,
+            Events.APROMSLOW_ASSESS: States.APROMSLOW_ASSESS,
+            Events.APROMFAST_ASSESS: States.APROMFAST_ASSESS,
             Events.POSHOLD_ASSESS: States.POSHOLD_ASSESS,
             Events.DISCREACH_ASSESS: States.DISC_ASSESS,
             Events.PROP_ASSESS: States.PROP_ASSESS,
@@ -267,6 +283,7 @@ class PlutoFullAssessmentStateMachine():
                 self._data.romsumry.set_mechanism(None)
                 return
             # Set current mechanism.
+            print(f"Setting mechanism to {_event_mech_map[event]}")
             self._data.protocol.set_mechanism(_event_mech_map[event])
             self._data.romsumry.set_mechanism(_event_mech_map[event])
             self._state = States.CALIBRATE
@@ -312,13 +329,17 @@ class PlutoFullAssessmentStateMachine():
                 session=self._data.session,
                 tasktime=self._data.protocol.tasktime,
                 rawfile=self._data.protocol.rawfilename,
-                summaryfile=self._data.protocol.summaryfilename
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
             )
             # Update the protocol data.
             self._data.protocol.update(
-                self._data.session,
-                self._data.protocol.rawfilename,
-                self._data.protocol.summaryfilename
+                session=self._data.session,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
             )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
@@ -330,6 +351,16 @@ class PlutoFullAssessmentStateMachine():
             _romval = self._data.romsumry['AROM'][self._data.protocol.mech][-1]['rom']
             self.log(f"AROM Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
         elif event == Events.AROM_NO_DONE:
+            # Update AROM assessment data.
+            self._data.romsumry.update(
+                romval=data["romval"],
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
@@ -342,21 +373,25 @@ class PlutoFullAssessmentStateMachine():
     def _handle_prom_assess(self, event, data):
         """
         """
-        # Check if AROM is et.
+        # Check if PROM is et.
         if event == Events.PROM_DONE:
-            # Update AROM assessment data.
+            # Update PROM assessment data.
             self._data.romsumry.update(
                 romval=data["romval"],
                 session=self._data.session,
                 tasktime=self._data.protocol.tasktime,
                 rawfile=self._data.protocol.rawfilename,
-                summaryfile=self._data.protocol.summaryfilename
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
             )
             # Update the protocol data.
             self._data.protocol.update(
                 self._data.session,
                 self._data.protocol.rawfilename,
-                self._data.protocol.summaryfilename
+                self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
             )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
@@ -370,6 +405,16 @@ class PlutoFullAssessmentStateMachine():
         # else:
         #     self._state = States.TASK_SELECT
         elif event == Events.PROM_NO_DONE:
+            # Update PROM assessment data.
+            self._data.romsumry.update(
+                romval=data["romval"],
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
@@ -379,24 +424,28 @@ class PlutoFullAssessmentStateMachine():
             )
             self.log(f"PROM not done for {self._data.protocol.mech}.")
 
-    def _handle_aprom_assess(self, event, data):
+    def _handle_apromslow_assess(self, event, data):
         """
         """
-        # Check if AROM is et.
-        if event == Events.APROM_DONE:
+        # Check if APROM is et.
+        if event == Events.APROMSLOW_DONE:
             # Update AROM assessment data.
             self._data.romsumry.update(
                 romval=data["romval"],
                 session=self._data.session,
                 tasktime=self._data.protocol.tasktime,
                 rawfile=self._data.protocol.rawfilename,
-                summaryfile=self._data.protocol.summaryfilename
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
             )
             # Update the protocol data.
             self._data.protocol.update(
                 self._data.session,
                 self._data.protocol.rawfilename,
-                self._data.protocol.summaryfilename
+                self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
             )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
@@ -405,9 +454,19 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            _romval = self._data.romsumry['APROM'][self._data.protocol.mech][-1]['rom']
-            self.log(f"APROM Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
-        elif event == Events.APROM_NO_DONE:
+            _romval = self._data.romsumry['APROMSlow'][self._data.protocol.mech][-1]['rom']
+            self.log(f"APROMSlow Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
+        elif event == Events.APROMSLOW_NO_DONE:
+            # Update AROM assessment data.
+            self._data.romsumry.update(
+                romval=data["romval"],
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
@@ -415,7 +474,59 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            self.log(f"APROM not done for {self._data.protocol.mech}.")
+            self.log(f"APROMSlow not done for {self._data.protocol.mech}.")
+
+    def _handle_apromfast_assess(self, event, data):
+        """
+        """
+        # Check if AROM is et.
+        if event == Events.APROMFAST_DONE:
+            # Update AROM assessment data.
+            self._data.romsumry.update(
+                romval=data["romval"],
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
+            # Update the protocol data.
+            self._data.protocol.update(
+                self._data.session,
+                self._data.protocol.rawfilename,
+                self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            _romval = self._data.romsumry['APROMFast'][self._data.protocol.mech][-1]['rom']
+            self.log(f"APROMFast Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
+        elif event == Events.APROMFAST_NO_DONE:
+            # Update AROM assessment data.
+            self._data.romsumry.update(
+                romval=data["romval"],
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"APROMFast not done for {self._data.protocol.mech}.")
     
     def _handle_poshold_assess(self, event, data):
         """
@@ -426,7 +537,9 @@ class PlutoFullAssessmentStateMachine():
             self._data.protocol.update(
                 self._data.session,
                 self._data.protocol.rawfilename,
-                ""
+                "",
+                taskcomment=data["taskcomment"],
+                status=data["status"]
             )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
@@ -455,7 +568,9 @@ class PlutoFullAssessmentStateMachine():
             self._data.protocol.update(
                 self._data.session,
                 self._data.protocol.rawfilename,
-                ""
+                "",
+                taskcomment=data["taskcomment"],
+                status=data["status"]
             )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
@@ -484,7 +599,9 @@ class PlutoFullAssessmentStateMachine():
             self._data.protocol.update(
                 self._data.session,
                 self._data.protocol.rawfilename,
-                ""
+                "",
+                taskcomment=data["taskcomment"],
+                status=data["status"]
             )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
@@ -513,7 +630,9 @@ class PlutoFullAssessmentStateMachine():
             self._data.protocol.update(
                 self._data.session,
                 self._data.protocol.rawfilename,
-                ""
+                "",
+                taskcomment=data["taskcomment"],
+                status=data["status"]
             )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
@@ -547,11 +666,16 @@ class PlutoFullAssessmentStateMachine():
             self._data.protocol.set_task("PROM")
             self._data.romsumry.set_task("PROM")
             self.log(f"Task set to PROM.")
-        elif event == Events.APROM_ASSESS:
+        elif event == Events.APROMSLOW_ASSESS:
             self._state = self._event_to_nextstate[event]
-            self._data.protocol.set_task("APROM")
-            self._data.romsumry.set_task("APROM")
-            self.log(f"Task set to APROM.")
+            self._data.protocol.set_task("APROMSlow")
+            self._data.romsumry.set_task("APROMSlow")
+            self.log(f"Task set to APROMSlow.")
+        elif event == Events.APROMFAST_ASSESS:
+            self._state = self._event_to_nextstate[event]
+            self._data.protocol.set_task("APROMFast")
+            self._data.romsumry.set_task("APROMFast")
+            self.log(f"Task set to APROMFast.")
         elif event == Events.DISCREACH_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("DISC")
