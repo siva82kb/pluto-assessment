@@ -68,3 +68,4 @@ class CSVBufferWriter(object):
     def close(self):
         self.flush()
         self._fhandle.close()
+        

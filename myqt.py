@@ -9,6 +9,11 @@ from PyQt5.QtWidgets import (
     QApplication, QDialog, QVBoxLayout, QTextEdit,
     QDialogButtonBox, QLabel, QMessageBox
 )
+from PyQt5.QtWidgets import QGraphicsPathItem
+from PyQt5.QtGui import QPainterPath, QBrush, QColor
+from PyQt5.QtCore import QPointF
+import pyqtgraph as pg
+import math
 
 from PyQt5.QtGui import QFont
 import sys
@@ -33,13 +38,14 @@ class CommentDialog(QDialog):
     def __init__(self, parent=None, label="Commemnt: ", commentrequired=False, optionyesno=False):
         super().__init__(parent)
         self.setFixedSize(300, 200)
+        self.setWindowFlags(QtCore.Qt.Dialog | QtCore.Qt.CustomizeWindowHint)
         self.setWindowTitle(f"Comment Logger.")
         self.commentrequired = commentrequired
 
         # Set global font
         font = QtGui.QFont()
         font.setFamily("Cascadia Mono Light")
-        font.setPointSize(10)
+        font.setPointSize(8)
         self.setFont(font)
 
         # Create label
@@ -89,6 +95,37 @@ class CommentDialog(QDialog):
         else:
             self.text_edit.setStyleSheet("")  # Reset border
             super().accept()
+
+
+def create_sector(center, radius, start_angle_deg, span_angle_deg, color=QColor(255, 0, 0, 100)):
+    """
+    Create a QGraphicsPathItem representing a filled sector.
+
+    Parameters:
+        center (QPointF): Center of the sector.
+        radius (float): Radius of the sector.
+        start_angle_deg (float): Starting angle in degrees (0° = right, counterclockwise).
+        span_angle_deg (float): Angular span in degrees.
+        color (QColor): Fill color of the sector.
+
+    Returns:
+        QGraphicsPathItem
+    """
+    path = QPainterPath()
+    path.moveTo(center)
+
+    # Add arc
+    path.arcTo(center.x() - radius, center.y() - radius,
+               2 * radius, 2 * radius,
+               -start_angle_deg, -span_angle_deg)  # Negative for clockwise
+
+    path.lineTo(center)  # Close back to center
+
+    item = QGraphicsPathItem(path)
+    item.setBrush(QBrush(color))
+    item.setPen(pg.mkPen(None))
+    return item
+
 
 # Example usage
 if __name__ == "__main__":

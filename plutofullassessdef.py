@@ -201,23 +201,25 @@ class APROMFast(APROM):
 #
 # Position Hold Constants
 #
-class PositionHold:
+class PositionHold(ROMConstants):
     NO_OF_TRIALS = 3                # Number of trials.
-    TGT_POSITION = 0.20             # Fraction of AROM range
-    TGT_WIDTH = 0.80                # Fraction of AROM range
-    TGT_WIDTH = 0.05                # Fraction of AROM range
-    START_HOLD_DURATION = 0.5       # seconds
-    TGT_HOLD_DURATION = 1.0         # seconds
-    START_TGT_MAX_DURATION = 10.0   # seconds
-    RETURN_WAIT_DURATION = 0.0      # seconds
-    REACH_TGT_MAX_DURATION = 10.0   # seconds
-
+    TGT_POSITIONS = [0.2, 0.8]      # Fraction of AROM range
+    TGT_WIDTH_DEG = 2               # Absolute target width in degrees
+    TGT_HOLD_DURATION = 01.0        # seconds
+    
     # Display color constant
     START_WAIT_COLOR = QColor(128, 128, 128, 64)
     START_HOLD_COLOR = QColor(255, 255, 255, 128)
     TARGET_DISPLAY_COLOR = QColor(255, 0, 0, 128)
     TARGET_REACHED_COLOR = QColor(255, 255, 0, 128)
     HIDE_COLOR = QColor(0, 0, 0, 0)
+
+    # Data logging constants
+    RAW_HEADER = [
+        "systime", "devtime", "packno", "status", "controltype", "error",
+        "limb", "mechanism", "angle", "hocdisp", "button", "trialno",
+        "assessmentstate"
+    ]
 
 
 #
