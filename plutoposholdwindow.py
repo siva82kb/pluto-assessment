@@ -347,16 +347,16 @@ class PlutoAPRomAssessmentStateMachine():
             return np.abs(self._pluto.angle - self._data.startpos) < pfadef.STOP_POS_NOT_HOC_THRESHOLD
 
 
-class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
+class PlutoPositionHoldAssessWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO ROM assessment window.
     """
 
     def __init__(self, parent=None, plutodev: QtPluto=None, assessinfo: dict=None, modal=False, onclosecb=None):
         """
-        Constructor for the PlutoDiscReachAssessWindow class.
+        Constructor for the PlutoPositionHoldAssessWindow class.
         """
-        super(PlutoDiscReachAssessWindow, self).__init__(parent)
+        super(PlutoPositionHoldAssessWindow, self).__init__(parent)
         self.ui = Ui_PosHoldAssessWindow()
         self.ui.setupUi(self)
         if modal:
@@ -460,7 +460,6 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
             if self.pluto.hocdisp is None:
                 return
             # Plot when there is data to be shown
-            print(self.pluto.angle, self.current_polar_pos)
             self.ui.currPosLine.setData(
                 [0, self.current_polar_pos[0]],
                 [0, self.current_polar_pos[1]]
@@ -617,7 +616,6 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
             data["status"] = pfadef.AssessStatus.SKIPPED.value
         if (_comment.exec_() == QtWidgets.QDialog.Accepted):
             data["taskcomment"] = _comment.getText()
-        print(data)
         if self.on_close_callback:
             self.on_close_callback(data=data)
         # Detach PLUTO callbacks.
@@ -628,7 +626,7 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM12")
-    pcalib = PlutoDiscReachAssessWindow(
+    pcalib = PlutoPositionHoldAssessWindow(
         plutodev=plutodev, 
         assessinfo={
             "subjid": "1234",

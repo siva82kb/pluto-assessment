@@ -532,7 +532,7 @@ class PlutoFullAssessmentStateMachine():
         """
         """
         # Check if discrete reaching is done.
-        if event == Events.DISCREACH_DONE:
+        if event == Events.POSHOLD_DONE:
             # Update the protocol data.
             self._data.protocol.update(
                 self._data.session,
@@ -548,8 +548,8 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            self.log(f"Discrete reaching done for {self._data.protocol.mech}.")
-        elif event == Events.DISCREACH_NO_DONE:
+            self.log(f"Position Hold done for {self._data.protocol.mech}.")
+        elif event == Events.POSHOLD_NO_DONE:
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
@@ -557,7 +557,7 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            self.log(f"Dsicrete reaching not done for {self._data.protocol.mech}.")
+            self.log(f"Position Hold not done for {self._data.protocol.mech}.")
     
     def _handle_discreach_assess(self, event, data):
         """
@@ -579,7 +579,7 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            self.log(f"Discrete reaching done for {self._data.protocol.mech}.")
+            self.log(f"Discrete Reaching done for {self._data.protocol.mech}.")
         elif event == Events.DISCREACH_NO_DONE:
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
@@ -588,7 +588,7 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            self.log(f"Dsicrete reaching not done for {self._data.protocol.mech}.")
+            self.log(f"Discrete Reaching not done for {self._data.protocol.mech}.")
 
     def _handle_prop_assess(self, event, data):
         """
@@ -676,6 +676,10 @@ class PlutoFullAssessmentStateMachine():
             self._data.protocol.set_task("APROMFast")
             self._data.romsumry.set_task("APROMFast")
             self.log(f"Task set to APROMFast.")
+        elif event == Events.POSHOLD_ASSESS:
+            self._state = self._event_to_nextstate[event]
+            self._data.protocol.set_task("POSHOLD")
+            self.log(f"Task set to POSHOLD.")
         elif event == Events.DISCREACH_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("DISC")

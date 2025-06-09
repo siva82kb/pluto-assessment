@@ -46,6 +46,7 @@ from plutofullassessstatemachine import PlutoFullAssessmentStateMachine
 from plutofullassessstatemachine import Events, States
 from plutofullassesssdata import PlutoAssessmentData
 from plutoassistpromwindow import PlutoAssistPRomAssessWindow
+from plutoposholdwindow import PlutoPositionHoldAssessWindow
 from plutodiscreachwindow import PlutoDiscReachAssessWindow
 from plutopropassesswindow import PlutoPropAssessWindow
 from plutofullassesssdata import DataFrameModel
@@ -133,7 +134,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pbPROM.clicked.connect(self._callback_assess_prom)
         self.pbAPROMSlow.clicked.connect(self._callback_assess_apromslow)
         self.pbAPROMFast.clicked.connect(self._callback_assess_apromfast)
-        self.pbPosHold.clicked.connect(self._callback_disc_reach)
+        self.pbPosHold.clicked.connect(self._callback_poshold_reach)
         self.pbDiscReach.clicked.connect(self._callback_disc_reach)
         self.pbProp.clicked.connect(self._callback_assess_prop)
         self.pbForceCtrl.clicked.connect(self._callback_assess_fctrl)
@@ -377,7 +378,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         )
         # Disable main controls
         self._maindisable = True
-        self._discwnd = PlutoDiscReachAssessWindow(
+        self._discwnd = PlutoPositionHoldAssessWindow(
             plutodev=self.pluto,
             assessinfo={
                 "subjid": self.data.subjid,
@@ -391,7 +392,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "arom": self.data.romsumry["AROM"][self.protocol.mech][-1]["rom"]
             },
             modal=True,
-            onclosecb=self._posholdwnd_close_event
+            onclosecb=self._posholdhwnd_close_event
         )
         self._discwnd.show()
         self._currwndclosed = False
@@ -817,7 +818,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Window not closed.
         # Run the state machine.
         self._smachine.run_statemachine(
-            Events.DISCREACH_DONE if data["done"] else Events.DISCREACH_NO_DONE,
+            Events.POSHOLD_DONE if data["done"] else Events.POSHOLD_NO_DONE,
             data
         )
         # Reenable main controls

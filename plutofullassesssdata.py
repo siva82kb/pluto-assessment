@@ -407,6 +407,7 @@ class PlutoAssessmentProtocolData(object):
             (self._df["mechanism"] == self._mech) &
             (self._df["task"] == self._task)
         )
+        print(self._mech, self._task, _updateindex)
         self._df.loc[_updateindex, "session"] = session
         self._df.loc[_updateindex, "rawfile"] = rawfile
         self._df.loc[_updateindex, "summaryfile"] = summaryfile
