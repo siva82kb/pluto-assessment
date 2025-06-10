@@ -148,7 +148,9 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pbCalibrate.clicked.connect(self._callback_calibrate)
         # Tasks and skip
         self.pbAROM.clicked.connect(self._callback_assess_arom)
+        self.pbAROMSkip.clicked.connect(self._callback_skip_arom)
         self.pbPROM.clicked.connect(self._callback_assess_prom)
+        self.pbPROMSkip.clicked.connect(self._callback_skip_prom)
         self.pbAPROMSlow.clicked.connect(self._callback_assess_apromslow)
         self.pbAPROMFast.clicked.connect(self._callback_assess_apromfast)
         self.pbPosHold.clicked.connect(self._callback_poshold_reach)
@@ -265,6 +267,22 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._romwnd.show()
         self._currwndclosed = False
 
+    def _callback_skip_arom(self):
+        # Check if the chosen mechanism is already assessed.
+        _comment = CommentDialog(
+            label=f"Sure you want to skip AROM? If so give the reason.",
+            commentrequired=True,
+            optionyesno=True,
+        )
+        if _comment.exec_() == QtWidgets.QDialog.Accepted:
+            _skipcomment = _comment.getText()
+            # Run the state machine.
+            self._smachine.run_statemachine(
+                Events.AROM_SKIP,
+                {"comment": _skipcomment, "session": self.data.session}
+            )
+        self.update_ui()
+
     def _callback_assess_prom(self):
         # Check if AROM has already been assessed and needs to be reassessed.
         _reassess = self._reassess_requested("PROM")
@@ -292,20 +310,36 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "ntrials": pfadef.get_task_constants("PROM").NO_OF_TRIALS,
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
-                "arom": self.data.romsumry["AROM"][self.protocol.mech][-1]["rom"]
+                "arom": self.data.detailedsummary.get_arom()
             },
             modal=True,
             onclosecb=self._promwnd_close_event
         )
         self._romwnd.show()
         self._currwndclosed = False
-
+    
+    def _callback_skip_prom(self):
+        # Check if the chosen mechanism is already assessed.
+        _comment = CommentDialog(
+            label=f"Sure you want to skip PROM? If so give the reason.",
+            commentrequired=True,
+            optionyesno=True,
+        )
+        if _comment.exec_() == QtWidgets.QDialog.Accepted:
+            _skipcomment = _comment.getText()
+            # Run the state machine.
+            self._smachine.run_statemachine(
+                Events.PROM_SKIP,
+                {"comment": _skipcomment, "session": self.data.session}
+            )
+        self.update_ui()
+    
     def _callback_assess_apromslow(self):
         # Check if AROM has already been assessed and needs to be reassessed.
-        _reassess = self._reassess_requested("APROMSlow")
+        _reassess = self._reassess_requested("APROMSLOW")
         if _reassess is True:
             # Add new task to the protocol.
-            self.protocol.add_task(taskname="APROMSlow", mechname=self.protocol.mech)
+            self.protocol.add_task(taskname="APROMSLOW", mechname=self.protocol.mech)
         elif _reassess is False:
             # If reassessment is not requested, return.
             return
@@ -323,11 +357,11 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "limb": self.data.limb,
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
-                "ntrials": pfadef.get_task_constants("APROMSlow").NO_OF_TRIALS,
+                "ntrials": pfadef.get_task_constants("APROMSLOW").NO_OF_TRIALS,
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
-                "arom": self.data.romsumry["AROM"][self.protocol.mech][-1]["rom"],
-                "duration": pfadef.get_task_constants("APROMSlow").DURATION,
+                "arom": self.data.detailedsummary.get_arom(),
+                "duration": pfadef.get_task_constants("APROMSLOW").DURATION,
                 "apromtype": "Slow",
             },
             modal=True,
@@ -338,10 +372,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
 
     def _callback_assess_apromfast(self):
         # Check if AROM has already been assessed and needs to be reassessed.
-        _reassess = self._reassess_requested("APROMFast")
+        _reassess = self._reassess_requested("APROMFAST")
         if _reassess is True:
             # Add new task to the protocol.
-            self.protocol.add_task(taskname="APROMFast", mechname=self.protocol.mech)
+            self.protocol.add_task(taskname="APROMFAST", mechname=self.protocol.mech)
         elif _reassess is False:
             # If reassessment is not requested, return.
             return
@@ -359,11 +393,11 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "limb": self.data.limb,
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
-                "ntrials": pfadef.get_task_constants("APROMFast").NO_OF_TRIALS,
+                "ntrials": pfadef.get_task_constants("APROMFAST").NO_OF_TRIALS,
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
-                "arom": self.data.romsumry["AROM"][self.protocol.mech][-1]["rom"],
-                "duration": pfadef.get_task_constants("APROMFast").DURATION,
+                "arom": self.data.detailedsummary.get_arom(),
+                "duration": pfadef.get_task_constants("APROMFAST").DURATION,
                 "apromtype": "Fast",
             },
             modal=True,
@@ -399,7 +433,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "ntrials": pfadef.get_task_constants("POSHOLD").NO_OF_TRIALS,
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
-                "arom": self.data.romsumry["AROM"][self.protocol.mech][-1]["rom"]
+                "arom": self.data.detailedsummary.get_arom()
             },
             modal=True,
             onclosecb=self._posholdhwnd_close_event
@@ -434,7 +468,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "ntrials": pfadef.get_task_constants("DISC").NO_OF_TRIALS,
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
-                "arom": self.data.romsumry["AROM"][self.protocol.mech][-1]["rom"]
+                "arom": self.data.detailedsummary.get_arom()
             },
             modal=True,
             onclosecb=self._discreachwnd_close_event
@@ -469,8 +503,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "ntrials": pfadef.get_task_constants("PROP").NO_OF_TRIALS,
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
-                "arom": self.data.romsumry["AROM"][self.protocol.mech][-1]["rom"],
-                "prom": self.data.romsumry["PROM"][self.protocol.mech][-1]["rom"]
+                "arom": self.data.detailedsummary.get_arom(),
+                "prom": self.data.detailedsummary["PROM"][self.protocol.mech][-1]["rom"]
             },
             modal=True,
             onclosecb=self._propasswnd_close_event
@@ -505,7 +539,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "ntrials": pfadef.get_task_constants("FCTRL").NO_OF_TRIALS,
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
-                "arom": self.data.romsumry["AROM"][self.protocol.mech][-1]["rom"]
+                "arom": self.data.detailedsummary.get_arom()
             },
             modal=True,
             onclosecb=self._fctrlasswnd_close_event
@@ -1088,28 +1122,38 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     def _update_task_controls(self):
         if self.protocol is None: return 
         _tctrl = {
-            "AROM": self.pbAROM,
-            "PROM": self.pbPROM,
-            "APROMSLOW": self.pbAPROMSlow,
-            "APROMFAST": self.pbAPROMFast,
-            "POSHOLD": self.pbPosHold,
-            "DISC": self.pbDiscReach,
-            "PROP": self.pbProp,
-            "FCTRLLOW": self.pbForceCtrlLow,
-            "FCTRLMED": self.pbForceCtrlMed,
-            "FCTRLHIGH": self.pbForceCtrlHigh,
+            "AROM": [self.pbAROM, self.pbAROMSkip],
+            "PROM": [self.pbPROM, self.pbPROMSkip],
+            "APROMSLOW": [self.pbAPROMSlow, self.pbAPROMSlowSkip],
+            "APROMFAST": [self.pbAPROMFast, self.pbAPROMFastSkip],
+            "POSHOLD": [self.pbPosHold, self.pbPosHoldSkip],
+            "DISC": [self.pbDiscReach, self.pbDiscReachSkip],
+            "PROP": [self.pbProp, self.pbPropSkip],
+            "FCTRLLOW": [self.pbForceCtrlLow, self.pbForceCtrlLowSkip],
+            "FCTRLMED": [self.pbForceCtrlMed, self.pbForceCtrlMedSkip],
+            "FCTRLHIGH": [self.pbForceCtrlHigh, self.pbForceCtrlHighSkip],
         }
         # Go through all tasks for the mechanism and enable/disable them appropriately.
         for i, _t in enumerate(pfadef.ALLTASKS):
-            if self.protocol.calibrated and _t in self.protocol.task_enabled:
-                _tctrl[_t].setEnabled(True)
-                _taskstatus = self.protocol.get_task_status(_t)
-                _tctrl[_t].setStyleSheet(pfadef.STATUS_STYLESHEET[_taskstatus])
-                _tctrl[_t].setText(f"{pfadef.TASK_LABELS[_t]}{pfadef.STATUS_TEXT[_taskstatus]}")
+            _taskstatus = self.protocol.get_task_status(_t)
+            if self.protocol.calibrated and _t == self.protocol.task_enabled:
+                _tctrl[_t][0].setEnabled(_taskstatus == pfadef.AssessStatus.INCOMPLETE)
+                _tctrl[_t][0].setStyleSheet(pfadef.STATUS_STYLESHEET[_taskstatus])
+                _tctrl[_t][0].setText(f"{pfadef.TASK_LABELS[_t]}{pfadef.STATUS_TEXT[_taskstatus]}")
+                _tctrl[_t][1].setEnabled(_taskstatus == pfadef.AssessStatus.INCOMPLETE)
             else:
-                _tctrl[_t].setEnabled(False)
-                _tctrl[_t].setStyleSheet(pfadef.STATUS_STYLESHEET[None])
-                _tctrl[_t].setText(f"{pfadef.TASK_LABELS[_t]}{pfadef.STATUS_TEXT[None]}")
+                _tctrl[_t][0].setEnabled(False)
+                _tctrl[_t][0].setStyleSheet(
+                    pfadef.STATUS_STYLESHEET[None] 
+                    if _taskstatus is pfadef.AssessStatus.INCOMPLETE
+                    else pfadef.STATUS_STYLESHEET[_taskstatus]
+                )
+                _tctrl[_t][0].setText(
+                    f"{pfadef.TASK_LABELS[_t]}{pfadef.STATUS_TEXT[None]}"
+                    if _taskstatus is pfadef.AssessStatus.INCOMPLETE
+                    else f"{pfadef.TASK_LABELS[_t]}{pfadef.STATUS_TEXT[_taskstatus]}"
+                )
+                _tctrl[_t][1].setEnabled(False)
     
     def _any_mechanism_selected(self):
         """Check if any mechanism is selected.
@@ -1129,17 +1173,17 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 (self.rbFPS.isChecked() and _fps_incomplete) or
                 (self.rbHOC.isChecked() and _hoc_incomplete))
 
-    def _get_chosen_mechanism(self):
-        """Get the selected mechanism.
-        """
-        if self.rbWFE.isChecked():
-            return "WFE"
-        elif self.rbFPS.isChecked():
-            return "FPS"
-        elif self.rbHOC.isChecked():
-            return "HOC"
-        else:
-            return None
+    # def _get_chosen_mechanism(self):
+    #     """Get the selected mechanism.
+    #     """
+    #     if self.rbWFE.isChecked():
+    #         return "WFE"
+    #     elif self.rbFPS.isChecked():
+    #         return "FPS"
+    #     elif self.rbHOC.isChecked():
+    #         return "HOC"
+    #     else:
+    #         return None
     
     def _reset_mech_selection(self):
         """Reset the mechanism selection.
@@ -1149,17 +1193,17 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             button.setChecked(False)
             self.mechButtonGroup.addButton(button)
     
-    def _get_chosen_mechanism_set_event(self, mechchosen):
-        """Get the event for the selected mechanism.
-        """
-        if mechchosen == WFE:
-            return Events.WFE_SET
-        elif self.rbFPS.isChecked():
-            return Events.FPS_SET
-        elif self.rbHOC.isChecked():
-            return Events.HOC_SET
-        else:
-            return Events.NOMECH_SET
+    # def _get_chosen_mechanism_set_event(self, mechchosen):
+    #     """Get the event for the selected mechanism.
+    #     """
+    #     if mechchosen == WFE:
+    #         return Events.WFE_SET
+    #     elif self.rbFPS.isChecked():
+    #         return Events.FPS_SET
+    #     elif self.rbHOC.isChecked():
+    #         return Events.HOC_SET
+    #     else:
+    #         return Events.NOMECH_SET
 
     def _get_chosen_mechanism_skip_event(self):
         """Get the event for skipping the selected mechanism.

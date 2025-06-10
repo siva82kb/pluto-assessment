@@ -73,47 +73,67 @@ class Events(Enum):
     AROM_ASSESS = auto()
     AROM_DONE = auto()
     AROM_NO_DONE = auto()
+    AROM_SKIP = auto()
     #
     # PROM events
     #
     PROM_ASSESS = auto()
     PROM_DONE = auto()
     PROM_NO_DONE = auto()
+    PROM_SKIP = auto()
     #
     # APROM Slow events
     #
     APROMSLOW_ASSESS = auto()
     APROMSLOW_DONE = auto()
     APROMSLOW_NO_DONE = auto()
+    APROMSLOW_SKIP = auto()
     #
     # APROM Fast events
     #
     APROMFAST_ASSESS = auto()
     APROMFAST_DONE = auto()
     APROMFAST_NO_DONE = auto()
+    APROMFAST_SKIP = auto()
     #
     # Position hold events
     #
     POSHOLD_ASSESS = auto()
     POSHOLD_DONE = auto()
     POSHOLD_NO_DONE = auto()
+    POSHOLD_SKIP = auto()
     #
     # Discrete reaching events
     #
     DISCREACH_ASSESS = auto()
     DISCREACH_DONE = auto()
     DISCREACH_NO_DONE = auto()
+    DISCREACH_SKIP = auto()
     #
     # Proprioception events
     #
     PROP_ASSESS = auto()
     PROP_DONE = auto()
     PROP_NO_DONE = auto()
+    PROP_SKIP = auto()
     #
-    # Force control events
-    FCTRL_ASSESS = auto()
-    FCTRL_DONE = auto()
-    FCTRL_NO_DONE = auto()
+    # Force control low events
+    FCTRLLOW_ASSESS = auto()
+    FCTRLLOW_DONE = auto()
+    FCTRLLOW_NO_DONE = auto()
+    FCTRLLOW_SKIP = auto()
+    #
+    # Force control medium events
+    FCTRLMED_ASSESS = auto()
+    FCTRLMED_DONE = auto()
+    FCTRLMED_NO_DONE = auto()
+    FCTRLMED_SKIP = auto()
+    #
+    # Force control high events
+    FCTRLHIGH_ASSESS = auto()
+    FCTRLHIGH_DONE = auto()
+    FCTRLHIGH_NO_DONE = auto()
+    FCTRLHIGH_SKIP = auto()
 
     @classmethod
     def mech_selected_events(cls):
@@ -137,10 +157,29 @@ class Events(Enum):
         return [
             Events.AROM_ASSESS,
             Events.PROM_ASSESS,
-            Events.APROM_ASSESS,
+            Events.APROMSLOW_ASSESS,
+            Events.APROMFAST_ASSESS,
+            Events.POSHOLD_ASSESS,
             Events.DISCREACH_ASSESS,
             Events.PROP_ASSESS,
-            Events.FCTRL_ASSESS,
+            Events.FCTRLLOW_ASSESS,
+            Events.FCTRLMED_ASSESS,
+            Events.FCTRLHIGH_ASSESS,
+        ]
+    
+    @classmethod
+    def task_skip_events(cls):
+        return [
+            Events.AROM_SKIP,
+            Events.PROM_SKIP,
+            Events.APROMSLOW_SKIP,
+            Events.APROMFAST_SKIP,
+            Events.POSHOLD_SKIP,
+            Events.DISCREACH_SKIP,
+            Events.PROP_SKIP,
+            Events.FCTRLLOW_SKIP,
+            Events.FCTRLMED_SKIP,
+            Events.FCTRLHIGH_SKIP,
         ]
 
 
@@ -157,7 +196,9 @@ class States(Enum):
     POSHOLD_ASSESS = auto()
     DISC_ASSESS = auto()
     PROP_ASSESS = auto()
-    FCTRL_ASSESS = auto()
+    FCTRLLOW_ASSESS = auto()
+    FCTRLMED_ASSESS = auto()
+    FCTRLHIGH_ASSESS = auto()
     TASK_SELECT = auto()
     TASK_DONE = auto()
     MECH_DONE = auto()
@@ -187,7 +228,9 @@ class PlutoFullAssessmentStateMachine():
             States.POSHOLD_ASSESS: self._handle_poshold_assess,
             States.DISC_ASSESS: self._handle_discreach_assess,
             States.PROP_ASSESS: self._handle_prop_assess,
-            States.FCTRL_ASSESS: self._handle_fctrl_assess,
+            States.FCTRLLOW_ASSESS: self._handle_fctrllow_assess,
+            States.FCTRLMED_ASSESS: self._handle_fctrlmed_assess,
+            States.FCTRLHIGH_ASSESS: self._handle_fctrlhigh_assess,
             States.TASK_SELECT: self._handle_task_select,
             States.TASK_DONE: self._task_done,
             States.MECH_DONE: self._handle_mechanism_done,
@@ -198,12 +241,14 @@ class PlutoFullAssessmentStateMachine():
         self._task_to_nextstate = {
             "AROM": States.AROM_ASSESS,
             "PROM": States.PROM_ASSESS,
-            "APROMSlow": States.APROMSLOW_ASSESS,
-            "APROMFast": States.APROMFAST_ASSESS,
+            "APROMSLOW": States.APROMSLOW_ASSESS,
+            "APROMFAST": States.APROMFAST_ASSESS,
             "POSHOLD": States.POSHOLD_ASSESS,
             "DISC": States.DISC_ASSESS,
             "PROP": States.PROP_ASSESS,
-            "FCTRL": States.FCTRL_ASSESS
+            "FCTRLLOW": States.FCTRLLOW_ASSESS,
+            "FCTRLMED": States.FCTRLMED_ASSESS,
+            "FCTRLHIGH": States.FCTRLHIGH_ASSESS,
         }
         # Event to next state dictionary.
         self._event_to_nextstate = {
@@ -214,7 +259,9 @@ class PlutoFullAssessmentStateMachine():
             Events.POSHOLD_ASSESS: States.POSHOLD_ASSESS,
             Events.DISCREACH_ASSESS: States.DISC_ASSESS,
             Events.PROP_ASSESS: States.PROP_ASSESS,
-            Events.FCTRL_ASSESS: States.FCTRL_ASSESS
+            Events.FCTRLLOW_ASSESS: States.FCTRLLOW_ASSESS,
+            Events.FCTRLMED_ASSESS: States.FCTRLMED_ASSESS,
+            Events.FCTRLHIGH_ASSESS: States.FCTRLHIGH_ASSESS,
         }
     
     @property
@@ -270,7 +317,7 @@ class PlutoFullAssessmentStateMachine():
             self._data.protocol.skip_mechanism(_event_mech_map[event],
                                                session=data["session"],
                                                comment=data["comment"])
-            self._data.romsumry.skip_mechanism(_event_mech_map[event])
+            self._data.detailedsummary.skip_mechanism(_event_mech_map[event])
             self.log(f"Mechanism {self._data.protocol.mech} skipped.")
             return
         # Check if a mechanism is selected.
@@ -283,12 +330,12 @@ class PlutoFullAssessmentStateMachine():
             }
             if event == Events.NOMECH_SET:
                 self._data.protocol.set_mechanism(None)
-                self._data.romsumry.set_mechanism(None)
+                self._data.detailedsummary.set_mechanism(None)
                 return
             # Set current mechanism.
             print(f"Setting mechanism to {_event_mech_map[event]}")
             self._data.protocol.set_mechanism(_event_mech_map[event])
-            self._data.romsumry.set_mechanism(_event_mech_map[event])
+            self._data.detailedsummary.set_mechanism(_event_mech_map[event])
             self._state = States.CALIBRATE
             self.log(f"Mechanism set to {self._data.protocol.mech}.")
         return
@@ -327,7 +374,7 @@ class PlutoFullAssessmentStateMachine():
         # Check if AROM is set.
         if event == Events.AROM_DONE:
             # Update AROM assessment data.
-            self._data.romsumry.update(
+            self._data.detailedsummary.update(
                 romval=data["romval"],
                 session=self._data.session,
                 tasktime=self._data.protocol.tasktime,
@@ -351,11 +398,11 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            _romval = self._data.romsumry['AROM'][self._data.protocol.mech][-1]['rom']
+            _romval = self._data.detailedsummary[self._data.protocol.mech]["tasks"]['AROM'][-1]['rom']
             self.log(f"AROM Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
         elif event == Events.AROM_NO_DONE:
             # Update AROM assessment data.
-            self._data.romsumry.update(
+            self._data.detailedsummary.update(
                 romval=data["romval"],
                 session=self._data.session,
                 tasktime=self._data.protocol.tasktime,
@@ -379,7 +426,7 @@ class PlutoFullAssessmentStateMachine():
         # Check if PROM is et.
         if event == Events.PROM_DONE:
             # Update PROM assessment data.
-            self._data.romsumry.update(
+            self._data.detailedsummary.update(
                 romval=data["romval"],
                 session=self._data.session,
                 tasktime=self._data.protocol.tasktime,
@@ -403,13 +450,13 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            _romval = self._data.romsumry['PROM'][self._data.protocol.mech][-1]['rom']
+            _romval = self._data.detailedsummary[self._data.protocol.mech]["tasks"]['PROM'][-1]['rom']
             self.log(f"PROM Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
         # else:
         #     self._state = States.TASK_SELECT
         elif event == Events.PROM_NO_DONE:
             # Update PROM assessment data.
-            self._data.romsumry.update(
+            self._data.detailedsummary.update(
                 romval=data["romval"],
                 session=self._data.session,
                 tasktime=self._data.protocol.tasktime,
@@ -433,7 +480,7 @@ class PlutoFullAssessmentStateMachine():
         # Check if APROM is et.
         if event == Events.APROMSLOW_DONE:
             # Update AROM assessment data.
-            self._data.romsumry.update(
+            self._data.detailedsummary.update(
                 romval=data["romval"],
                 session=self._data.session,
                 tasktime=self._data.protocol.tasktime,
@@ -457,11 +504,11 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            _romval = self._data.romsumry['APROMSlow'][self._data.protocol.mech][-1]['rom']
-            self.log(f"APROMSlow Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
+            _romval = self._data.detailedsummary[self._data.protocol.mech]["tasks"]['APROMSLOW'][-1]['rom']
+            self.log(f"APROMSLOW Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
         elif event == Events.APROMSLOW_NO_DONE:
             # Update AROM assessment data.
-            self._data.romsumry.update(
+            self._data.detailedsummary.update(
                 romval=data["romval"],
                 session=self._data.session,
                 tasktime=self._data.protocol.tasktime,
@@ -477,7 +524,7 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            self.log(f"APROMSlow not done for {self._data.protocol.mech}.")
+            self.log(f"APROMSLOW not done for {self._data.protocol.mech}.")
 
     def _handle_apromfast_assess(self, event, data):
         """
@@ -485,7 +532,7 @@ class PlutoFullAssessmentStateMachine():
         # Check if AROM is et.
         if event == Events.APROMFAST_DONE:
             # Update AROM assessment data.
-            self._data.romsumry.update(
+            self._data.detailedsummary.update(
                 romval=data["romval"],
                 session=self._data.session,
                 tasktime=self._data.protocol.tasktime,
@@ -509,11 +556,11 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            _romval = self._data.romsumry['APROMFast'][self._data.protocol.mech][-1]['rom']
-            self.log(f"APROMFast Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
+            _romval = self._data.detailedsummary[self._data.protocol.mech]["tasks"]['APROMFAST'][-1]['rom']
+            self.log(f"APROMFAST Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
         elif event == Events.APROMFAST_NO_DONE:
             # Update AROM assessment data.
-            self._data.romsumry.update(
+            self._data.detailedsummary.update(
                 romval=data["romval"],
                 session=self._data.session,
                 tasktime=self._data.protocol.tasktime,
@@ -529,7 +576,7 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            self.log(f"APROMFast not done for {self._data.protocol.mech}.")
+            self.log(f"APROMFAST not done for {self._data.protocol.mech}.")
     
     def _handle_poshold_assess(self, event, data):
         """
@@ -624,11 +671,11 @@ class PlutoFullAssessmentStateMachine():
             )
             self.log(f"Proprioception not done for {self._data.protocol.mech}.")
 
-    def _handle_fctrl_assess(self, event, data):
+    def _handle_fctrllow_assess(self, event, data):
         """
         """
         # Check if proprioceptive assessment is done.
-        if event == Events.FCTRL_DONE:
+        if event == Events.FCTRLLOW_DONE:
             # Update the protocol data.
             self._data.protocol.update(
                 self._data.session,
@@ -644,8 +691,8 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            self.log(f"Force Control done for {self._data.protocol.mech}.")
-        elif event == Events.FCTRL_NO_DONE:
+            self.log(f"Force Control (Low) done for {self._data.protocol.mech}.")
+        elif event == Events.FCTRLLOW_NO_DONE:
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
@@ -653,55 +700,77 @@ class PlutoFullAssessmentStateMachine():
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
-            self.log(f"Force Control not done for {self._data.protocol.mech}.")
+            self.log(f"Force Control (Low) not done for {self._data.protocol.mech}.")
 
-    def _handle_task_select(self, event, data):
+    def _handle_fctrlmed_assess(self, event, data):
         """
         """
-        # Select the next state
-        if event == Events.AROM_ASSESS:
-            self._state = self._event_to_nextstate[event]
-            self._data.protocol.set_task("AROM")
-            self._data.romsumry.set_task("AROM")
-            self.log(f"Task set to AROM.")
-        elif event == Events.PROM_ASSESS:
-            self._state = self._event_to_nextstate[event]
-            self._data.protocol.set_task("PROM")
-            self._data.romsumry.set_task("PROM")
-            self.log(f"Task set to PROM.")
-        elif event == Events.APROMSLOW_ASSESS:
-            self._state = self._event_to_nextstate[event]
-            self._data.protocol.set_task("APROMSlow")
-            self._data.romsumry.set_task("APROMSlow")
-            self.log(f"Task set to APROMSlow.")
-        elif event == Events.APROMFAST_ASSESS:
-            self._state = self._event_to_nextstate[event]
-            self._data.protocol.set_task("APROMFast")
-            self._data.romsumry.set_task("APROMFast")
-            self.log(f"Task set to APROMFast.")
-        elif event == Events.POSHOLD_ASSESS:
-            self._state = self._event_to_nextstate[event]
-            self._data.protocol.set_task("POSHOLD")
-            self.log(f"Task set to POSHOLD.")
-        elif event == Events.DISCREACH_ASSESS:
-            self._state = self._event_to_nextstate[event]
-            self._data.protocol.set_task("DISC")
-            self.log(f"Task set to DISC.")
-        elif event == Events.PROP_ASSESS:
-            self._state = self._event_to_nextstate[event]
-            self._data.protocol.set_task("PROP")
-            self.log(f"Task set to PROP.")
-        elif event == Events.FCTRL_ASSESS:
-            self._state = self._event_to_nextstate[event]
-            self._data.protocol.set_task("FCTRL")
-            self.log(f"Task set to FCTRL.")
-        elif event is None:
+        # Check if proprioceptive assessment is done.
+        if event == Events.FCTRLMED_DONE:
+            # Update the protocol data.
+            self._data.protocol.update(
+                self._data.session,
+                self._data.protocol.rawfilename,
+                "",
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
+            # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
                 States.MECH_OR_TASK_SELECT
                 if self._data.protocol.current_mech_completed
                 else States.TASK_SELECT
             )
+            self.log(f"Force Control (Medium) done for {self._data.protocol.mech}.")
+        elif event == Events.FCTRLMED_NO_DONE:
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"Force Control (Medium) not done for {self._data.protocol.mech}.")
+
+    def _handle_fctrlhigh_assess(self, event, data):
+        """
+        """
+        # Check if proprioceptive assessment is done.
+        if event == Events.FCTRLHIGH_DONE:
+            # Update the protocol data.
+            self._data.protocol.update(
+                self._data.session,
+                self._data.protocol.rawfilename,
+                "",
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"Force Control (High) done for {self._data.protocol.mech}.")
+        elif event == Events.FCTRLHIGH_NO_DONE:
+            # Jumpy to the next task state.
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+            self.log(f"Force Control (High) not done for {self._data.protocol.mech}.")
+
+    def _handle_task_select(self, event, data):
+        """
+        """
+        if event in Events.task_selected_events():
+            self._handle_task_assess_event(event, data)
+        elif event in Events.task_skip_events():
+            self._handle_task_skip_event(event, data)
 
     def _task_done(self, event, data):
         """
@@ -726,6 +795,126 @@ class PlutoFullAssessmentStateMachine():
             self._handle_mechanism_select(event, data)
         elif event in Events.task_selected_events():
             self._handle_task_select(event, data)
+    
+    #
+    # Supporting functions for the state machine.
+    #
+    def _handle_task_assess_event(self, event, data):
+        # Select the next state
+        if event == Events.AROM_ASSESS:
+            self._state = self._event_to_nextstate[event]
+            self._data.protocol.set_task("AROM")
+            self._data.detailedsummary.set_task("AROM")
+            self.log(f"Task set to AROM.")
+        elif event == Events.PROM_ASSESS:
+            self._state = self._event_to_nextstate[event]
+            self._data.protocol.set_task("PROM")
+            self._data.detailedsummary.set_task("PROM")
+            self.log(f"Task set to PROM.")
+        elif event == Events.APROMSLOW_ASSESS:
+            self._state = self._event_to_nextstate[event]
+            self._data.protocol.set_task("APROMSLOW")
+            self._data.detailedsummary.set_task("APROMSLOW")
+            self.log(f"Task set to APROMSLOW.")
+        elif event == Events.APROMFAST_ASSESS:
+            self._state = self._event_to_nextstate[event]
+            self._data.protocol.set_task("APROMFAST")
+            self._data.detailedsummary.set_task("APROMFAST")
+            self.log(f"Task set to APROMFAST.")
+        elif event == Events.POSHOLD_ASSESS:
+            self._state = self._event_to_nextstate[event]
+            self._data.protocol.set_task("POSHOLD")
+            self.log(f"Task set to POSHOLD.")
+        elif event == Events.DISCREACH_ASSESS:
+            self._state = self._event_to_nextstate[event]
+            self._data.protocol.set_task("DISC")
+            self.log(f"Task set to DISC.")
+        elif event == Events.PROP_ASSESS:
+            self._state = self._event_to_nextstate[event]
+            self._data.protocol.set_task("PROP")
+            self.log(f"Task set to PROP.")
+        elif event == Events.FCTRLLOW_ASSESS:
+            self._state = self._event_to_nextstate[event]
+            self._data.protocol.set_task("FCTRLLOW")
+            self.log(f"Task set to FCTRLLOW.")
+        elif event == Events.FCTRLMED_ASSESS:
+            self._state = self._event_to_nextstate[event]
+            self._data.protocol.set_task("FCTRLMED")
+            self.log(f"Task set to FCTRLMED.")
+        elif event == Events.FCTRLHIGH_ASSESS:
+            self._state = self._event_to_nextstate[event]
+            self._data.protocol.set_task("FCTRLHIGH")
+            self.log(f"Task set to FCTRLHIGH.")
+        elif event is None:
+            # Check if the current mechanism has been assessed.
+            self._state = (
+                States.MECH_OR_TASK_SELECT
+                if self._data.protocol.current_mech_completed
+                else States.TASK_SELECT
+            )
+    
+    def _handle_task_skip_event(self, event, data):
+        # Select the next state
+        if event == Events.AROM_SKIP:
+            self._data.protocol.skip_task(taskname="AROM",
+                                          session=data["session"],
+                                          comment=data["comment"])
+            self._data.detailedsummary.set_task("AROM")
+            self.log(f"Task AROM skipped.")
+        elif event == Events.PROM_SKIP:
+            self._data.protocol.skip_task(taskname="PROM",
+                                          session=data["session"],
+                                          comment=data["comment"])
+            # self._data.detailedsummary.set_task("PROM")
+            self.log(f"Task PROM skipped.")
+        elif event == Events.APROMSLOW_SKIP:
+            self._data.protocol.skip_task(taskname="APROMSLOW",
+                                          session=data["session"],
+                                          comment=data["comment"])
+            # self._data.detailedsummary.set_task("APROMSLOW")
+            self.log(f"Task APROMSLOW skipped.")
+        elif event == Events.APROMFAST_SKIP:
+            self._data.protocol.skip_task(taskname="APROMFAST",
+                                          session=data["session"],
+                                          comment=data["comment"])
+            # self._data.detailedsummary.set_task("APROMFAST")
+            self.log(f"Task APROMFAST skipped.")
+        elif event == Events.POSHOLD_SKIP:
+            self._data.protocol.skip_task(taskname="POSHOLD",
+                                          session=data["session"],
+                                          comment=data["comment"])
+            self.log(f"Task POSHOLD skipped.")
+        elif event == Events.DISCREACH_SKIP:
+            self._data.protocol.skip_task(taskname="DISC",
+                                          session=data["session"],
+                                          comment=data["comment"])
+            self.log(f"Task DISC skipped.")
+        elif event == Events.PROP_SKIP:
+            self._data.protocol.skip_task(taskname="PROP",
+                                          session=data["session"],
+                                          comment=data["comment"])
+            self.log(f"Task PROP skipped.")
+        elif event == Events.FCTRLLOW_SKIP:
+            self._data.protocol.skip_task(taskname="FCTRLLOW",
+                                          session=data["session"],
+                                          comment=data["comment"])
+            self.log(f"Task FCTRLLOW skipped.")
+        elif event == Events.FCTRLMED_SKIP:
+            self._data.protocol.skip_task(taskname="FCTRLMED",
+                                          session=data["session"],
+                                          comment=data["comment"])
+            self.log(f"Task FCTRLMED skipped.")
+        elif event == Events.FCTRLHIGH_SKIP:
+            self._data.protocol.skip_task(taskname="FCTRLHIGH",
+                                          session=data["session"],
+                                          comment=data["comment"])
+            self.log(f"Task FCTRLHIGH skipped.")
+        # Check if the current mechanism has been assessed.
+        self._state = (
+            States.MECH_OR_TASK_SELECT
+            if self._data.protocol.current_mech_completed
+            else States.TASK_SELECT
+        )
     
     #
     # Protocol console logging

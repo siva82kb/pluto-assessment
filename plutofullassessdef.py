@@ -87,36 +87,56 @@ MECH_TASKS = {
             ["PROP"], ["FCTRLLOW", "FCTRLMED", "FCTRLHIGH"]]
 }
 TASK_DEPENDENCIES = {
-    "AROM": {"type": ["stroke"],
-             "unaffected": False,
-             "task": []},
-    "PROM": {"type": ["stroke"],
-             "unaffected": False,
-             "task": ["AROM"]},
-    "APROMSLOW": {"type": ["stroke"],
-                  "unaffected": False,
-                  "task": []},
-    "APROMFAST": {"type": ["stroke"],
-                  "unaffected": False,
-                  "task": []},
-    "DISC": {"type": ["stroke", "healthy"],
-             "unaffected": True,
-             "task": ["AROM"]},
-    "POSHOLD": {"type": ["stroke", "healthy"],
-                "unaffected": False,
-                "task": ["AROM"]},
-    "FCTRLLOW": {"type": ["stroke", "healthy"],
-                 "unaffected": True,
-                 "task": ["AROM"]},
-    "FCTRLMED": {"type": ["stroke", "healthy"],
-                 "unaffected": True,
-                 "task": ["AROM"]},
-    "FCTRLHIGH": {"type": ["stroke", "healthy"],
-                  "unaffected": True,
-                  "task": ["AROM"]},
-    "PROP": {"type": ["stroke", "healthy"],
-             "unaffected": True,
-             "task": ["PROM"]}
+    "AROM": {
+        "in_subjtypes": ["stroke"],
+        "in_unaffected": False,
+        "depends_on": []
+    },
+    "PROM": {
+        "in_subjtypes": ["stroke"],
+        "in_unaffected": False,
+        "depends_on": []
+    },
+    "APROMSLOW": {
+        "in_subjtypes": ["stroke"],
+        "in_unaffected": False,
+        "depends_on": []
+    },
+    "APROMFAST": {
+        "in_subjtypes": ["stroke"],
+        "in_unaffected": False,
+        "depends_on": []
+    },
+    "DISC": {
+        "in_subjtypes": ["stroke", "healthy"],
+        "in_unaffected": True,
+        "depends_on": ["AROM"]
+    },
+    "POSHOLD": {
+        "in_subjtypes": ["stroke", "healthy"],
+        "in_unaffected": False,
+        "depends_on": ["AROM"]
+    },
+    "FCTRLLOW": {
+        "in_subjtypes": ["stroke", "healthy"],
+        "in_unaffected": True,
+        "depends_on": ["AROM"]
+    },
+    "FCTRLMED": {
+        "in_subjtypes": ["stroke", "healthy"],
+        "in_unaffected": True,
+        "depends_on": ["AROM"]
+    },
+    "FCTRLHIGH": {
+        "in_subjtypes": ["stroke", "healthy"],
+        "in_unaffected": True,
+        "depends_on": ["AROM"]
+    },
+    "PROP": {
+        "in_subjtypes": ["stroke", "healthy"],
+        "in_unaffected": True,
+        "depends_on": ["PROM"]
+    }
 }
 
 # Mech/task status stylesheet
@@ -125,6 +145,7 @@ STATUS_STYLESHEET = {
     AssessStatus.COMPLETE: "color: rgb(0, 100, 0);",            # Dark green
     AssessStatus.PARTIALCOMPLETE: "color: rgb(255, 165, 0);",   # Orange
     AssessStatus.SKIPPED: "color: rgb(100, 149, 237);",         # Light blue (Cornflower Blue)
+    AssessStatus.EXCLUDED: "color: rgb(200, 200, 200);",        # Light blue (Cornflower Blue)
     None: ""                                                    # Default color (black)
 }
 STATUS_TEXT = {
@@ -132,6 +153,7 @@ STATUS_TEXT = {
     AssessStatus.COMPLETE: "[C]",
     AssessStatus.PARTIALCOMPLETE: "[*C]",
     AssessStatus.SKIPPED: "[S]",
+    AssessStatus.EXCLUDED: "[E]",
     None: "",
 }
 
@@ -193,7 +215,7 @@ class BaseConstants:
 # Active Range of Motion Constants
 #
 class AROM(BaseConstants):
-    NO_OF_TRIALS = 3                   # Number of trials.
+    NO_OF_TRIALS = 1                   # Number of trials.
 
 
 #
@@ -206,7 +228,7 @@ class PROM(BaseConstants):
 class APROM(BaseConstants):
     TORQUE_DIR1 = +1.0                  # Toque to apply in direction 1
     TORQUE_DIR2 = -1.0                  # Toque to apply in direction 2
-    NO_OF_TRIALS = 3                    # Number of trials
+    NO_OF_TRIALS = 1                    # Number of trials
     
     # Data logging constants
     RAW_HEADER = [
@@ -241,7 +263,7 @@ class APROMFast(APROM):
 # Position Hold Constants
 #
 class PositionHold(BaseConstants):
-    NO_OF_TRIALS = 3                # Number of trials.
+    NO_OF_TRIALS = 1                # Number of trials.
     TGT_POSITIONS = [0.1, 0.9]      # Fraction of AROM range
     TGT_WIDTH_DEG = 4               # Absolute target width in degrees
     TGT_HOLD_DURATION = 01.0        # seconds
@@ -265,7 +287,7 @@ class PositionHold(BaseConstants):
 # Discrete Reaching Constants
 #
 class DiscreteReach(BaseConstants):
-    NO_OF_TRIALS = 3                # Number of trials.
+    NO_OF_TRIALS = 1                # Number of trials.
     TGT1_POSITION = 0.20            # Fraction of AROM range
     TGT2_POSITION = 0.80            # Fraction of AROM range
     TGT_WIDTH = 0.05                # Fraction of AROM range
@@ -295,7 +317,7 @@ class DiscreteReach(BaseConstants):
 #
 class Proprioception(BaseConstants):
     NO_OF_TRIALS = 1                    # Number of trials.
-    # NO_OF_TRIALS = 3                    # Number of trials.
+    # NO_OF_TRIALS = 1                    # Number of trials.
     START_POSITION_TH = 0.25            # Start position of the hanbd (cm).       
     TGT_POSITIONS = [0.25, 0.5, 0.75]   # Target positions (fraction of PROM).
     MIN_TGT_SEP = 1                     # Minimum target separation (cm).
@@ -330,7 +352,7 @@ class Proprioception(BaseConstants):
 # Force Control Assessment Constants
 #
 class ForceControl(BaseConstants):
-    NO_OF_TRIALS = 3                    # Number of trials.
+    NO_OF_TRIALS = 1                    # Number of trials.
     FULL_RANGE_WIDTH = 2.0              # The full force range in position. (cm) 
     TGT_POSITION = 0.4                  # Target positions (fraction of AROM).
     TGT_FORCE = 8.00                   # Target force (N).

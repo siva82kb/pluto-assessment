@@ -91,8 +91,8 @@ class PlutoAssessmentData(object):
         return self._protocol
     
     @property
-    def romsumry(self):
-        return self._romsumry
+    def detailedsummary(self):
+        return self._detailsumry
 
     def init_values(self):
         # Subject details
@@ -106,7 +106,7 @@ class PlutoAssessmentData(object):
         self._sessdir = None
         # Assessment protocol
         self._protocol: PlutoAssessmentProtocolData = None
-        self._romsumry: PlutoAssessmentROMData = None
+        self._detailsumry: PlutoAssessmentDetailsData = None
     
     def set_subject(self, subjid, subjtype, domlimb, afflimb):
         self.init_values()
@@ -152,7 +152,9 @@ class PlutoAssessmentData(object):
                                                      self.domlimb, self.afflimb, 
                                                      self.limb, self._basedir, 
                                                      self._sessdir)
-        self._romsumry = PlutoAssessmentROMData(self.subjid, self.type, self.limb, self._basedir)
+        self._detailsumry = PlutoAssessmentDetailsData(self.subjid, self.type, 
+                                                       self.domlimb, self.afflimb, 
+                                                       self.limb, self._basedir)
 
 
 class PlutoAssessmentProtocolData(object):
@@ -291,15 +293,10 @@ class PlutoAssessmentProtocolData(object):
     def task_enabled(self) -> list[str]:
         """List of tasks that are to be enabled.
         """
-        if self._df is None or self._mech is None:
-            return []
-        if self._index is None:
-            _inx = self._df["mechanism"] == self._mech
-            return list(self._df[_inx]["task"].unique())    
+        if self._df is None or self._mech is None or self._index is None:
+            return None
         # Get the list of mechanisms that have been assessed.
-        _inx = ((self._df["mechanism"] == self._mech) &
-                (self._df.index <= self._index))
-        return list(self._df[_inx]["task"].unique())
+        return self._df.iloc[self._index]["task"]
     
     @property
     def is_mechanism_completed(self, mechname):
@@ -366,7 +363,7 @@ class PlutoAssessmentProtocolData(object):
         self._df.loc[_mechinx, "rawfile"] = pd.NA
         self._df.loc[_mechinx, "summaryfile"] = pd.NA
         self._df.loc[_mechinx, "status"] = pfadef.AssessStatus.SKIPPED.value
-        self._df.loc[_mechinx, "mechcomment"] = comment
+        self._df.loc[_mechinx, "mechcomment"] = comment.replace(",", " ")
         self._df.loc[_mechinx, "taskcomment"] = pd.NA
         # Update the summary file.
         self._df.to_csv(self.filename, sep=",", index=None)
@@ -381,10 +378,45 @@ class PlutoAssessmentProtocolData(object):
     
     def set_task(self, taskname):
         # Sanity check. Make sure the set task matches the task in the protocol.
+        print(f"{taskname}, {self._index}, {self._df.iloc[self._index]['task']}")
         if taskname != self._df.iloc[self._index]["task"]:
             raise ValueError(f"Task [{taskname}] does not match the protocol task [{self._df.iloc[self._index]['task']}]")
         self._task = taskname
         self._tasktime = dt.now().strftime('%Y%m%d_%H%M%S')
+        # Update current index.
+        # Update current index to first row where 'session' is still NaN
+        self._update_index()
+    
+    def skip_task(self, taskname, session, comment):
+        # First skip the givem task.
+        _mechinx = self._df["mechanism"] == self._mech
+        _mechtaskinx = _mechinx & (self._df["task"] == taskname)
+        self._df.loc[_mechtaskinx, "session"] = session
+        self._df.loc[_mechtaskinx, "rawfile"] = pd.NA
+        self._df.loc[_mechtaskinx, "summaryfile"] = pd.NA
+        self._df.loc[_mechtaskinx, "status"] = pfadef.AssessStatus.SKIPPED.value
+        self._df.loc[_mechtaskinx, "mechcomment"] = pd.NA
+        self._df.loc[_mechtaskinx, "taskcomment"] = comment.replace(",", " ")
+        # Now skip all the other INCOMPLETE tasks that depend on this task.
+        _mechtasks = self._df[_mechinx]['task'].unique().tolist()
+        _othertasks = [_t for _t in _mechtasks if _t != taskname]
+        for _ot in _othertasks:
+            if taskname in pfadef.TASK_DEPENDENCIES[_ot]["depends_on"]:
+                _othertaskinx = _mechinx & (self._df["task"] == _ot)
+                self._df.loc[_othertaskinx, "session"] = session
+                self._df.loc[_othertaskinx, "rawfile"] = pd.NA
+                self._df.loc[_othertaskinx, "summaryfile"] = pd.NA
+                self._df.loc[_othertaskinx, "status"] = pfadef.AssessStatus.EXCLUDED.value
+                self._df.loc[_othertaskinx, "mechcomment"] = pd.NA
+                self._df.loc[_othertaskinx, "taskcomment"] = comment.replace(",", " ")
+         # Update the summary file.
+        self._df.to_csv(self.filename, sep=",", index=None)
+        # Reset task selection.
+        self._task = None
+        self._tasktime = None
+        # Update current index.
+        # Update current index to first row where 'session' is still NaN
+        self._update_index()
     
     def set_mechanism_calibrated(self, mechname):
         if self._mech is None and self._mech != mechname:
@@ -409,15 +441,18 @@ class PlutoAssessmentProtocolData(object):
     def get_task_status(self, taskname) -> pfadef.AssessStatus:
         _mechtaskinx = ((self._df["mechanism"] == self._mech) &
                         (self._df["task"] == taskname))
+        if _mechtaskinx.sum() == 0:
+            return None
         # If any NA sessions, then its not completed.
-        if self._df.loc[_mechtaskinx, "session"].isna().any():
+        if self._df.loc[_mechtaskinx, "session"].isna().iloc[0]:
             return pfadef.AssessStatus.INCOMPLETE
-        # Check if the number of rows with Completed status is equal to the number of trials.
-        _skipinx = (self._df.loc[_mechtaskinx, "status"] == pfadef.AssessStatus.SKIPPED.value)
-        if _skipinx.sum() == _mechtaskinx.sum():
+        if self._df.loc[_mechtaskinx, "status"].iloc[0] == pfadef.AssessStatus.SKIPPED.value:
             return pfadef.AssessStatus.SKIPPED
-        else:
+        elif self._df.loc[_mechtaskinx, "status"].iloc[0] == pfadef.AssessStatus.COMPLETE.value:
             return pfadef.AssessStatus.COMPLETE
+        elif self._df.loc[_mechtaskinx, "status"].iloc[0] == pfadef.AssessStatus.EXCLUDED.value:
+            return pfadef.AssessStatus.EXCLUDED
+        return None
     
     def update(self, session, rawfile, summaryfile, taskcomment, status):
         """Set the mechanism task data in the summary file.
@@ -499,8 +534,8 @@ class PlutoAssessmentProtocolData(object):
         _dframe.to_csv(self.filename, sep=",", index=None)
     
     def is_task_included(self, taskname):
-        _typeflag = self._type in pfadef.TASK_DEPENDENCIES[taskname]["type"]
-        _affflag = (pfadef.TASK_DEPENDENCIES[taskname]["unaffected"]
+        _typeflag = self._type in pfadef.TASK_DEPENDENCIES[taskname]["in_subjtypes"]
+        _affflag = (pfadef.TASK_DEPENDENCIES[taskname]["in_unaffected"]
                     or self._limb == self._afflimb)
         return _typeflag and _affflag
 
@@ -526,13 +561,14 @@ class PlutoAssessmentProtocolData(object):
         ], ignore_index=True)
 
 
-class PlutoAssessmentROMData(object):
-    """Class to store the ROM data that will be used in the rest of the 
-    assessment.
+class PlutoAssessmentDetailsData(object):
+    """Class to store the details of the assessment data.
     """
-    def __init__(self, subjid, stype, slimb, basedir):
+    def __init__(self, subjid, stype, domlimb, afflimb, slimb, basedir):
         self._subjid = subjid
         self._type = stype
+        self._domlimb = domlimb
+        self._afflimb = afflimb
         self._limb = slimb
         self._basedir = basedir
         
@@ -540,15 +576,13 @@ class PlutoAssessmentROMData(object):
         self._val = {
             "subj": self._subjid,
             "type": self._type,
-            "limb": self._limb,
-            "AROM": {},
-            "PROM": {},
-            "APROMSlow": {},
-            "APROMFast": {}
+            "domlimb": self._domlimb,
+            "afflimb": self._afflimb,
+            "limb": self._limb
         }
         
         # Create the protocol summary file.
-        self.create_rom_summary_file()
+        self.create_assessment_detail_file()
 
         # Initialize the mechanism and task.
         self._mech = None
@@ -575,7 +609,7 @@ class PlutoAssessmentROMData(object):
         
     @property
     def filename(self):
-        return pathlib.Path(self._basedir, f"{self._subjid}_{self._type}_{self._limb}_rom.json").as_posix()
+        return pathlib.Path(self._basedir, f"{self._subjid}_{self._type}_{self._limb}_details.json").as_posix()
     
     def __getitem__(self, key):
         return self._val[key]
@@ -585,20 +619,39 @@ class PlutoAssessmentROMData(object):
     #
     def set_mechanism(self, value):
         self._mech = value
-        for k in self._val.keys():
-            if k in pfadef.ALLTASKS and self._mech not in self._val[k]:
-                self._val[k][self._mech] = []
+        # Check if mechanism exists in the data.
+        if self._mech not in self._val:
+            # If not, create a new entry for the mechanism.
+            self._val[self._mech] = {"status": "INCOMPLETE",
+                                     "tasks": {}}
         self.write_to_disk()
     
     def skip_mechanism(self, value):
         self._mech = value
-        for k in self._val.keys():
-            if k in pfadef.ALLTASKS and self._mech not in self._val[k]:
-                self._val[k][self._mech] = None
+        if self._mech not in self._val:
+            # If not, create a new entry for the mechanism.
+            self._val[self._mech] = {"status": "SKIPPED",
+                                     "tasks": {}}
         self.write_to_disk()
     
     def set_task(self, value):
         self._task = value
+        print(self._task, self._val[self._mech]["tasks"])
+        if self._task not in self._val[self._mech]["tasks"]:
+            self._val[self._mech]["tasks"][self._task] = []
+        self.write_to_disk()
+    
+    def skip_task(self, value):
+        self._task = value
+    
+    def get_arom(self):
+        """Get the AROM data for the current mechanism.
+        """
+        if self._mech is None:
+            raise ValueError("Mechanism not set. Cannot get AROM data.")
+        return (self._val[self._mech]["AROM"]["tasks"][-1]["rom"]
+                if len(self._val[self._mech]["AROM"]["tasks"]) > 0
+                else [0, 0])
 
     def update(self, romval: list, session: str, tasktime: str, rawfile: str,
                summaryfile: str, taskcomment: str="", status: str=""):
@@ -607,25 +660,25 @@ class PlutoAssessmentROMData(object):
         if self._mech is None or self._task is None:
             raise ValueError("Mechanism or task not set. Cannot update ROM data.")
         # Update value
+        print("adsgasdgasdg")
         _temp = [_v for _v in romval if len(_v) == 2]
-        self._val[self._task][self._mech].append({
+        self._val[self._mech]["tasks"][self._task].append({
             "session": session,
             "tasktime": tasktime,
             "rawfile": rawfile,
             "summaryfile": summaryfile,
             "romval": romval,
             "rom": np.mean(np.array(_temp), axis=0).tolist() if len(_temp) != 0 else float('nan'),
-            "taskcomment": taskcomment,
+            "taskcomment": taskcomment.replace(",", " "),
             "status": status
         })
-
         # Write to disk
         self.write_to_disk()
     
     #
     # Data logging functions
     #
-    def create_rom_summary_file(self):
+    def create_assessment_detail_file(self):
         if pathlib.Path(self.filename).exists():
             with open(self.filename, "r") as fh:
                 self._val = json.load(fh)
