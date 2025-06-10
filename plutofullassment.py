@@ -1086,6 +1086,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             _mctrl[_m][1].setEnabled(_mechstatus == pfadef.AssessStatus.INCOMPLETE)
 
     def _update_task_controls(self):
+        if self.protocol is None: return 
         _tctrl = {
             "AROM": self.pbAROM,
             "PROM": self.pbPROM,
@@ -1099,7 +1100,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             "FCTRLHIGH": self.pbForceCtrlHigh,
         }
         # Go through all tasks for the mechanism and enable/disable them appropriately.
-        if self.protocol is None: return 
         for i, _t in enumerate(pfadef.ALLTASKS):
             if self.protocol.calibrated and _t in self.protocol.task_enabled:
                 _tctrl[_t].setEnabled(True)

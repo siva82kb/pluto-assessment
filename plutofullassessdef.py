@@ -29,6 +29,7 @@ class AssessStatus(Enum):
     COMPLETE = "Complete"
     PARTIALCOMPLETE = "Partially Complete"
     SKIPPED = "Skipped"
+    EXCLUDED = "Excluded"
 
     def __str__(self):
         return self.value
@@ -74,7 +75,7 @@ TASK_LABELS = {
 
 # Tasks for each mechanisms in the order they are to be done.
 # The first list contains the tasks that are to be done first in that 
-# specific order. While the second list contains the tasks that are to be done
+# specific order. While the lists after that contain the tasks that are to be done
 # after the first list tasks are completed, but in a random order. When one of 
 # the lists is empty, it means that there are no tasks to be done in that order. 
 MECH_TASKS = {
@@ -83,36 +84,39 @@ MECH_TASKS = {
     "WFE": [["AROM", "PROM", "APROMSLOW", "APROMFAST", "DISC"],
             []],
     "HOC": [["AROM", "PROM", "APROMSLOW", "APROMFAST"],
-            ["PROP", "FCTRLLOW", "FCTRLMED", "FCTRLHIGH"]]
+            ["PROP"], ["FCTRLLOW", "FCTRLMED", "FCTRLHIGH"]]
 }
 TASK_DEPENDENCIES = {
     "AROM": {"type": ["stroke"],
-             "limb": ["left", "right"],
+             "unaffected": False,
              "task": []},
     "PROM": {"type": ["stroke"],
-             "limb": ["left", "right"],
-             "task": ["arom"]},
+             "unaffected": False,
+             "task": ["AROM"]},
     "APROMSLOW": {"type": ["stroke"],
-                  "limb": ["left", "right"],
+                  "unaffected": False,
                   "task": []},
-    "APROMSFAST": {"type": ["stroke"],
-                   "limb": ["left", "right"],
-                   "task": []},
+    "APROMFAST": {"type": ["stroke"],
+                  "unaffected": False,
+                  "task": []},
     "DISC": {"type": ["stroke", "healthy"],
-             "limb": ["left", "right"],
-             "task": ["arom"]},
+             "unaffected": True,
+             "task": ["AROM"]},
     "POSHOLD": {"type": ["stroke", "healthy"],
-                "limb": ["left", "right"],
-                "task": ["arom"]},
+                "unaffected": False,
+                "task": ["AROM"]},
     "FCTRLLOW": {"type": ["stroke", "healthy"],
-                 "limb": ["left", "right"],
-                 "task": ["arom"]},
+                 "unaffected": True,
+                 "task": ["AROM"]},
     "FCTRLMED": {"type": ["stroke", "healthy"],
-                 "limb": ["left", "right"],
-                 "task": ["arom"]},
+                 "unaffected": True,
+                 "task": ["AROM"]},
     "FCTRLHIGH": {"type": ["stroke", "healthy"],
-                  "limb": ["left", "right"],
-                  "task": ["arom"]}
+                  "unaffected": True,
+                  "task": ["AROM"]},
+    "PROP": {"type": ["stroke", "healthy"],
+             "unaffected": True,
+             "task": ["PROM"]}
 }
 
 # Mech/task status stylesheet
@@ -408,77 +412,3 @@ def get_task_constants(task):
     else:
         raise ValueError(f"Unknown task: {task}")
 
-# # Full assessment protocol.
-# protocol = {}
-
-# # Active range of motion: AROM
-# protocol["AROM"] = {
-#     "mech": ["WFE", "FPS", "HOC"],  # Mechanism used for this assessment.
-#     "N": 3,                         # Number of trials.
-#     "stop_duration": 2,             # Stop position duration (seconds).
-#     "stop_velocity_th": 5,          # Stop velocity threshold (deg/s).
-# }
-
-# # Passive range of motion: PROM
-# protocol["PROM"] = {
-#     "mech": ["WFE", "FPS", "HOC"],  # Mechanism used for this assessment.
-#     "N": 3,                         # Number of trials.  
-# }
-
-# # Assisted passive range of motion: APROM
-# protocol["APROM"] = {
-#     "mech": ["WFE", "FPS", "HOC"],  # Mechanism used for this assessment.
-#     "N": 3,                         # Number of trials.
-#     "max_torque": 1.0,              # Maximum torque to be applied (Nm)
-# }
-
-# # Discrete reaching movements: DISC
-# protocol["DISC"] = {
-#     "mech": ["WFE", "FPS"],         # Mechanism used for this assessment.
-#     "N": 3,                         # Number of trials.
-#     "min_arom_range": 20,           # Minimum AROM range (degrees).
-#     "targets": [0.25, 0.75],        # Target positions (fraction of AROM).
-#     "target_width": 2.5,            # Target width (deg).
-#     "on_off_target_duration": 1,    # Duration for deciding the hand is on or off target (seconds).
-#     "on_target_duration": 2,        # Duration for deciding the hand is on target (seconds).
-# }
-
-# # Proprioceptive assessment: PROP
-# protocol["PROP"] = {
-#     "mech": ["HOC"],                # Mechanism used for this assessment.
-#     "N": 3,                         # Number of trials.
-#     "targets": [0.25, 0.5, 0.75],   # Target positions (fraction of PROM).
-#     "min_target_sep": 1,            # Minimum target separation (cm).
-#     "move_speed": 0.5,              # Duration for haptic demonstration (cm/seconds).
-#     "on_off_target_duration": 1,    # Duration for deciding the hand is on or off target (seconds).
-#     "target_error_th": 0.25,        # Target error threshold (cm).
-#     "demo_duration": 5,             # Duration for haptic demonstration (seconds).
-#     "intrat_rest_duration": 3,      # Intra-Trial Rest Duration (seconds).
-#     "intert_rest_duration": 5,      # Inter-Trial Rest Duration (seconds).
-# }
-
-# # Force control: FCTRL
-# protocol["FCTRL"] = {
-#     "mech": ["HOC"],                # Mechanism used for this assessment.
-#     "N": 3,                         # Number of trials.
-#     "hold_force": 0.4,              # Target holding force (Nm).
-#     "min_force": 0.3,               # Minimum force to be applied (Nm).
-#     "max_force": 0.5,               # Maximum force to be applied (Nm).
-#     "target_duration": 20,          # Duration for holding the target force (seconds).
-#     "drop_duration": 3,             # Minimum duration after which the target drops (seconds).
-#     "crush_duration": 3,            # Minimum duration after which the target is crushed (seconds).
-# }
-
-
-# if __name__ == "__main__":
-#     # Create folder if needed
-#     datadir = pathlib.Path(DATA_DIR)
-#     datadir.mkdir(parents=True, exist_ok=True)
-
-#     # Write the protocol to a JSON file.
-#     with open(datadir / "fullassess_protocol.json", "w") as f:
-#         json.dump({
-#             "mechanisms": MECHANISMS,
-#             "tasks": ALLTASKS,
-#             "mechtasks": MECH_TASKS
-#         }, f, indent=4)

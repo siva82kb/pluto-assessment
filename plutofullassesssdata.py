@@ -148,16 +148,21 @@ class PlutoAssessmentData(object):
         return ":".join(_str)
     
     def start_protocol(self):
-        self._protocol = PlutoAssessmentProtocolData(self.subjid, self.type, self.limb, self._basedir, self._sessdir)
+        self._protocol = PlutoAssessmentProtocolData(self.subjid, self.type,
+                                                     self.domlimb, self.afflimb, 
+                                                     self.limb, self._basedir, 
+                                                     self._sessdir)
         self._romsumry = PlutoAssessmentROMData(self.subjid, self.type, self.limb, self._basedir)
 
 
 class PlutoAssessmentProtocolData(object):
     """Class to handle the full assessment protocol.
     """
-    def __init__(self, subjid, stype, slimb, basedir, sessdir):
+    def __init__(self, subjid, stype, domlimb, afflimb, slimb, basedir, sessdir):
         self._subjid = subjid
         self._type = stype
+        self._domlimb = domlimb
+        self._afflimb = afflimb
         self._limb = slimb
         self._basedir = basedir
         self._sessdir = sessdir
@@ -484,44 +489,41 @@ class PlutoAssessmentProtocolData(object):
         for _m in pfadef.MECHANISMS:
             # First set of tasks in the given order.
             for _t in pfadef.MECH_TASKS[_m][0]:
-                # Create the rows.
-                _n = pfadef.get_task_constants(_t).NO_OF_TRIALS
-                _dframe = pd.concat([
-                    _dframe,
-                    pd.DataFrame.from_dict({
-                        "session": pd.Series([pd.NA], dtype="string"),
-                        "mechanism": pd.Series([_m], dtype="string"),
-                        "task": pd.Series([_t], dtype="string"),
-                        "ntrial": pd.Series([_n], dtype="Int64"),
-                        "rawfile": pd.Series([pd.NA], dtype="string"),
-                        "summaryfile": pd.Series([pd.NA], dtype="string"),
-                        "mechcomment": pd.Series([pd.NA], dtype="string"),
-                        "taskcomment": pd.Series([pd.NA], dtype="string"),
-                        "status": pd.Series([pd.NA], dtype="string"),
-                    })
-                ], ignore_index=True)
+                _dframe = self._add_rows(_dframe, _m, _t)
             # Second set of tasks are to be randomized.
-            _tasks = pfadef.MECH_TASKS[_m][1].copy()
-            random.shuffle(_tasks)
-            for _t in _tasks:
-                # Create the rows.
-                _n = pfadef.get_task_constants(_t).NO_OF_TRIALS
-                _dframe = pd.concat([
-                    _dframe,
-                    pd.DataFrame.from_dict({
-                        "session": pd.Series([pd.NA], dtype="string"),
-                        "mechanism": pd.Series([_m], dtype="string"),
-                        "task": pd.Series([_t], dtype="string"),
-                        "ntrial": pd.Series([_n], dtype="Int64"),
-                        "rawfile": pd.Series([pd.NA], dtype="string"),
-                        "summaryfile": pd.Series([pd.NA], dtype="string"),
-                        "mechcomment": pd.Series([pd.NA], dtype="string"),
-                        "taskcomment": pd.Series([pd.NA], dtype="string"),
-                        "status": pd.Series([pd.NA], dtype="string"),
-                    })
-                ], ignore_index=True)
+            for _tasks in pfadef.MECH_TASKS[_m][1:]:
+                random.shuffle(_tasks)
+                for _t in _tasks:
+                    _dframe = self._add_rows(_dframe, _m, _t)
         # Write file to disk
         _dframe.to_csv(self.filename, sep=",", index=None)
+    
+    def is_task_included(self, taskname):
+        _typeflag = self._type in pfadef.TASK_DEPENDENCIES[taskname]["type"]
+        _affflag = (pfadef.TASK_DEPENDENCIES[taskname]["unaffected"]
+                    or self._limb == self._afflimb)
+        return _typeflag and _affflag
+
+    def _add_rows(self, dframe, mechname, taskname):
+        # Check if this task is enabled.
+        if self.is_task_included(taskname) is False:
+            return dframe
+        # Create the rows.
+        _n = pfadef.get_task_constants(taskname).NO_OF_TRIALS
+        return pd.concat([
+            dframe,
+            pd.DataFrame.from_dict({
+                "session": pd.Series([pd.NA], dtype="string"),
+                "mechanism": pd.Series([mechname], dtype="string"),
+                "task": pd.Series([taskname], dtype="string"),
+                "ntrial": pd.Series([_n], dtype="Int64"),
+                "rawfile": pd.Series([pd.NA], dtype="string"),
+                "summaryfile": pd.Series([pd.NA], dtype="string"),
+                "mechcomment": pd.Series([pd.NA], dtype="string"),
+                "taskcomment": pd.Series([pd.NA], dtype="string"),
+                "status": pd.Series([pd.NA], dtype="string"),
+            })
+        ], ignore_index=True)
 
 
 class PlutoAssessmentROMData(object):
