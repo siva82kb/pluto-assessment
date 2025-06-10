@@ -51,7 +51,7 @@ from plutofullassesssdata import PlutoAssessmentData
 
 class Events(Enum):
     SUBJECT_SET = 0
-    TYPE_LIMB_SET = auto()
+    LIMB_SET = auto()
     #
     # Mechanisms events
     #
@@ -235,7 +235,10 @@ class PlutoFullAssessmentStateMachine():
         """
         if event == Events.SUBJECT_SET:
             # Set the subject ID.
-            self._data.set_subjectid(data['subjid'])
+            self._data.set_subject(subjid=data["subjid"],
+                                   subjtype=data["subjtype"],
+                                   domlimb=data["domlimb"],
+                                   afflimb=data["afflimb"])
             # We need to now select the limb.
             self._state = States.LIMB_SELECT
             self._pconsole.append(self._instruction)
@@ -243,9 +246,9 @@ class PlutoFullAssessmentStateMachine():
     def _handle_limb_select(self, event, data):
         """
         """
-        if event == Events.TYPE_LIMB_SET:
+        if event == Events.LIMB_SET:
             # Set limb type and limb.
-            self._data.set_limbtype(slimb=data["limb"], stype=data["type"])
+            self._data.set_limb(limb=data["limb"])
             # We need to now select the mechanism.
             self._state = States.MECH_SELECT
             self._pconsole.append(self._instruction)

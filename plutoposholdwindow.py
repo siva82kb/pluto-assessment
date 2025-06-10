@@ -632,7 +632,7 @@ if __name__ == '__main__':
             "subjid": "1234",
             "type": "Stroke",
             "limb": "Left",
-            "mechanism": "WFE",
+            "mechanism": "FPS",
             "session": "testing",
             "ntrials": 3,
             "rawfile": "rawfiletest.csv",

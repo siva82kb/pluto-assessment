@@ -10,3 +10,5 @@ pyuic5 -o ui_plutotestcontrol.py ui/plutotestcontrol.ui
 pyuic5 -o ui_plutopropassessctrl.py ui/plutopropassessctrl.ui
 pyuic5 -o ui_plutocontroltester.py ui/plutocontroltester.ui
 pyuic5 -o ui_plutoposholdassess.py ui/plutoposholdassess.ui
+pyuic5 -o ui_subjectcreator.py ui/subjectcreator.ui
+pyuic5 -o ui_subjectselector.py ui/subjectselector.ui

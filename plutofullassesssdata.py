@@ -63,6 +63,14 @@ class PlutoAssessmentData(object):
         return self._type
     
     @property
+    def domlimb(self):
+        return self._domlimb
+    
+    @property
+    def afflimb(self):
+        return self._afflimb
+    
+    @property
     def limb(self):
         return self._limb
     
@@ -90,6 +98,8 @@ class PlutoAssessmentData(object):
         # Subject details
         self._subjid = None
         self._type = None
+        self._domlimb = None
+        self._afflimb = None
         self._limb = None
         self._session = None
         self._basedir = None
@@ -98,16 +108,18 @@ class PlutoAssessmentData(object):
         self._protocol: PlutoAssessmentProtocolData = None
         self._romsumry: PlutoAssessmentROMData = None
     
-    def set_subjectid(self, subjid):
+    def set_subject(self, subjid, subjtype, domlimb, afflimb):
         self.init_values()
         self._subjid = subjid
+        self._type = subjtype
+        self._domlimb = domlimb
+        self._afflimb = afflimb
     
-    def set_limbtype(self, slimb, stype):
+    def set_limb(self, limb):
         # Subject ID cannot be None
         if self._subjid is None:
             raise ValueError(f"Subject ID has not been set. You cannot set anything else without a subject ID.")
-        self._type = stype
-        self._limb = slimb.upper()
+        self._limb = limb
         self.create_session_folder()
     
     def create_session_folder(self):
@@ -117,6 +129,14 @@ class PlutoAssessmentData(object):
         self._basedir = pathlib.Path(passdef.DATA_DIR, self.type, self.subjid, self.limb)
         self._sessdir = pathlib.Path(self.basedir, self.session)
         self.sessdir.mkdir(exist_ok=True, parents=True)
+        # Write a JSON file with the subject information.
+        _fname = pathlib.Path(self._basedir, "subject_info.json").as_posix()
+        with open(_fname, 'w') as fh:
+            json.dump({"subjid": self.subjid,
+                       "type": self.type,
+                       "domlimb": self.domlimb,
+                       "afflimb": self.afflimb,
+                       "limb": self.limb}, fh, indent=4)
 
     def get_session_info(self):
         _str = [
@@ -469,15 +489,15 @@ class PlutoAssessmentProtocolData(object):
                 _dframe = pd.concat([
                     _dframe,
                     pd.DataFrame.from_dict({
-                        "session": pd.Series([pd.NA] * _n, dtype="string"),
-                        "mechanism": pd.Series([_m] * _n, dtype="string"),
-                        "task": pd.Series([_t] * _n, dtype="string"),
-                        "trial": pd.Series(list(range(1, 1 + _n)), dtype="Int64"),
-                        "rawfile": pd.Series([pd.NA] * _n, dtype="string"),
-                        "summaryfile": pd.Series([pd.NA] * _n, dtype="string"),
-                        "mechcomment": pd.Series([pd.NA] * _n, dtype="string"),
-                        "taskcomment": pd.Series([pd.NA] * _n, dtype="string"),
-                        "status": pd.Series([pd.NA] * _n, dtype="string"),
+                        "session": pd.Series([pd.NA], dtype="string"),
+                        "mechanism": pd.Series([_m], dtype="string"),
+                        "task": pd.Series([_t], dtype="string"),
+                        "ntrial": pd.Series([_n], dtype="Int64"),
+                        "rawfile": pd.Series([pd.NA], dtype="string"),
+                        "summaryfile": pd.Series([pd.NA], dtype="string"),
+                        "mechcomment": pd.Series([pd.NA], dtype="string"),
+                        "taskcomment": pd.Series([pd.NA], dtype="string"),
+                        "status": pd.Series([pd.NA], dtype="string"),
                     })
                 ], ignore_index=True)
             # Second set of tasks are to be randomized.
@@ -489,14 +509,15 @@ class PlutoAssessmentProtocolData(object):
                 _dframe = pd.concat([
                     _dframe,
                     pd.DataFrame.from_dict({
-                        "session": pd.Series([pd.NA] * _n, dtype="string"),
-                        "mechanism": pd.Series([_m] * _n, dtype="string"),
-                        "task": pd.Series([_t] * _n, dtype="string"),
-                        "trial": pd.Series(list(range(1, 1 + _n)), dtype="Int64"),
-                        "rawfile": pd.Series([pd.NA] * _n, dtype="string"),
-                        "summaryfile": pd.Series([pd.NA] * _n, dtype="string"),
-                        "comments": pd.Series([pd.NA] * _n, dtype="string"),
-                        "status": pd.Series([pd.NA] * _n, dtype="string"),
+                        "session": pd.Series([pd.NA], dtype="string"),
+                        "mechanism": pd.Series([_m], dtype="string"),
+                        "task": pd.Series([_t], dtype="string"),
+                        "ntrial": pd.Series([_n], dtype="Int64"),
+                        "rawfile": pd.Series([pd.NA], dtype="string"),
+                        "summaryfile": pd.Series([pd.NA], dtype="string"),
+                        "mechcomment": pd.Series([pd.NA], dtype="string"),
+                        "taskcomment": pd.Series([pd.NA], dtype="string"),
+                        "status": pd.Series([pd.NA], dtype="string"),
                     })
                 ], ignore_index=True)
         # Write file to disk

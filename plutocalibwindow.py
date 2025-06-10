@@ -125,7 +125,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 
         # Set to NOMECH to start with
         self.pluto.send_heartbeat()
-        self._pluto.set_limb(self._limb)
+        self._pluto.set_limb(self._limb.upper())
         self._pluto.calibrate("NOMECH")
          # Pause for 0.5sec
         QTimer.singleShot(500, lambda: None) 
@@ -248,7 +248,7 @@ if __name__ == '__main__':
     import qtjedi
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM12")
-    pcalib = PlutoCalibrationWindow(plutodev=plutodev, limb="LEFT", mechanism="WFE",
+    pcalib = PlutoCalibrationWindow(plutodev=plutodev, limb="LEFT", mechanism="FPS",
                                     dataviewer=True, heartbeat=True, 
                                     onclosecb=lambda data: print(dt.now()))
     pcalib.show()

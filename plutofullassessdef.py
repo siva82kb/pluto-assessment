@@ -39,7 +39,7 @@ class AssessStatus(Enum):
 #
 # Module level constants.
 DATA_DIR = "fullassessment"
-PROTOCOL_FILE = f"{DATA_DIR}/fullassess_protocol.json"
+SUBJLIST_FILE = f"{DATA_DIR}/fullassess_subjects.csv"
 
 # Proprioceptive assessment control timer delta (seconds).
 PROPASS_CTRL_TIMER_DELTA = 0.01
@@ -55,18 +55,21 @@ MECH_LABELS = {
 }
 
 # List of tasks in the order they are to be done.
-ALLTASKS = ["AROM", "PROM", "APROMSlow", "APROMFast", "DISC", "POSHOLD", "PROP", "FCTRL"]
+ALLTASKS = ["AROM", "PROM", "APROMSLOW", "APROMFAST", "DISC", "POSHOLD",
+            "PROP", "FCTRLLOW", "FCTRLMED", "FCTRLHIGH"]
 
 # Tasks labels
 TASK_LABELS = {
     "AROM": "Active ROM",
     "PROM": "Passive ROM",
-    "APROMSlow": "Assisted Pasive ROM (Slow)",
-    "APROMFast": "Assisted Pasive ROM (Fast)",
+    "APROMSLOW": "Assisted Pasive ROM (Slow)",
+    "APROMFAST": "Assisted Pasive ROM (Fast)",
     "DISC": "Discrete Reaching",
     "POSHOLD": "Position Hold",
     "PROP": "Proprioceptiion",
-    "FCTRL": "Force Control",
+    "FCTRLLOW": "Force Control (Low)",
+    "FCTRLMED": "Force Control (Med)",
+    "FCTRLHIGH": "Force Control (High)",
 }
 
 # Tasks for each mechanisms in the order they are to be done.
@@ -75,9 +78,41 @@ TASK_LABELS = {
 # after the first list tasks are completed, but in a random order. When one of 
 # the lists is empty, it means that there are no tasks to be done in that order. 
 MECH_TASKS = {
-    "FPS": [["AROM", "PROM", "APROMSlow", "APROMFast"], ["POSHOLD", "DISC"]],
-    "WFE": [["AROM", "PROM", "APROMSlow", "APROMFast", "DISC"],[]],
-    "HOC": [["AROM", "PROM", "APROMSlow", "APROMFast"], ["PROP", "FCTRL"]]
+    "FPS": [["AROM", "PROM", "APROMSLOW", "APROMFAST"],
+            ["POSHOLD", "DISC"]],
+    "WFE": [["AROM", "PROM", "APROMSLOW", "APROMFAST", "DISC"],
+            []],
+    "HOC": [["AROM", "PROM", "APROMSLOW", "APROMFAST"],
+            ["PROP", "FCTRLLOW", "FCTRLMED", "FCTRLHIGH"]]
+}
+TASK_DEPENDENCIES = {
+    "AROM": {"type": ["stroke"],
+             "limb": ["left", "right"],
+             "task": []},
+    "PROM": {"type": ["stroke"],
+             "limb": ["left", "right"],
+             "task": ["arom"]},
+    "APROMSLOW": {"type": ["stroke"],
+                  "limb": ["left", "right"],
+                  "task": []},
+    "APROMSFAST": {"type": ["stroke"],
+                   "limb": ["left", "right"],
+                   "task": []},
+    "DISC": {"type": ["stroke", "healthy"],
+             "limb": ["left", "right"],
+             "task": ["arom"]},
+    "POSHOLD": {"type": ["stroke", "healthy"],
+                "limb": ["left", "right"],
+                "task": ["arom"]},
+    "FCTRLLOW": {"type": ["stroke", "healthy"],
+                 "limb": ["left", "right"],
+                 "task": ["arom"]},
+    "FCTRLMED": {"type": ["stroke", "healthy"],
+                 "limb": ["left", "right"],
+                 "task": ["arom"]},
+    "FCTRLHIGH": {"type": ["stroke", "healthy"],
+                  "limb": ["left", "right"],
+                  "task": ["arom"]}
 }
 
 # Mech/task status stylesheet
@@ -97,7 +132,7 @@ STATUS_TEXT = {
 }
 
 # Full assessment summary file header.
-FA_SUMMARY_HEADER = ["session", "mechanism", "task", "trial", "rawfile", 
+FA_SUMMARY_HEADER = ["session", "mechanism", "task", "ntrial", "rawfile", 
                      "summaryfile", "mechcomment", "taskcomment", "status"]
 # Pandas DataFrame column format for the full assessment summary.
 # This is used to define the data types of each column in the summary DataFrame.
@@ -105,7 +140,7 @@ SUMMARY_COLUMN_FORMAT = {
     "session": "string",
     "mechanism": "string",
     "task": "string",
-    "trial": "int64",
+    "ntrial": "int64",
     "rawfile": "string",
     "summaryfile": "string",
     "mechcomment": "string",
@@ -119,7 +154,7 @@ DISPLAY_INTERVAL = 200                  # ms
 VISUAL_FEEDBACK_UPDATE_INTERVAL = 33    # ms
 
 
-class ROMConstants:
+class BaseConstants:
     POS_VEL_WINDOW_LENGHT = 50
     START_POS_HOC_THRESHOLD = 0.25      # cm
     START_POS_NOT_HOC_THRESHOLD = 2.5   # deg
@@ -153,18 +188,18 @@ class ROMConstants:
 #
 # Active Range of Motion Constants
 #
-class AROM(ROMConstants):
+class AROM(BaseConstants):
     NO_OF_TRIALS = 3                   # Number of trials.
 
 
 #
 # Passive Range of Motion Constants
 #
-class PROM(ROMConstants):
+class PROM(BaseConstants):
     NO_OF_TRIALS = 1                   # Number of trials.
 
 
-class APROM(ROMConstants):
+class APROM(BaseConstants):
     TORQUE_DIR1 = +1.0                  # Toque to apply in direction 1
     TORQUE_DIR2 = -1.0                  # Toque to apply in direction 2
     NO_OF_TRIALS = 3                    # Number of trials
@@ -201,10 +236,10 @@ class APROMFast(APROM):
 #
 # Position Hold Constants
 #
-class PositionHold(ROMConstants):
+class PositionHold(BaseConstants):
     NO_OF_TRIALS = 3                # Number of trials.
-    TGT_POSITIONS = [0.2, 0.8]      # Fraction of AROM range
-    TGT_WIDTH_DEG = 2               # Absolute target width in degrees
+    TGT_POSITIONS = [0.1, 0.9]      # Fraction of AROM range
+    TGT_WIDTH_DEG = 4               # Absolute target width in degrees
     TGT_HOLD_DURATION = 01.0        # seconds
     
     # Display color constant
@@ -225,7 +260,7 @@ class PositionHold(ROMConstants):
 #
 # Discrete Reaching Constants
 #
-class DiscreteReach(ROMConstants):
+class DiscreteReach(BaseConstants):
     NO_OF_TRIALS = 3                # Number of trials.
     TGT1_POSITION = 0.20            # Fraction of AROM range
     TGT2_POSITION = 0.80            # Fraction of AROM range
@@ -254,7 +289,7 @@ class DiscreteReach(ROMConstants):
 #
 # Prioprioceptive Assessment Constants
 #
-class Proprioception(ROMConstants):
+class Proprioception(BaseConstants):
     NO_OF_TRIALS = 1                    # Number of trials.
     # NO_OF_TRIALS = 3                    # Number of trials.
     START_POSITION_TH = 0.25            # Start position of the hanbd (cm).       
@@ -290,7 +325,7 @@ class Proprioception(ROMConstants):
 #
 # Force Control Assessment Constants
 #
-class ForceControl(ROMConstants):
+class ForceControl(BaseConstants):
     NO_OF_TRIALS = 3                    # Number of trials.
     FULL_RANGE_WIDTH = 2.0              # The full force range in position. (cm) 
     TGT_POSITION = 0.4                  # Target positions (fraction of AROM).
@@ -324,6 +359,19 @@ class ForceControl(ROMConstants):
     CRUSHED_COLOR = QColor(255, 0, 0, 128)
 
 
+class ForceControlLow(ForceControl):
+    TGT_FORCE = 2.00                    # Target force (N).
+    TGT_FORCE_WIDTH = 01.00             # Target force width (N).
+
+
+class ForceControlMed(ForceControl):
+    TGT_FORCE = 4.00                    # Target force (N).
+    TGT_FORCE_WIDTH = 01.50             # Target force width (N).
+
+
+class ForceControlHigh(ForceControl):
+    TGT_FORCE = 8.00                    # Target force (N).
+    TGT_FORCE_WIDTH = 02.00             # Target force width (N).
 
 
 # Some useful functions
@@ -341,9 +389,9 @@ def get_task_constants(task):
         return AROM()
     elif task == "PROM":
         return PROM()
-    elif task == "APROMSlow":
+    elif task == "APROMSLOW":
         return APROMSlow()
-    elif task == "APROMFast":
+    elif task == "APROMFAST":
         return APROMFast()
     elif task == "POSHOLD":
         return PositionHold()
@@ -351,8 +399,12 @@ def get_task_constants(task):
         return DiscreteReach()
     elif task == "PROP":
         return Proprioception()
-    elif task == "FCTRL":
-        return ForceControl()
+    elif task == "FCTRLLOW":
+        return ForceControlLow()
+    elif task == "FCTRLMED":
+        return ForceControlMed()
+    elif task == "FCTRLHIGH":
+        return ForceControlHigh()
     else:
         raise ValueError(f"Unknown task: {task}")
 
