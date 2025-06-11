@@ -152,11 +152,21 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.pbPROM.clicked.connect(self._callback_assess_prom)
         self.pbPROMSkip.clicked.connect(self._callback_skip_prom)
         self.pbAPROMSlow.clicked.connect(self._callback_assess_apromslow)
+        self.pbAPROMSlowSkip.clicked.connect(self._callback_skip_apromslow)
         self.pbAPROMFast.clicked.connect(self._callback_assess_apromfast)
-        self.pbPosHold.clicked.connect(self._callback_poshold_reach)
+        self.pbAPROMFastSkip.clicked.connect(self._callback_skip_apromfast)
+        self.pbPosHold.clicked.connect(self._callback_poshold)
+        self.pbPosHoldSkip.clicked.connect(self._callback_skip_poshold)
         self.pbDiscReach.clicked.connect(self._callback_disc_reach)
+        self.pbDiscReachSkip.clicked.connect(self._callback_skip_disc_reach)
         self.pbProp.clicked.connect(self._callback_assess_prop)
-        # self.pbForceCtrl.clicked.connect(self._callback_assess_fctrl)
+        self.pbPropSkip.clicked.connect(self._callback_skip_prop)
+        self.pbForceCtrlLow.clicked.connect(self._callback_assess_fctrllow)
+        self.pbForceCtrlLowSkip.clicked.connect(self._callback_skip_fctrllow)
+        self.pbForceCtrlMed.clicked.connect(self._callback_assess_fctrlmed)
+        self.pbForceCtrlMedSkip.clicked.connect(self._callback_skip_fctrlmed)
+        self.pbForceCtrlHigh.clicked.connect(self._callback_assess_fctrlhigh)
+        self.pbForceCtrlHighSkip.clicked.connect(self._callback_skip_fctrlhigh)
         # self.pbStartMechAssessment.clicked.connect(self._callback_start_mech_assess)
         # self.pbSkipMechanismAssessment.clicked.connect(self._callback_skip_mech_assess)
     
@@ -369,6 +379,22 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         )
         self._romwnd.show()
         self._currwndclosed = False
+    
+    def _callback_skip_apromslow(self):
+        # Check if the chosen mechanism is already assessed.
+        _comment = CommentDialog(
+            label=f"Sure you want to skip APROM Slow? If so give the reason.",
+            commentrequired=True,
+            optionyesno=True,
+        )
+        if _comment.exec_() == QtWidgets.QDialog.Accepted:
+            _skipcomment = _comment.getText()
+            # Run the state machine.
+            self._smachine.run_statemachine(
+                Events.APROMSLOW_SKIP,
+                {"comment": _skipcomment, "session": self.data.session}
+            )
+        self.update_ui()
 
     def _callback_assess_apromfast(self):
         # Check if AROM has already been assessed and needs to be reassessed.
@@ -406,7 +432,23 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._romwnd.show()
         self._currwndclosed = False
     
-    def _callback_poshold_reach(self):
+    def _callback_skip_apromfast(self):
+        # Check if the chosen mechanism is already assessed.
+        _comment = CommentDialog(
+            label=f"Sure you want to skip APROM Fast? If so give the reason.",
+            commentrequired=True,
+            optionyesno=True,
+        )
+        if _comment.exec_() == QtWidgets.QDialog.Accepted:
+            _skipcomment = _comment.getText()
+            # Run the state machine.
+            self._smachine.run_statemachine(
+                Events.APROMFAST_SKIP,
+                {"comment": _skipcomment, "session": self.data.session}
+            )
+        self.update_ui()
+    
+    def _callback_poshold(self):
         # Check if AROM has already been assessed and needs to be reassessed.
         _reassess = self._reassess_requested("POSHOLD")
         if _reassess is True:
@@ -440,6 +482,22 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         )
         self._discwnd.show()
         self._currwndclosed = False
+    
+    def _callback_skip_poshold(self):
+        # Check if the chosen mechanism is already assessed.
+        _comment = CommentDialog(
+            label=f"Sure you want to skip Position Hold? If so give the reason.",
+            commentrequired=True,
+            optionyesno=True,
+        )
+        if _comment.exec_() == QtWidgets.QDialog.Accepted:
+            _skipcomment = _comment.getText()
+            # Run the state machine.
+            self._smachine.run_statemachine(
+                Events.POSHOLD_SKIP,
+                {"comment": _skipcomment, "session": self.data.session}
+            )
+        self.update_ui()
     
     def _callback_disc_reach(self):
         # Check if AROM has already been assessed and needs to be reassessed.
@@ -475,7 +533,23 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         )
         self._discwnd.show()
         self._currwndclosed = False
-
+    
+    def _callback_skip_disc_reach(self):
+        # Check if the chosen mechanism is already assessed.
+        _comment = CommentDialog(
+            label=f"Sure you want to skip Discrete Reach? If so give the reason.",
+            commentrequired=True,
+            optionyesno=True,
+        )
+        if _comment.exec_() == QtWidgets.QDialog.Accepted:
+            _skipcomment = _comment.getText()
+            # Run the state machine.
+            self._smachine.run_statemachine(
+                Events.DISCREACH_SKIP,
+                {"comment": _skipcomment, "session": self.data.session}
+            )
+        self.update_ui()
+    
     def _callback_assess_prop(self):
         # Check if AROM has already been assessed and needs to be reassessed.
         _reassess = self._reassess_requested("PROP")
@@ -511,19 +585,35 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         )
         self._discwnd.show()
         self._currwndclosed = False
-
-    def _callback_assess_fctrl(self):
+    
+    def _callback_skip_prop(self):
+        # Check if the chosen mechanism is already assessed.
+        _comment = CommentDialog(
+            label=f"Sure you want to skip Proprioception? If so give the reason.",
+            commentrequired=True,
+            optionyesno=True,
+        )
+        if _comment.exec_() == QtWidgets.QDialog.Accepted:
+            _skipcomment = _comment.getText()
+            # Run the state machine.
+            self._smachine.run_statemachine(
+                Events.PROP_SKIP,
+                {"comment": _skipcomment, "session": self.data.session}
+            )
+        self.update_ui()
+    
+    def _callback_assess_fctrllow(self):
         # Check if AROM has already been assessed and needs to be reassessed.
         _reassess = self._reassess_requested("FCTRL")
         if _reassess is True:
             # Add new task to the protocol.
-            self.protocol.add_task(taskname="FCTRL", mechname=self.protocol.mech)
+            self.protocol.add_task(taskname="FCTRLLOW", mechname=self.protocol.mech)
         elif _reassess is False:
             # If reassessment is not requested, return.
             return
         # Run the state machine.
         self._smachine.run_statemachine(
-            Events.FCTRL_ASSESS,
+            Events.FCTRLLOW_ASSESS,
             None
         )
         # Disable main controls
@@ -536,7 +626,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "limb": self.data.limb,
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
-                "ntrials": pfadef.get_task_constants("FCTRL").NO_OF_TRIALS,
+                "ntrials": pfadef.get_task_constants("FCTRLLOW").NO_OF_TRIALS,
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom()
@@ -546,7 +636,125 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         )
         self._discwnd.show()
         self._currwndclosed = False
-
+    
+    def _callback_skip_fctrllow(self):
+        # Check if the chosen mechanism is already assessed.
+        _comment = CommentDialog(
+            label=f"Sure you want to skip Force Control Low? If so give the reason.",
+            commentrequired=True,
+            optionyesno=True,
+        )
+        if _comment.exec_() == QtWidgets.QDialog.Accepted:
+            _skipcomment = _comment.getText()
+            # Run the state machine.
+            self._smachine.run_statemachine(
+                Events.FCTRLLOW_SKIP,
+                {"comment": _skipcomment, "session": self.data.session}
+            )
+        self.update_ui()
+    
+    def _callback_assess_fctrlmed(self):
+        # Check if AROM has already been assessed and needs to be reassessed.
+        _reassess = self._reassess_requested("FCTRL")
+        if _reassess is True:
+            # Add new task to the protocol.
+            self.protocol.add_task(taskname="FCTRLMED", mechname=self.protocol.mech)
+        elif _reassess is False:
+            # If reassessment is not requested, return.
+            return
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            Events.FCTRLMED_ASSESS,
+            None
+        )
+        # Disable main controls
+        self._maindisable = True
+        self._discwnd = PlutoForceControlWindow(
+            plutodev=self.pluto,
+            assessinfo={
+                "subjid": self.data.subjid,
+                "type": self.data.type,
+                "limb": self.data.limb,
+                "mechanism": self.protocol.mech,
+                "session": self.data.session,
+                "ntrials": pfadef.get_task_constants("FCTRLMED").NO_OF_TRIALS,
+                "rawfile": self.protocol.rawfilename,
+                "summaryfile": self.protocol.summaryfilename,
+                "arom": self.data.detailedsummary.get_arom()
+            },
+            modal=True,
+            onclosecb=self._fctrlasswnd_close_event
+        )
+        self._discwnd.show()
+        self._currwndclosed = False
+    
+    def _callback_skip_fctrlmed(self):
+        # Check if the chosen mechanism is already assessed.
+        _comment = CommentDialog(
+            label=f"Sure you want to skip Force Control Low? If so give the reason.",
+            commentrequired=True,
+            optionyesno=True,
+        )
+        if _comment.exec_() == QtWidgets.QDialog.Accepted:
+            _skipcomment = _comment.getText()
+            # Run the state machine.
+            self._smachine.run_statemachine(
+                Events.FCTRLMED_SKIP,
+                {"comment": _skipcomment, "session": self.data.session}
+            )
+        self.update_ui()
+    
+    def _callback_assess_fctrlhigh(self):
+        # Check if AROM has already been assessed and needs to be reassessed.
+        _reassess = self._reassess_requested("FCTRL")
+        if _reassess is True:
+            # Add new task to the protocol.
+            self.protocol.add_task(taskname="FCTRLHIGH", mechname=self.protocol.mech)
+        elif _reassess is False:
+            # If reassessment is not requested, return.
+            return
+        # Run the state machine.
+        self._smachine.run_statemachine(
+            Events.FCTRLHIGH_ASSESS,
+            None
+        )
+        # Disable main controls
+        self._maindisable = True
+        self._discwnd = PlutoForceControlWindow(
+            plutodev=self.pluto,
+            assessinfo={
+                "subjid": self.data.subjid,
+                "type": self.data.type,
+                "limb": self.data.limb,
+                "mechanism": self.protocol.mech,
+                "session": self.data.session,
+                "ntrials": pfadef.get_task_constants("FCTRLHIGH").NO_OF_TRIALS,
+                "rawfile": self.protocol.rawfilename,
+                "summaryfile": self.protocol.summaryfilename,
+                "arom": self.data.detailedsummary.get_arom()
+            },
+            modal=True,
+            onclosecb=self._fctrlasswnd_close_event
+        )
+        self._discwnd.show()
+        self._currwndclosed = False
+    
+    def _callback_skip_fctrlhigh(self):
+        # Check if the chosen mechanism is already assessed.
+        _comment = CommentDialog(
+            label=f"Sure you want to skip Force Control Low? If so give the reason.",
+            commentrequired=True,
+            optionyesno=True,
+        )
+        if _comment.exec_() == QtWidgets.QDialog.Accepted:
+            _skipcomment = _comment.getText()
+            # Run the state machine.
+            self._smachine.run_statemachine(
+                Events.FCTRLHIGH_SKIP,
+                {"comment": _skipcomment, "session": self.data.session}
+            )
+        self.update_ui()
+    
     def _callback_subjtype_select(self):
         # Reset AROM and PROM values if the current selection is different.
         if (self._subjdetails["type"] != self.cbSubjectType.currentText()):
@@ -1232,7 +1440,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    mywin = PlutoFullAssesor("COM12")
+    mywin = PlutoFullAssesor(pfadef.PLUTOCOMM)
     # ImageUpdate()
     mywin.show()
     sys.exit(app.exec_())

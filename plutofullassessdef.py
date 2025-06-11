@@ -15,6 +15,12 @@ import misc
 from PyQt5.QtGui import QColor
 
 
+#
+# PLUTO COM Port
+#
+PLUTOCOMM = "COM12"
+
+
 class ROMType(Enum):
     ACTIVE = "Active"
     PASSIVE = "Passive"
