@@ -855,21 +855,21 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM12")
+    plutodev = QtPluto("COM4")
     plutodev.start_sensorstream()
     plutodev.send_heartbeat()
     pcalib = PlutoAPRomAssessWindow(
         plutodev=plutodev, 
         assessinfo={
             "type": "Stroke",
-            "limb": "LEFT",
-            "mechanism": "WFE",
+            "limb": "RIGHT",
+            "mechanism": "FPS",
             "romtype": pfadef.ROMType.ACTIVE,
             "session": "testing",
             "ntrials": 1,
             "rawfile": "rawfiletest.csv",
             "summaryfile": "summaryfiletest.csv",
-            "arom": [-20, 30],
+            "arom": None,
         },
         onclosecb=lambda data: print(f"ROM set: {data}"),
     )

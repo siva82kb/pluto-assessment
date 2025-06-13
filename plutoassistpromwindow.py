@@ -123,12 +123,6 @@ class AssistPRomData(object):
         return self._assessinfo['summaryfile']
     
     @property
-    def arom(self):
-        return (self._assessinfo["arom"] 
-                if "arom" in self._assessinfo and self._assessinfo["arom"] 
-                else None)
-
-    @property
     def current_trial(self):
         return self._currtrial
     
@@ -204,24 +198,12 @@ class AssistPRomData(object):
             thres=_th
         )
         # AROM is not given
-        if self.arom is None and _out_of_rom:
-            self._trialrom.append(_pos)
-            self._trialrom.sort()
-            self._trialrom[:] = [self._trialrom[0], self._trialrom[-1]]
-            return True
-        # AROM is given
-        _out_of_arom = misc.is_out_of_range(
-            val=_pos, 
-            minval=self.arom[0],
-            maxval=self.arom[1],
-            thres=0
-        )
-        if _out_of_rom and _out_of_arom:
-            self._trialrom.append(_pos)
-            self._trialrom.sort()
-            self._trialrom[:] = [self._trialrom[0], self._trialrom[-1]]
-            return True
-        return False
+        if not _out_of_rom:
+            return False
+        self._trialrom.append(_pos)
+        self._trialrom.sort()
+        self._trialrom[:] = [self._trialrom[0], self._trialrom[-1]]
+        return True
     
     def set_rom(self):
         """Set the ROM value for the given trial.
@@ -676,7 +658,7 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
         if self._smachine.in_a_trial_state:
             self._draw_stop_zone_lines()
             self._highlight_start_zone()
-            self._update_arom_cursor_position()
+            self._update_aprom_cursor_position()
         elif self._smachine.state == States.REST:
             # Reset arom cursor position.
             self._reset_display()
@@ -741,7 +723,7 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
                  pfadef.BaseConstants.CURSOR_UPPER_LIMIT]
             )
     
-    def _update_arom_cursor_position(self):
+    def _update_aprom_cursor_position(self):
         if len(self.data._trialrom) == 0: return
         if self.data.mechanism == "HOC":
             if len(self.data._trialrom) > 1:
@@ -900,25 +882,25 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
         self._dispsign = 1.0 if self.data.limb.upper() == "RIGHT" else -1.0
 
         # AROM lines when appropriate.
-        if self.data.arom is not None:
-            _pos = ([-self.data.arom[1], -self.data.arom[1]]
-                    if self.data.mechanism == "HOC"
-                    else [self._dispsign * self.data.arom[0], self._dispsign * self.data.arom[0]])
-            self.ui.aromPosLine1 = pg.PlotDataItem(
-                _pos,
-                [pfadef.BaseConstants.CURSOR_LOWER_LIMIT, pfadef.BaseConstants.CURSOR_UPPER_LIMIT],
-                pen=pg.mkPen(color = "#1EFF00", width=1, style=QtCore.Qt.PenStyle.DotLine)
-            )
-            _pos = ([self.data.arom[1], self.data.arom[1]]
-                    if self.data.mechanism == "HOC"
-                    else [self._dispsign * self.data.arom[1], self._dispsign * self.data.arom[1]])
-            self.ui.aromPosLine2 = pg.PlotDataItem(
-                _pos,
-                [pfadef.BaseConstants.CURSOR_LOWER_LIMIT, pfadef.BaseConstants.CURSOR_UPPER_LIMIT],
-                pen=pg.mkPen(color = '#1EFF00', width=1, style=QtCore.Qt.PenStyle.DotLine)
-            )
-            _pgobj.addItem(self.ui.aromPosLine1)
-            _pgobj.addItem(self.ui.aromPosLine2)
+        # if self.data.arom is not None:
+        #     _pos = ([-self.data.arom[1], -self.data.arom[1]]
+        #             if self.data.mechanism == "HOC"
+        #             else [self._dispsign * self.data.arom[0], self._dispsign * self.data.arom[0]])
+        #     self.ui.aromPosLine1 = pg.PlotDataItem(
+        #         _pos,
+        #         [pfadef.BaseConstants.CURSOR_LOWER_LIMIT, pfadef.BaseConstants.CURSOR_UPPER_LIMIT],
+        #         pen=pg.mkPen(color = "#1EFF00", width=1, style=QtCore.Qt.PenStyle.DotLine)
+        #     )
+        #     _pos = ([self.data.arom[1], self.data.arom[1]]
+        #             if self.data.mechanism == "HOC"
+        #             else [self._dispsign * self.data.arom[1], self._dispsign * self.data.arom[1]])
+        #     self.ui.aromPosLine2 = pg.PlotDataItem(
+        #         _pos,
+        #         [pfadef.BaseConstants.CURSOR_LOWER_LIMIT, pfadef.BaseConstants.CURSOR_UPPER_LIMIT],
+        #         pen=pg.mkPen(color = '#1EFF00', width=1, style=QtCore.Qt.PenStyle.DotLine)
+        #     )
+        #     _pgobj.addItem(self.ui.aromPosLine1)
+        #     _pgobj.addItem(self.ui.aromPosLine2)
         
         # Angle display sign for the limb.
         self._dispsign = 1.0 if self.data.limb.upper() == "RIGHT" else -1.0
@@ -1067,7 +1049,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM12")
+    plutodev = QtPluto("COM4")
     pcalib = PlutoAssistPRomAssessWindow(
         plutodev=plutodev, 
         assessinfo={
@@ -1079,7 +1061,6 @@ if __name__ == '__main__':
             "ntrials": 1,
             "rawfile": "rawfiletest.csv",
             "summaryfile": "summaryfiletest.csv",
-            "arom": [-20, 30],
             "duration": pfadef.get_task_constants("APROMSLOW").DURATION,
             "apromtype": "Slow",
         },

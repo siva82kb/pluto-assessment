@@ -1,2 +1,2 @@
 session,type,limb,mechanism,apromtype,trial,startpos,rommin,rommax,romrange,torqdir1,torqdir2,duration
-testing,Stroke,Left,FPS,Slow,0,-0.4421250015497208,-71.67318771362305,68.63174896240234,140.3049366760254,1.0,-1.0,5.0
+testing,Stroke,Left,FPS,Slow,0,-0.745312511920929,-54.62212615966797,44.09550003051758,98.71762619018554,1.0,-1.0,5.0

@@ -16,6 +16,7 @@ dependencies:
       - click==8.1.7
       - colorama==0.4.6
       - numpy==2.0.1
+      - pandas==2.9.0
       - polars==1.2.1
       - pyqt5==5.15.9
       - pyqt5-plugins==5.15.9.2.3

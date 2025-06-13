@@ -18,7 +18,7 @@ from PyQt5.QtGui import QColor
 #
 # PLUTO COM Port
 #
-PLUTOCOMM = "COM12"
+PLUTOCOMM = "COM4"
 
 
 class ROMType(Enum):
@@ -440,3 +440,12 @@ def get_task_constants(task):
     else:
         raise ValueError(f"Unknown task: {task}")
 
+
+def is_task_included(taskname: str, limb: str, afflimb: str, subjtype: str) -> bool:
+    """Function to check if the given task into be included in the assessment 
+    for the given subjectype, limb, and affected limb.
+    """
+    _typeflag: bool = subjtype in TASK_DEPENDENCIES[taskname]["in_subjtypes"]
+    _affflag: bool = (TASK_DEPENDENCIES[taskname]["in_unaffected"]
+                      or limb == afflimb)
+    return _typeflag and _affflag

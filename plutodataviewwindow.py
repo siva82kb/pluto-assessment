@@ -169,7 +169,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = True
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM13")
+    plutodev = QtPluto("COM4")
     plutodev.send_heartbeat()
     plutodev.set_limb("LEFT")
     pdataview = PlutoDataViewWindow(plutodev=plutodev,

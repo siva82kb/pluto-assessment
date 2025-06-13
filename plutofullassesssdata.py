@@ -330,6 +330,16 @@ class PlutoAssessmentProtocolData(object):
     #
     # Supporting functions
     #
+    def get_no_of_trials(self, mech, task):
+        """Get the number of trials for the given mechanism and task.
+        """
+        if self._df is None:
+            return 0
+        _mechdf = self._df[(self._df["mechanism"] == mech) & (self._df["task"] == task)]
+        if _mechdf.empty:
+            return 0
+        return _mechdf["ntrial"].iloc[0] if "ntrial" in _mechdf.columns else 0
+    
     def create_assessment_protocol(self):
         # Create the protocol summary file.
         self.create_assessment_summary_file()
@@ -408,7 +418,7 @@ class PlutoAssessmentProtocolData(object):
                 self._df.loc[_othertaskinx, "summaryfile"] = pd.NA
                 self._df.loc[_othertaskinx, "status"] = pfadef.AssessStatus.EXCLUDED.value
                 self._df.loc[_othertaskinx, "mechcomment"] = pd.NA
-                self._df.loc[_othertaskinx, "taskcomment"] = comment.replace(",", " ")
+                self._df.loc[_othertaskinx, "taskcomment"] = f"{taskname} skipped. [{comment.replace(',', ' ')}]"
          # Update the summary file.
         self._df.to_csv(self.filename, sep=",", index=None)
         # Reset task selection.
@@ -532,16 +542,14 @@ class PlutoAssessmentProtocolData(object):
                     _dframe = self._add_rows(_dframe, _m, _t)
         # Write file to disk
         _dframe.to_csv(self.filename, sep=",", index=None)
-    
-    def is_task_included(self, taskname):
-        _typeflag = self._type in pfadef.TASK_DEPENDENCIES[taskname]["in_subjtypes"]
-        _affflag = (pfadef.TASK_DEPENDENCIES[taskname]["in_unaffected"]
-                    or self._limb == self._afflimb)
-        return _typeflag and _affflag
 
     def _add_rows(self, dframe, mechname, taskname):
         # Check if this task is enabled.
-        if self.is_task_included(taskname) is False:
+        _taskincluded = pfadef.is_task_included(taskname=taskname,
+                                                limb=self._limb,
+                                                afflimb=self._afflimb,
+                                                subjtype=self._type)
+        if _taskincluded is False:
             return dframe
         # Create the rows.
         _n = pfadef.get_task_constants(taskname).NO_OF_TRIALS
@@ -573,13 +581,8 @@ class PlutoAssessmentDetailsData(object):
         self._basedir = basedir
         
         # Read the summary file.
-        self._val = {
-            "subj": self._subjid,
-            "type": self._type,
-            "domlimb": self._domlimb,
-            "afflimb": self._afflimb,
-            "limb": self._limb
-        }
+        # Create the assessment details dictionary.
+        self._create_assessment_details_dict()
         
         # Create the protocol summary file.
         self.create_assessment_detail_file()
@@ -636,44 +639,92 @@ class PlutoAssessmentDetailsData(object):
     
     def set_task(self, value):
         self._task = value
-        print(self._task, self._val[self._mech]["tasks"])
-        if self._task not in self._val[self._mech]["tasks"]:
-            self._val[self._mech]["tasks"][self._task] = []
         self.write_to_disk()
     
-    def skip_task(self, value):
-        self._task = value
+    def skip_task(self, taskname, session, comment):
+        self._val[self._mech]["tasks"][taskname].append({
+            "session": session,
+            "taskcomment": comment,
+            "status": "SKIPPED"
+        })
+        # Now skip all the other INCOMPLETE tasks that depend on this task.
+        _othertasks = [_t for _t in self._val[self._mech]['tasks'].keys()
+                       if _t != taskname]
+        for _ot in _othertasks:
+            if taskname in pfadef.TASK_DEPENDENCIES[_ot]["depends_on"]:
+                self._val[self._mech]["tasks"][_ot].append({
+                    "session": session,
+                    "taskcomment": f"{taskname} skipped. [{comment.replace(',', ' ')}]",
+                    "status": "EXCLUDED"
+                })
+        self.write_to_disk()
+        self._task = None
     
     def get_arom(self):
         """Get the AROM data for the current mechanism.
         """
         if self._mech is None:
             raise ValueError("Mechanism not set. Cannot get AROM data.")
-        return (self._val[self._mech]["AROM"]["tasks"][-1]["rom"]
-                if len(self._val[self._mech]["AROM"]["tasks"]) > 0
-                else [0, 0])
+        try:
+            return self._val[self._mech]["tasks"]["AROM"][-1]["rom"]
+        except KeyError:
+            return None
 
-    def update(self, romval: list, session: str, tasktime: str, rawfile: str,
-               summaryfile: str, taskcomment: str="", status: str=""):
+    def update(self, session: str, tasktime: str, rawfile: str,
+               summaryfile: str, taskcomment: str="", status: str="", romval: list=None):
         """Update the ROM summary data.
         """
         if self._mech is None or self._task is None:
             raise ValueError("Mechanism or task not set. Cannot update ROM data.")
         # Update value
-        print("adsgasdgasdg")
-        _temp = [_v for _v in romval if len(_v) == 2]
         self._val[self._mech]["tasks"][self._task].append({
             "session": session,
             "tasktime": tasktime,
             "rawfile": rawfile,
             "summaryfile": summaryfile,
-            "romval": romval,
-            "rom": np.mean(np.array(_temp), axis=0).tolist() if len(_temp) != 0 else float('nan'),
             "taskcomment": taskcomment.replace(",", " "),
             "status": status
         })
+        if romval is not None:
+            _temp = [_v for _v in romval if len(_v) == 2]
+            self._val[self._mech]["tasks"][self._task][-1]["romval"] = romval
+            self._val[self._mech]["tasks"][self._task][-1]["rom"] = (
+                np.mean(np.array(_temp), axis=0).tolist()
+                if len(_temp) != 0
+                else float('nan')
+            )
         # Write to disk
         self.write_to_disk()
+    
+    def _create_assessment_details_dict(self):
+        self._val = {
+            "subj": self._subjid,
+            "type": self._type,
+            "domlimb": self._domlimb,
+            "afflimb": self._afflimb,
+            "limb": self._limb
+        }
+
+        # Add mechanisms and empty lists for different tasks.
+        for mech in pfadef.MECHANISMS:
+            self._val[mech] = {
+                "status": "INCOMPLETE",
+                "tasks": {}
+            }
+
+            # Add mandatory tasks for the mechanism.
+            mandatory_tasks = pfadef.MECH_TASKS[mech][0]
+            for task in mandatory_tasks:
+                if pfadef.is_task_included(taskname=task, limb=self._limb,
+                                           afflimb=self._afflimb, subjtype=self._type):
+                    self._val[mech]["tasks"][task] = []
+
+            # Add randomized tasks.
+            for task_group in pfadef.MECH_TASKS[mech][1:]:
+                for task in task_group:
+                    if pfadef.is_task_included(taskname=task, limb=self._limb,
+                                               afflimb=self._afflimb, subjtype=self._type):
+                        self._val[mech]["tasks"][task] = []
     
     #
     # Data logging functions

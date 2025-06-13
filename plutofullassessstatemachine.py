@@ -583,6 +583,15 @@ class PlutoFullAssessmentStateMachine():
         """
         # Check if discrete reaching is done.
         if event == Events.POSHOLD_DONE:
+            # Update AROM assessment data.
+            self._data.detailedsummary.update(
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Update the protocol data.
             self._data.protocol.update(
                 self._data.session,
@@ -614,6 +623,15 @@ class PlutoFullAssessmentStateMachine():
         """
         # Check if discrete reaching is done.
         if event == Events.DISCREACH_DONE:
+            # Update AROM assessment data.
+            self._data.detailedsummary.update(
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Update the protocol data.
             self._data.protocol.update(
                 self._data.session,
@@ -645,6 +663,15 @@ class PlutoFullAssessmentStateMachine():
         """
         # Check if proprioceptive assessment is done.
         if event == Events.PROP_DONE:
+            # Update AROM assessment data.
+            self._data.detailedsummary.update(
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Update the protocol data.
             self._data.protocol.update(
                 self._data.session,
@@ -676,6 +703,15 @@ class PlutoFullAssessmentStateMachine():
         """
         # Check if proprioceptive assessment is done.
         if event == Events.FCTRLLOW_DONE:
+            # Update AROM assessment data.
+            self._data.detailedsummary.update(
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Update the protocol data.
             self._data.protocol.update(
                 self._data.session,
@@ -707,6 +743,15 @@ class PlutoFullAssessmentStateMachine():
         """
         # Check if proprioceptive assessment is done.
         if event == Events.FCTRLMED_DONE:
+            # Update AROM assessment data.
+            self._data.detailedsummary.update(
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Update the protocol data.
             self._data.protocol.update(
                 self._data.session,
@@ -738,6 +783,15 @@ class PlutoFullAssessmentStateMachine():
         """
         # Check if proprioceptive assessment is done.
         if event == Events.FCTRLHIGH_DONE:
+            # Update AROM assessment data.
+            self._data.detailedsummary.update(
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Update the protocol data.
             self._data.protocol.update(
                 self._data.session,
@@ -859,55 +913,81 @@ class PlutoFullAssessmentStateMachine():
             self._data.protocol.skip_task(taskname="AROM",
                                           session=data["session"],
                                           comment=data["comment"])
-            self._data.detailedsummary.set_task("AROM")
+            self._data.detailedsummary.skip_task(taskname="AROM",
+                                                 session=data["session"],
+                                                 comment=data["comment"])
             self.log(f"Task AROM skipped.")
         elif event == Events.PROM_SKIP:
             self._data.protocol.skip_task(taskname="PROM",
                                           session=data["session"],
                                           comment=data["comment"])
-            # self._data.detailedsummary.set_task("PROM")
+            self._data.detailedsummary.skip_task(taskname="PROM",
+                                                 session=data["session"],
+                                                 comment=data["comment"])
             self.log(f"Task PROM skipped.")
         elif event == Events.APROMSLOW_SKIP:
             self._data.protocol.skip_task(taskname="APROMSLOW",
                                           session=data["session"],
                                           comment=data["comment"])
-            # self._data.detailedsummary.set_task("APROMSLOW")
+            self._data.detailedsummary.skip_task(taskname="APROMSLOW",
+                                                 session=data["session"],
+                                                 comment=data["comment"])
             self.log(f"Task APROMSLOW skipped.")
         elif event == Events.APROMFAST_SKIP:
             self._data.protocol.skip_task(taskname="APROMFAST",
                                           session=data["session"],
                                           comment=data["comment"])
-            # self._data.detailedsummary.set_task("APROMFAST")
+            self._data.detailedsummary.skip_task(taskname="APROMFAST",
+                                                 session=data["session"],
+                                                 comment=data["comment"])
             self.log(f"Task APROMFAST skipped.")
         elif event == Events.POSHOLD_SKIP:
             self._data.protocol.skip_task(taskname="POSHOLD",
                                           session=data["session"],
                                           comment=data["comment"])
+            self._data.detailedsummary.skip_task(taskname="POSHOLD",
+                                                 session=data["session"],
+                                                 comment=data["comment"])
             self.log(f"Task POSHOLD skipped.")
         elif event == Events.DISCREACH_SKIP:
             self._data.protocol.skip_task(taskname="DISC",
                                           session=data["session"],
                                           comment=data["comment"])
+            self._data.detailedsummary.skip_task(taskname="DISC",
+                                                 session=data["session"],
+                                                 comment=data["comment"])
             self.log(f"Task DISC skipped.")
         elif event == Events.PROP_SKIP:
             self._data.protocol.skip_task(taskname="PROP",
                                           session=data["session"],
                                           comment=data["comment"])
+            self._data.detailedsummary.skip_task(taskname="PROP",
+                                                 session=data["session"],
+                                                 comment=data["comment"])
             self.log(f"Task PROP skipped.")
         elif event == Events.FCTRLLOW_SKIP:
             self._data.protocol.skip_task(taskname="FCTRLLOW",
                                           session=data["session"],
                                           comment=data["comment"])
+            self._data.detailedsummary.skip_task(taskname="FCTRLLOW",
+                                                 session=data["session"],
+                                                 comment=data["comment"])
             self.log(f"Task FCTRLLOW skipped.")
         elif event == Events.FCTRLMED_SKIP:
             self._data.protocol.skip_task(taskname="FCTRLMED",
                                           session=data["session"],
                                           comment=data["comment"])
+            self._data.detailedsummary.skip_task(taskname="FCTRLMED",
+                                                 session=data["session"],
+                                                 comment=data["comment"])
             self.log(f"Task FCTRLMED skipped.")
         elif event == Events.FCTRLHIGH_SKIP:
             self._data.protocol.skip_task(taskname="FCTRLHIGH",
                                           session=data["session"],
                                           comment=data["comment"])
+            self._data.detailedsummary.skip_task(taskname="FCTRLHIGH",
+                                                 session=data["session"],
+                                                 comment=data["comment"])
             self.log(f"Task FCTRLHIGH skipped.")
         # Check if the current mechanism has been assessed.
         self._state = (

@@ -267,7 +267,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "mechanism": self.protocol.mech,
                 "romtype": pfadef.ROMType.ACTIVE,
                 "session": self.data.session,
-                "ntrials": pfadef.get_task_constants("AROM").NO_OF_TRIALS,
+                "ntrials": self.protocol.get_no_of_trials(self.protocol.mech, "AROM"),
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
             },
@@ -289,7 +289,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             # Run the state machine.
             self._smachine.run_statemachine(
                 Events.AROM_SKIP,
-                {"comment": _skipcomment, "session": self.data.session}
+                {"session": self.data.session, "comment": _skipcomment}
             )
         self.update_ui()
 
@@ -317,7 +317,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "mechanism": self.protocol.mech,
                 "romtype": pfadef.ROMType.PASSIVE,
                 "session": self.data.session,
-                "ntrials": pfadef.get_task_constants("PROM").NO_OF_TRIALS,
+                "ntrials": self.protocol.get_no_of_trials(self.protocol.mech, "PROM"),
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom()
@@ -367,7 +367,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "limb": self.data.limb,
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
-                "ntrials": pfadef.get_task_constants("APROMSLOW").NO_OF_TRIALS,
+                "ntrials": self.protocol.get_no_of_trials(self.protocol.mech, "APROMSLOW"),
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom(),
@@ -419,7 +419,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "limb": self.data.limb,
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
-                "ntrials": pfadef.get_task_constants("APROMFAST").NO_OF_TRIALS,
+                "ntrials": self.protocol.get_no_of_trials(self.protocol.mech, "APROMFAST"),
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom(),
@@ -472,7 +472,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "limb": self.data.limb,
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
-                "ntrials": pfadef.get_task_constants("POSHOLD").NO_OF_TRIALS,
+                "ntrials": self.protocol.get_no_of_trials(self.protocol.mech, "POSHOLD"),
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom()
@@ -523,7 +523,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "limb": self.data.limb,
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
-                "ntrials": pfadef.get_task_constants("DISC").NO_OF_TRIALS,
+                "ntrials": self.protocol.get_no_of_trials(self.protocol.mech, "DISC"),
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom()
@@ -574,7 +574,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "limb": self.data.limb,
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
-                "ntrials": pfadef.get_task_constants("PROP").NO_OF_TRIALS,
+                "ntrials": self.protocol.get_no_of_trials(self.protocol.mech, "PROP"),
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom(),
@@ -626,7 +626,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "limb": self.data.limb,
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
-                "ntrials": pfadef.get_task_constants("FCTRLLOW").NO_OF_TRIALS,
+                "ntrials": self.protocol.get_no_of_trials(self.protocol.mech, "FCTRLLOW"),
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom()
@@ -677,7 +677,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "limb": self.data.limb,
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
-                "ntrials": pfadef.get_task_constants("FCTRLMED").NO_OF_TRIALS,
+                "ntrials": self.protocol.get_no_of_trials(self.protocol.mech, "FCTRLMED"),
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom()
@@ -728,7 +728,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "limb": self.data.limb,
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
-                "ntrials": pfadef.get_task_constants("FCTRLHIGH").NO_OF_TRIALS,
+                "ntrials": self.protocol.get_no_of_trials(self.protocol.mech, "FCTRLHIGH"),
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom()
