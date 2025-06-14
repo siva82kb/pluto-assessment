@@ -336,7 +336,12 @@ class PlutoFullAssessmentStateMachine():
             print(f"Setting mechanism to {_event_mech_map[event]}")
             self._data.protocol.set_mechanism(_event_mech_map[event])
             self._data.detailedsummary.set_mechanism(_event_mech_map[event])
-            self._state = States.CALIBRATE
+            # Check if the mechanism is already completed.
+            if self._data.protocol.mech in self._data.protocol.mech_completed:
+                # Check if the current mechanism has been assessed.
+                self._state = States.MECH_OR_TASK_SELECT
+            else:
+                self._state = States.CALIBRATE
             self.log(f"Mechanism set to {self._data.protocol.mech}.")
         return
 
@@ -878,26 +883,32 @@ class PlutoFullAssessmentStateMachine():
         elif event == Events.POSHOLD_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("POSHOLD")
+            self._data.detailedsummary.set_task("POSHOLD")
             self.log(f"Task set to POSHOLD.")
         elif event == Events.DISCREACH_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("DISC")
+            self._data.detailedsummary.set_task("DISC")
             self.log(f"Task set to DISC.")
         elif event == Events.PROP_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("PROP")
+            self._data.detailedsummary.set_task("PROP")
             self.log(f"Task set to PROP.")
         elif event == Events.FCTRLLOW_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("FCTRLLOW")
+            self._data.detailedsummary.set_task("FCTRLLOW")
             self.log(f"Task set to FCTRLLOW.")
         elif event == Events.FCTRLMED_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("FCTRLMED")
+            self._data.detailedsummary.set_task("FCTRLMED")
             self.log(f"Task set to FCTRLMED.")
         elif event == Events.FCTRLHIGH_ASSESS:
             self._state = self._event_to_nextstate[event]
             self._data.protocol.set_task("FCTRLHIGH")
+            self._data.detailedsummary.set_task("FCTRLHIGH")
             self.log(f"Task set to FCTRLHIGH.")
         elif event is None:
             # Check if the current mechanism has been assessed.

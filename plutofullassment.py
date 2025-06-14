@@ -244,14 +244,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._testdevwnd.show()
 
     def _callback_assess_arom(self):
-        # Check if AROM has already been assessed and needs to be reassessed.
-        _reassess = self._reassess_requested("AROM")
-        if _reassess is True:
-            # Add new task to the protocol.
-            self.protocol.add_task(taskname="AROM", mechname=self.protocol.mech)
-        elif _reassess is False:
-            # If reassessment is not requested, return.
-            return
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.AROM_ASSESS,
@@ -294,14 +286,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.update_ui()
 
     def _callback_assess_prom(self):
-        # Check if AROM has already been assessed and needs to be reassessed.
-        _reassess = self._reassess_requested("PROM")
-        if _reassess is True:
-            # Add new task to the protocol.
-            self.protocol.add_task(taskname="PROM", mechname=self.protocol.mech)
-        elif _reassess is False:
-            # If reassessment is not requested, return.
-            return
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.PROM_ASSESS,
@@ -345,14 +329,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.update_ui()
     
     def _callback_assess_apromslow(self):
-        # Check if AROM has already been assessed and needs to be reassessed.
-        _reassess = self._reassess_requested("APROMSLOW")
-        if _reassess is True:
-            # Add new task to the protocol.
-            self.protocol.add_task(taskname="APROMSLOW", mechname=self.protocol.mech)
-        elif _reassess is False:
-            # If reassessment is not requested, return.
-            return
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.APROMSLOW_ASSESS,
@@ -397,14 +373,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.update_ui()
 
     def _callback_assess_apromfast(self):
-        # Check if AROM has already been assessed and needs to be reassessed.
-        _reassess = self._reassess_requested("APROMFAST")
-        if _reassess is True:
-            # Add new task to the protocol.
-            self.protocol.add_task(taskname="APROMFAST", mechname=self.protocol.mech)
-        elif _reassess is False:
-            # If reassessment is not requested, return.
-            return
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.APROMFAST_ASSESS,
@@ -449,14 +417,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.update_ui()
     
     def _callback_poshold(self):
-        # Check if AROM has already been assessed and needs to be reassessed.
-        _reassess = self._reassess_requested("POSHOLD")
-        if _reassess is True:
-            # Add new task to the protocol.
-            self.protocol.add_task(taskname="POSHOLD", mechname=self.protocol.mech)
-        elif _reassess is False:
-            # If reassessment is not requested, return.
-            return
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.POSHOLD_ASSESS,
@@ -500,14 +460,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.update_ui()
     
     def _callback_disc_reach(self):
-        # Check if AROM has already been assessed and needs to be reassessed.
-        _reassess = self._reassess_requested("DISC")
-        if _reassess is True:
-            # Add new task to the protocol.
-            self.protocol.add_task(taskname="DISC", mechname=self.protocol.mech)
-        elif _reassess is False:
-            # If reassessment is not requested, return.
-            return
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.DISCREACH_ASSESS,
@@ -551,14 +503,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.update_ui()
     
     def _callback_assess_prop(self):
-        # Check if AROM has already been assessed and needs to be reassessed.
-        _reassess = self._reassess_requested("PROP")
-        if _reassess is True:
-            # Add new task to the protocol.
-            self.protocol.add_task(taskname="PROP", mechname=self.protocol.mech)
-        elif _reassess is False:
-            # If reassessment is not requested, return.
-            return
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.PROP_ASSESS,
@@ -603,14 +547,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.update_ui()
     
     def _callback_assess_fctrllow(self):
-        # Check if AROM has already been assessed and needs to be reassessed.
-        _reassess = self._reassess_requested("FCTRL")
-        if _reassess is True:
-            # Add new task to the protocol.
-            self.protocol.add_task(taskname="FCTRLLOW", mechname=self.protocol.mech)
-        elif _reassess is False:
-            # If reassessment is not requested, return.
-            return
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.FCTRLLOW_ASSESS,
@@ -654,14 +590,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.update_ui()
     
     def _callback_assess_fctrlmed(self):
-        # Check if AROM has already been assessed and needs to be reassessed.
-        _reassess = self._reassess_requested("FCTRL")
-        if _reassess is True:
-            # Add new task to the protocol.
-            self.protocol.add_task(taskname="FCTRLMED", mechname=self.protocol.mech)
-        elif _reassess is False:
-            # If reassessment is not requested, return.
-            return
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.FCTRLMED_ASSESS,
@@ -705,14 +633,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.update_ui()
     
     def _callback_assess_fctrlhigh(self):
-        # Check if AROM has already been assessed and needs to be reassessed.
-        _reassess = self._reassess_requested("FCTRL")
-        if _reassess is True:
-            # Add new task to the protocol.
-            self.protocol.add_task(taskname="FCTRLHIGH", mechname=self.protocol.mech)
-        elif _reassess is False:
-            # If reassessment is not requested, return.
-            return
         # Run the state machine.
         self._smachine.run_statemachine(
             Events.FCTRLHIGH_ASSESS,
@@ -792,28 +712,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self.update_ui()
     
     def _callback_start_mech_assess(self, mech_chosen):
-        # Check if the chosen mechanism is already assessed.
-        _mechstatus = self.protocol.get_mech_status(mech_chosen)
-        print(mech_chosen, _mechstatus)
-        if (_mechstatus == pfadef.AssessStatus.COMPLETE 
-            or _mechstatus == pfadef.AssessStatus.PARTIALCOMPLETE):
-            # Ask if the user wants to continue with this mechanism.
-            reply = QMessageBox.question(
-                self,
-                "Confirm",
-                f"Mechanism [{mech_chosen}] already assessed.\nDo you want to continue?",
-                QMessageBox.Ok | QMessageBox.Cancel
-            )
-            if reply == QMessageBox.Cancel:
-                # Cancel the radio button selection.
-                self._reset_mech_selection()
-                # Get the appropriate event.
-                self._smachine.run_statemachine(
-                    self._get_chosen_mechanism_event(),
-                    {}
-                )
-                self.update_ui()
-                return
         # Message box to inform the user that the mechanism is selected.
         reply = QMessageBox.question(
             self,
@@ -856,43 +754,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 {"comment": _skipcomment, "session": self.data.session}
             )
         self.update_ui()
-
-        # if self.protocol.is_mechanism_assessed(_mechchosen):
-        #     # Ask if the user wants to continue with this mechanism.
-        #     reply = QMessageBox.question(
-        #         self,
-        #         "Confirm",
-        #         f"Mechanism [{_mechchosen}] already assessed.\nDo you want to continue?",
-        #         QMessageBox.Ok | QMessageBox.Cancel
-        #     )
-        #     if reply == QMessageBox.Cancel:
-        #         # Cancel the radio button selection.
-        #         self._reset_mech_selection()
-        #         # Get the appropriate event.
-        #         self._smachine.run_statemachine(
-        #             self._get_chosen_mechanism_event(),
-        #             {}
-        #         )
-        #         print(self.data.mechanism)
-        #         self.update_ui()
-        #         return
-        # # Message box to inform the user that the mechanism is selected.
-        # reply = QMessageBox.question(
-        #     self,
-        #     "Confirm",
-        #     f"Start {_mechchosen} assessment?\n\n",
-        #     QMessageBox.Ok | QMessageBox.Cancel
-        # )
-        # if reply == QMessageBox.Cancel:
-        #     # Cancel the radio button selection.
-        #     self._reset_mech_selection()
-        # # Run the state machine.
-        # # Get the appropriate event.
-        # self._smachine.run_statemachine(
-        #     self._get_chosen_mechanism_event(),
-        #     {}
-        # )
-        # self.update_ui()
     
     # 
     # Timer callbacks
@@ -1236,9 +1097,11 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # self.pbSkipMechanismAssessment.setEnabled(self._any_incomplete_mechanism_selected())
 
         # Enable the calibration button.
-        self.pbCalibrate.setEnabled(self._maindisable is False 
-                                    and self.protocol is not None 
-                                    and self.protocol.mech is not None)
+        calibflag = (self._maindisable is False
+                     and self.protocol is not None 
+                     and self.protocol.mech is not None
+                     and self.protocol.mech not in self.protocol.mech_completed)
+        self.pbCalibrate.setEnabled(calibflag)
         if self.pbCalibrate.isEnabled():
             self.pbCalibrate.setStyleSheet(
                 pfadef.STATUS_STYLESHEET[pfadef.AssessStatus.COMPLETE]
