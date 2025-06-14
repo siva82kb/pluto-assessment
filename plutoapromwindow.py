@@ -146,7 +146,7 @@ class APRomData(object):
     def all_trials_done(self):
         """Check if all trials are done.
         """
-        return self._currtrial >= self.ntrials
+        return bool(self._currtrial >= self.ntrials)
     
     @property
     def rawfilewriter(self):
@@ -837,15 +837,19 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
         data = {"romval": self.data.rom,
                 "done": self.data.all_trials_done}
         if self.data.all_trials_done:
-            _comment = CommentDialog(label="AROM completed. Add optional comment.",
-                                     commentrequired=False)
-            data["status"] = pfadef.AssessStatus.COMPLETE.value
+            _comment = CommentDialog(label="AROM completed. Accept or reject?",
+                                     optionyesno=True)
+            if (_comment.exec_() == QtWidgets.QDialog.Accepted):
+                data["status"] = pfadef.AssessStatus.COMPLETE.value
+            else:
+                data["status"] = pfadef.AssessStatus.REJECTED.value
+            data["taskcomment"] = _comment.getText()
         else:
             _comment = CommentDialog(label="AROM incomplete. Why?",
-                                     commentrequired=True)
-            data["status"] = pfadef.AssessStatus.SKIPPED.value
-        if (_comment.exec_() == QtWidgets.QDialog.Accepted):
-            data["taskcomment"] = _comment.getText()
+                                     optionyesno=False)
+            if (_comment.exec_() == QtWidgets.QDialog.Rejected):
+                data["taskcomment"] = _comment.getText()
+                data["status"] = pfadef.AssessStatus.TERMINATED.value
         if self.on_close_callback:
             self.on_close_callback(data=data)
         # Detach PLUTO callbacks.
@@ -871,7 +875,7 @@ if __name__ == '__main__':
             "summaryfile": "summaryfiletest.csv",
             "arom": None,
         },
-        onclosecb=lambda data: print(f"ROM set: {data}"),
+        onclosecb=lambda data: print(f"Data: {data}"),
     )
     pcalib.show()
     sys.exit(app.exec_())

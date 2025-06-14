@@ -74,6 +74,7 @@ class Events(Enum):
     AROM_DONE = auto()
     AROM_NO_DONE = auto()
     AROM_SKIP = auto()
+    AROM_REJECT = auto()
     #
     # PROM events
     #
@@ -81,6 +82,7 @@ class Events(Enum):
     PROM_DONE = auto()
     PROM_NO_DONE = auto()
     PROM_SKIP = auto()
+    PROM_REJECT = auto()
     #
     # APROM Slow events
     #
@@ -88,6 +90,7 @@ class Events(Enum):
     APROMSLOW_DONE = auto()
     APROMSLOW_NO_DONE = auto()
     APROMSLOW_SKIP = auto()
+    APROMSLOW_REJECT = auto()
     #
     # APROM Fast events
     #
@@ -95,6 +98,7 @@ class Events(Enum):
     APROMFAST_DONE = auto()
     APROMFAST_NO_DONE = auto()
     APROMFAST_SKIP = auto()
+    APROMFAST_REJECT = auto()
     #
     # Position hold events
     #
@@ -102,6 +106,7 @@ class Events(Enum):
     POSHOLD_DONE = auto()
     POSHOLD_NO_DONE = auto()
     POSHOLD_SKIP = auto()
+    POSHOLD_REJECT = auto()
     #
     # Discrete reaching events
     #
@@ -109,6 +114,7 @@ class Events(Enum):
     DISCREACH_DONE = auto()
     DISCREACH_NO_DONE = auto()
     DISCREACH_SKIP = auto()
+    DISCREACH_REJECT = auto()
     #
     # Proprioception events
     #
@@ -116,24 +122,28 @@ class Events(Enum):
     PROP_DONE = auto()
     PROP_NO_DONE = auto()
     PROP_SKIP = auto()
+    PROP_REJECT = auto()
     #
     # Force control low events
     FCTRLLOW_ASSESS = auto()
     FCTRLLOW_DONE = auto()
     FCTRLLOW_NO_DONE = auto()
     FCTRLLOW_SKIP = auto()
+    FCTRLLOW_REJECT = auto()
     #
     # Force control medium events
     FCTRLMED_ASSESS = auto()
     FCTRLMED_DONE = auto()
     FCTRLMED_NO_DONE = auto()
     FCTRLMED_SKIP = auto()
+    FCTRLMED_REJECT = auto()
     #
     # Force control high events
     FCTRLHIGH_ASSESS = auto()
     FCTRLHIGH_DONE = auto()
     FCTRLHIGH_NO_DONE = auto()
     FCTRLHIGH_SKIP = auto()
+    FCTRLHIGH_REJECT = auto()
 
     @classmethod
     def mech_selected_events(cls):
@@ -405,7 +415,7 @@ class PlutoFullAssessmentStateMachine():
             )
             _romval = self._data.detailedsummary[self._data.protocol.mech]["tasks"]['AROM'][-1]['rom']
             self.log(f"AROM Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
-        elif event == Events.AROM_NO_DONE:
+        elif event == Events.AROM_NO_DONE or event == Events.AROM_REJECT:
             # Update AROM assessment data.
             self._data.detailedsummary.update(
                 romval=data["romval"],
@@ -459,7 +469,7 @@ class PlutoFullAssessmentStateMachine():
             self.log(f"PROM Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
         # else:
         #     self._state = States.TASK_SELECT
-        elif event == Events.PROM_NO_DONE:
+        elif event == Events.PROM_NO_DONE or event == Events.PROM_REJECT:
             # Update PROM assessment data.
             self._data.detailedsummary.update(
                 romval=data["romval"],
@@ -511,7 +521,7 @@ class PlutoFullAssessmentStateMachine():
             )
             _romval = self._data.detailedsummary[self._data.protocol.mech]["tasks"]['APROMSLOW'][-1]['rom']
             self.log(f"APROMSLOW Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
-        elif event == Events.APROMSLOW_NO_DONE:
+        elif event == Events.APROMSLOW_NO_DONE or event == Events.APROMSLOW_REJECT:
             # Update AROM assessment data.
             self._data.detailedsummary.update(
                 romval=data["romval"],
@@ -563,7 +573,7 @@ class PlutoFullAssessmentStateMachine():
             )
             _romval = self._data.detailedsummary[self._data.protocol.mech]["tasks"]['APROMFAST'][-1]['rom']
             self.log(f"APROMFAST Set: [{_romval[0]:+2.2f}, {_romval[1]:+2.2f}]")
-        elif event == Events.APROMFAST_NO_DONE:
+        elif event == Events.APROMFAST_NO_DONE or event == Events.APROMFAST_REJECT:
             # Update AROM assessment data.
             self._data.detailedsummary.update(
                 romval=data["romval"],
@@ -613,7 +623,16 @@ class PlutoFullAssessmentStateMachine():
                 else States.TASK_SELECT
             )
             self.log(f"Position Hold done for {self._data.protocol.mech}.")
-        elif event == Events.POSHOLD_NO_DONE:
+        elif event == Events.POSHOLD_NO_DONE or event == Events.POSHOLD_REJECT:
+            # Update AROM assessment data.
+            self._data.detailedsummary.update(
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
@@ -653,7 +672,16 @@ class PlutoFullAssessmentStateMachine():
                 else States.TASK_SELECT
             )
             self.log(f"Discrete Reaching done for {self._data.protocol.mech}.")
-        elif event == Events.DISCREACH_NO_DONE:
+        elif event == Events.DISCREACH_NO_DONE or event == Events.DISCREACH_REJECT:
+            # Update AROM assessment data.
+            self._data.detailedsummary.update(
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
@@ -693,7 +721,16 @@ class PlutoFullAssessmentStateMachine():
                 else States.TASK_SELECT
             )
             self.log(f"Proprioception done for {self._data.protocol.mech}.")
-        elif event == Events.PROP_NO_DONE:
+        elif event == Events.PROP_NO_DONE or event == Events.PROP_REJECT:
+            # Update AROM assessment data.
+            self._data.detailedsummary.update(
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
@@ -733,7 +770,16 @@ class PlutoFullAssessmentStateMachine():
                 else States.TASK_SELECT
             )
             self.log(f"Force Control (Low) done for {self._data.protocol.mech}.")
-        elif event == Events.FCTRLLOW_NO_DONE:
+        elif event == Events.FCTRLLOW_NO_DONE or event == Events.FCTRLLOW_REJECT:
+            # Update AROM assessment data.
+            self._data.detailedsummary.update(
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
@@ -774,6 +820,15 @@ class PlutoFullAssessmentStateMachine():
             )
             self.log(f"Force Control (Medium) done for {self._data.protocol.mech}.")
         elif event == Events.FCTRLMED_NO_DONE:
+            # Update AROM assessment data.
+            self._data.detailedsummary.update(
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (
@@ -814,6 +869,15 @@ class PlutoFullAssessmentStateMachine():
             )
             self.log(f"Force Control (High) done for {self._data.protocol.mech}.")
         elif event == Events.FCTRLHIGH_NO_DONE:
+            # Update AROM assessment data.
+            self._data.detailedsummary.update(
+                session=self._data.session,
+                tasktime=self._data.protocol.tasktime,
+                rawfile=self._data.protocol.rawfilename,
+                summaryfile=self._data.protocol.summaryfilename,
+                taskcomment=data["taskcomment"],
+                status=data["status"]
+            )
             # Jumpy to the next task state.
             # Check if the current mechanism has been assessed.
             self._state = (

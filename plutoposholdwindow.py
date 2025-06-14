@@ -608,14 +608,18 @@ class PlutoPositionHoldAssessWindow(QtWidgets.QMainWindow):
         data = {"done": self.data.all_trials_done}
         if self.data.all_trials_done:
             _comment = CommentDialog(label="Position Hold completed. Add optional comment.",
-                                     commentrequired=False)
-            data["status"] = pfadef.AssessStatus.COMPLETE.value
+                                     optionyesno=True)
+            if (_comment.exec_() == QtWidgets.QDialog.Accepted):
+                data["status"] = pfadef.AssessStatus.COMPLETE.value
+            else:
+                data["status"] = pfadef.AssessStatus.REJECTED.value
+            data["taskcomment"] = _comment.getText()
         else:
             _comment = CommentDialog(label="Position Hold incomplete. Why?",
-                                     commentrequired=True)
-            data["status"] = pfadef.AssessStatus.SKIPPED.value
-        if (_comment.exec_() == QtWidgets.QDialog.Accepted):
-            data["taskcomment"] = _comment.getText()
+                                     optionyesno=False)
+            if (_comment.exec_() == QtWidgets.QDialog.Rejected):
+                data["taskcomment"] = _comment.getText()
+                data["status"] = pfadef.AssessStatus.TERMINATED.value
         if self.on_close_callback:
             self.on_close_callback(data=data)
         # Detach PLUTO callbacks.

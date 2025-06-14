@@ -147,7 +147,7 @@ class DiscreteReachData(object):
     def all_trials_done(self):
         """Check if all trials are done.
         """
-        return self._currtrial >= self.ntrials
+        return bool(self._currtrial >= self.ntrials)
     
     @property
     def rawfilewriter(self):
@@ -1038,15 +1038,18 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
         data = {"done": self.data.all_trials_done}
         if self.data.all_trials_done:
             _comment = CommentDialog(label="AROM completed. Add optional comment.",
-                                     commentrequired=False)
-            data["status"] = pfadef.AssessStatus.COMPLETE.value
+                                     optionyesno=True)
+            if (_comment.exec_() == QtWidgets.QDialog.Accepted):
+                data["status"] = pfadef.AssessStatus.COMPLETE.value
+            else:
+                data["status"] = pfadef.AssessStatus.REJECTED.value
+            data["taskcomment"] = _comment.getText()
         else:
             _comment = CommentDialog(label="AROM incomplete. Why?",
-                                     commentrequired=True)
-            data["status"] = pfadef.AssessStatus.SKIPPED.value
-        if (_comment.exec_() == QtWidgets.QDialog.Accepted):
-            data["taskcomment"] = _comment.getText()
-        print(data)
+                                     optionyesno=False)
+            if (_comment.exec_() == QtWidgets.QDialog.Rejected):
+                data["taskcomment"] = _comment.getText()
+                data["status"] = pfadef.AssessStatus.SKIPPED.value
         if self.on_close_callback:
             self.on_close_callback(data=data)
         # Detach PLUTO callbacks.
@@ -1056,7 +1059,7 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM13")
+    plutodev = QtPluto("COM4")
     pcalib = PlutoDiscReachAssessWindow(
         plutodev=plutodev, 
         assessinfo={
@@ -1069,7 +1072,7 @@ if __name__ == '__main__':
             "rawfile": "rawfiletest.csv",
             "arom": [-30, 40],
         },
-        onclosecb=lambda data: print(f"ROM set: {data}"),
+        onclosecb=lambda data: print(f"Data: {data}"),
     )
     pcalib.show()
     sys.exit(app.exec_())

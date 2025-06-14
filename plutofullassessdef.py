@@ -36,6 +36,8 @@ class AssessStatus(Enum):
     PARTIALCOMPLETE = "Partially Complete"
     SKIPPED = "Skipped"
     EXCLUDED = "Excluded"
+    REJECTED = "Rejected"
+    TERMINATED = "Terminated"
 
     def __str__(self):
         return self.value

@@ -37,7 +37,7 @@ from plutoapromwindow import PlutoAPRomAssessWindow
 from plutoromwindow import PlutoRomAssessWindow
 from plutopropassesswindow import PlutoPropAssessWindow
 from plutoforcecontrolwindow import PlutoForceControlWindow
-from myqt import CommentDialog
+from myqt import MechTaskSkipDialog
 from ui_plutofullassessment import Ui_PlutoFullAssessor
 
 import plutodefs as pdef
@@ -271,10 +271,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
 
     def _callback_skip_arom(self):
         # Check if the chosen mechanism is already assessed.
-        _comment = CommentDialog(
+        _comment = MechTaskSkipDialog(
             label=f"Sure you want to skip AROM? If so give the reason.",
-            commentrequired=True,
-            optionyesno=True,
         )
         if _comment.exec_() == QtWidgets.QDialog.Accepted:
             _skipcomment = _comment.getText()
@@ -314,10 +312,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     
     def _callback_skip_prom(self):
         # Check if the chosen mechanism is already assessed.
-        _comment = CommentDialog(
+        _comment = MechTaskSkipDialog(
             label=f"Sure you want to skip PROM? If so give the reason.",
-            commentrequired=True,
-            optionyesno=True,
         )
         if _comment.exec_() == QtWidgets.QDialog.Accepted:
             _skipcomment = _comment.getText()
@@ -358,10 +354,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     
     def _callback_skip_apromslow(self):
         # Check if the chosen mechanism is already assessed.
-        _comment = CommentDialog(
+        _comment = MechTaskSkipDialog(
             label=f"Sure you want to skip APROM Slow? If so give the reason.",
-            commentrequired=True,
-            optionyesno=True,
         )
         if _comment.exec_() == QtWidgets.QDialog.Accepted:
             _skipcomment = _comment.getText()
@@ -402,10 +396,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     
     def _callback_skip_apromfast(self):
         # Check if the chosen mechanism is already assessed.
-        _comment = CommentDialog(
+        _comment = MechTaskSkipDialog(
             label=f"Sure you want to skip APROM Fast? If so give the reason.",
-            commentrequired=True,
-            optionyesno=True,
         )
         if _comment.exec_() == QtWidgets.QDialog.Accepted:
             _skipcomment = _comment.getText()
@@ -445,10 +437,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     
     def _callback_skip_poshold(self):
         # Check if the chosen mechanism is already assessed.
-        _comment = CommentDialog(
+        _comment = MechTaskSkipDialog(
             label=f"Sure you want to skip Position Hold? If so give the reason.",
-            commentrequired=True,
-            optionyesno=True,
         )
         if _comment.exec_() == QtWidgets.QDialog.Accepted:
             _skipcomment = _comment.getText()
@@ -488,10 +478,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     
     def _callback_skip_disc_reach(self):
         # Check if the chosen mechanism is already assessed.
-        _comment = CommentDialog(
+        _comment = MechTaskSkipDialog(
             label=f"Sure you want to skip Discrete Reach? If so give the reason.",
-            commentrequired=True,
-            optionyesno=True,
         )
         if _comment.exec_() == QtWidgets.QDialog.Accepted:
             _skipcomment = _comment.getText()
@@ -532,10 +520,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     
     def _callback_skip_prop(self):
         # Check if the chosen mechanism is already assessed.
-        _comment = CommentDialog(
+        _comment = MechTaskSkipDialog(
             label=f"Sure you want to skip Proprioception? If so give the reason.",
-            commentrequired=True,
-            optionyesno=True,
         )
         if _comment.exec_() == QtWidgets.QDialog.Accepted:
             _skipcomment = _comment.getText()
@@ -568,17 +554,15 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "arom": self.data.detailedsummary.get_arom()
             },
             modal=True,
-            onclosecb=self._fctrlasswnd_close_event
+            onclosecb=self._fctrllowwnd_close_event
         )
         self._discwnd.show()
         self._currwndclosed = False
     
     def _callback_skip_fctrllow(self):
         # Check if the chosen mechanism is already assessed.
-        _comment = CommentDialog(
+        _comment = MechTaskSkipDialog(
             label=f"Sure you want to skip Force Control Low? If so give the reason.",
-            commentrequired=True,
-            optionyesno=True,
         )
         if _comment.exec_() == QtWidgets.QDialog.Accepted:
             _skipcomment = _comment.getText()
@@ -611,17 +595,15 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "arom": self.data.detailedsummary.get_arom()
             },
             modal=True,
-            onclosecb=self._fctrlasswnd_close_event
+            onclosecb=self._fctrlmedwnd_close_event
         )
         self._discwnd.show()
         self._currwndclosed = False
     
     def _callback_skip_fctrlmed(self):
         # Check if the chosen mechanism is already assessed.
-        _comment = CommentDialog(
+        _comment = MechTaskSkipDialog(
             label=f"Sure you want to skip Force Control Low? If so give the reason.",
-            commentrequired=True,
-            optionyesno=True,
         )
         if _comment.exec_() == QtWidgets.QDialog.Accepted:
             _skipcomment = _comment.getText()
@@ -654,17 +636,15 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "arom": self.data.detailedsummary.get_arom()
             },
             modal=True,
-            onclosecb=self._fctrlasswnd_close_event
+            onclosecb=self._fctrlhighwnd_close_event
         )
         self._discwnd.show()
         self._currwndclosed = False
     
     def _callback_skip_fctrlhigh(self):
         # Check if the chosen mechanism is already assessed.
-        _comment = CommentDialog(
+        _comment = MechTaskSkipDialog(
             label=f"Sure you want to skip Force Control Low? If so give the reason.",
-            commentrequired=True,
-            optionyesno=True,
         )
         if _comment.exec_() == QtWidgets.QDialog.Accepted:
             _skipcomment = _comment.getText()
@@ -736,10 +716,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
     
     def _callback_skip_mech_assess(self, mech_chosen):
         # Check if the chosen mechanism is already assessed.
-        _comment = CommentDialog(
+        _comment = MechTaskSkipDialog(
             label="Sure you want to skip? If so give the reason.",
-            commentrequired=True,
-            optionyesno=True,
         )
         if _comment.exec_() == QtWidgets.QDialog.Accepted:
             _skipcomment = _comment.getText()
@@ -905,8 +883,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # Window not closed.
         # Run the state machine.
+        task_completed = data["status"] == pfadef.AssessStatus.COMPLETE.value
         self._smachine.run_statemachine(
-            Events.AROM_DONE if data["done"] else Events.AROM_NO_DONE,
+            (Events.AROM_DONE if task_completed else Events.AROM_REJECT)
+            if data["done"] else Events.AROM_NO_DONE,
             data
         )
         # Reenable main controls
@@ -924,8 +904,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # Window not closed.
         # Run the state machine.
+        task_completed = data["status"] == pfadef.AssessStatus.COMPLETE.value
         self._smachine.run_statemachine(
-            Events.PROM_DONE if data["done"] else Events.PROM_NO_DONE,
+            (Events.PROM_DONE if task_completed else Events.PROM_REJECT)
+            if data["done"] else Events.PROM_NO_DONE,
             data
         )
         # Reenable main controls
@@ -943,8 +925,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # Window not closed.
         # Run the state machine.
+        task_completed = data["status"] == pfadef.AssessStatus.COMPLETE.value
         self._smachine.run_statemachine(
-            Events.APROMSLOW_DONE if data["done"] else Events.APROMSLOW_NO_DONE,
+            (Events.APROMSLOW_DONE if task_completed else Events.APROMSLOW_REJECT)
+            if data["done"] else Events.APROMSLOW_NO_DONE,
             data
         )
         # Reenable main controls
@@ -962,8 +946,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # Window not closed.
         # Run the state machine.
+        task_completed = data["status"] == pfadef.AssessStatus.COMPLETE.value
         self._smachine.run_statemachine(
-            Events.APROMFAST_DONE if data["done"] else Events.APROMFAST_NO_DONE,
+            (Events.APROMFAST_DONE if task_completed else Events.APROMFAST_REJECT)
+            if data["done"] else Events.APROMFAST_NO_DONE,
             data
         )
         # Reenable main controls
@@ -981,8 +967,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # Window not closed.
         # Run the state machine.
+        task_completed = data["status"] == pfadef.AssessStatus.COMPLETE.value
         self._smachine.run_statemachine(
-            Events.POSHOLD_DONE if data["done"] else Events.POSHOLD_NO_DONE,
+            (Events.POSHOLD_DONE if task_completed else Events.POSHOLD_REJECT)
+            if data["done"] else Events.POSHOLD_NO_DONE,
             data
         )
         # Reenable main controls
@@ -1000,8 +988,11 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # Window not closed.
         # Run the state machine.
+        print(data)
+        task_completed = data["status"] == pfadef.AssessStatus.COMPLETE.value
         self._smachine.run_statemachine(
-            Events.DISCREACH_DONE if data["done"] else Events.DISCREACH_NO_DONE,
+            (Events.DISCREACH_DONE if task_completed else Events.DISCREACH_REJECT)
+            if data["done"] else Events.DISCREACH_NO_DONE,
             data
         )
         # Reenable main controls
@@ -1019,8 +1010,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             return
         # Window not closed.
         # Run the state machine.
+        task_completed = data["status"] == pfadef.AssessStatus.COMPLETE.value
         self._smachine.run_statemachine(
-            Events.PROP_DONE if data["done"] else Events.PROP_NO_DONE,
+            (Events.PROP_DONE if task_completed else Events.PROP_REJECT)
+            if data["done"] else Events.PROP_NO_DONE,
             data
         )
         # Reenable main controls
@@ -1031,15 +1024,59 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         self._currwndclosed = True
         self.update_ui()
     
-    def _fctrlasswnd_close_event(self, data):
+    def _fctrllowwnd_close_event(self, data):
         # Check if the window is already closed.
         if self._currwndclosed is True:
             self._discwnd = None
             return
         # Window not closed.
         # Run the state machine.
+        task_completed = data["status"] == pfadef.AssessStatus.COMPLETE.value
         self._smachine.run_statemachine(
-            Events.FCTRL_DONE if data["done"] else Events.FCTRL_NO_DONE,
+            (Events.FCTRLLOW_DONE if task_completed else Events.FCTRLLOW_REJECT)
+            if data["done"] else Events.FCTRLLOW_NO_DONE,
+            data
+        )
+        # Reenable main controls
+        self._maindisable = False
+        # Update the Table.
+        self._updatetable = True
+        # Set the window closed flag.
+        self._currwndclosed = True
+        self.update_ui()
+    
+    def _fctrlmedwnd_close_event(self, data):
+        # Check if the window is already closed.
+        if self._currwndclosed is True:
+            self._discwnd = None
+            return
+        # Window not closed.
+        # Run the state machine.
+        task_completed = data["status"] == pfadef.AssessStatus.COMPLETE.value
+        self._smachine.run_statemachine(
+            (Events.FCTRLMED_DONE if task_completed else Events.FCTRLMED_REJECT)
+            if data["done"] else Events.FCTRLMED_NO_DONE,
+            data
+        )
+        # Reenable main controls
+        self._maindisable = False
+        # Update the Table.
+        self._updatetable = True
+        # Set the window closed flag.
+        self._currwndclosed = True
+        self.update_ui()
+    
+    def _fctrlhighwnd_close_event(self, data):
+        # Check if the window is already closed.
+        if self._currwndclosed is True:
+            self._discwnd = None
+            return
+        # Window not closed.
+        # Run the state machine.
+        task_completed = data["status"] == pfadef.AssessStatus.COMPLETE.value
+        self._smachine.run_statemachine(
+            (Events.FCTRLHIGH_DONE if task_completed else Events.FCTRLHIGH_REJECT)
+            if data["done"] else Events.FCTRLHIGH_NO_DONE,
             data
         )
         # Reenable main controls

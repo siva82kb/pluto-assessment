@@ -625,7 +625,7 @@ class PlutoAssessmentDetailsData(object):
         # Check if mechanism exists in the data.
         if self._mech not in self._val:
             # If not, create a new entry for the mechanism.
-            self._val[self._mech] = {"status": "INCOMPLETE",
+            self._val[self._mech] = {"status": "Incomplete",
                                      "tasks": {}}
         self.write_to_disk()
     
@@ -633,7 +633,7 @@ class PlutoAssessmentDetailsData(object):
         self._mech = value
         if self._mech not in self._val:
             # If not, create a new entry for the mechanism.
-            self._val[self._mech] = {"status": "SKIPPED",
+            self._val[self._mech] = {"status": "Skipped",
                                      "tasks": {}}
         self.write_to_disk()
     
@@ -645,7 +645,7 @@ class PlutoAssessmentDetailsData(object):
         self._val[self._mech]["tasks"][taskname].append({
             "session": session,
             "taskcomment": comment,
-            "status": "SKIPPED"
+            "status": "Skipped"
         })
         # Now skip all the other INCOMPLETE tasks that depend on this task.
         _othertasks = [_t for _t in self._val[self._mech]['tasks'].keys()
@@ -655,8 +655,10 @@ class PlutoAssessmentDetailsData(object):
                 self._val[self._mech]["tasks"][_ot].append({
                     "session": session,
                     "taskcomment": f"{taskname} skipped. [{comment.replace(',', ' ')}]",
-                    "status": "EXCLUDED"
+                    "status": "Excluded"
                 })
+        # Check of the current mechanism is complete.
+        self._update_mechanism_status()
         self.write_to_disk()
         self._task = None
     
@@ -693,8 +695,37 @@ class PlutoAssessmentDetailsData(object):
                 if len(_temp) != 0
                 else float('nan')
             )
+        # Check of the current mechanism is complete.
+        self._update_mechanism_status()
         # Write to disk
         self.write_to_disk()
+    
+    def _update_mechanism_status(self):
+        _completed = True
+        for task in self._val[self._mech]["tasks"]:
+            print(task)
+            if len(self._val[self._mech]["tasks"][task]) == 0:
+                print("No entries")
+                _completed = False
+                break
+            print(self._val[self._mech]["tasks"][task][-1])
+            if (self._val[self._mech]["tasks"][task][-1]["status"] == "Rejected"
+                or self._val[self._mech]["tasks"][task][-1]["status"] == "Terminated"):
+                print("Rejected or Terminated")
+                _completed = False
+                break
+            if (self._val[self._mech]["tasks"][task][-1]["status"] == "Skipped"
+                or self._val[self._mech]["tasks"][task][-1]["status"] == "Excluded"):
+                print("Skipped or Excluded")
+                _completed = None
+                break
+        print(_completed)
+        if _completed is True:
+            self._val[self._mech]["status"] = "Complete"
+        elif _completed is False:
+            self._val[self._mech]["status"] = "Incomplete"
+        else:
+            self._val[self._mech]["status"] = "Partially Complete"
     
     def _create_assessment_details_dict(self):
         self._val = {
@@ -708,7 +739,7 @@ class PlutoAssessmentDetailsData(object):
         # Add mechanisms and empty lists for different tasks.
         for mech in pfadef.MECHANISMS:
             self._val[mech] = {
-                "status": "INCOMPLETE",
+                "status": "Incomplete",
                 "tasks": {}
             }
 
