@@ -105,6 +105,14 @@ class PlutoForceControlData(object):
         return self._objparams
     
     @property
+    def forcetarget(self):
+        return self._assessinfo['forcetgt']
+    
+    @property
+    def forcetargetwidth(self):
+        return self._assessinfo['forcetgtwidth']
+    
+    @property
     def target(self):
         return self.arom[1] * FCtrl.TGT_POSITION
     
@@ -167,8 +175,8 @@ class PlutoForceControlData(object):
             self.arom[0],
             self.arom[1],
             self.target,
-            FCtrl.TGT_FORCE - FCtrl.TGT_FORCE_WIDTH,
-            FCtrl.TGT_FORCE + FCtrl.TGT_FORCE_WIDTH,
+            self.forcetarget - self.forcetargetwidth,
+            self.forcetarget + self.forcetargetwidth,
         ])
 
     def add_newdata(self, dt, pos):
@@ -201,7 +209,7 @@ class PlutoForceControlData(object):
     def _compute_object_params(self):
         # Compute the target parameters.
         _objdelpos = FCtrl.FULL_RANGE_WIDTH / pdef.HOCScale
-        _adjust = FCtrl.FULL_RANGE_WIDTH * np.cbrt(FCtrl.TGT_FORCE / pdef.MAX_HOC_FORCE)
+        _adjust = FCtrl.FULL_RANGE_WIDTH * np.cbrt(self._assessinfo["forcetgt"] / pdef.MAX_HOC_FORCE)
         _objpos = (self.target + _adjust) / pdef.HOCScale
         return {"Position": -_objpos, "DelPosition": _objdelpos}
 
@@ -234,8 +242,8 @@ class StateMachine():
         self._stateinstructions = {
             States.WAIT_START: "Grab the object and hold to start trial",
             States.HOLDING: "Perfect grip",
-            States.NOT_HOLDING: "More grip",
-            States.CRUSHING: "Les grip",
+            States.NOT_HOLDING: "Too little grip",
+            States.CRUSHING: "Too much grip",
             States.RELAX: "Relax.",
             States.DONE: "All done. Press the PLUTO button to exit.",
         }
@@ -338,7 +346,7 @@ class StateMachine():
         if self._pluto.controltype != pdef.ControlTypes["OBJECTSIM"]:
             self._pluto.set_control_type("OBJECTSIM")
             self._pluto.set_object_param(self._data.object_params["DelPosition"],
-                                            self._data.object_params["Position"])
+                                         self._data.object_params["Position"])
             self._pluto.get_object_param()
 
     def _act_dissolve_object(self):
@@ -382,11 +390,11 @@ class StateMachine():
         return self._pluto.hocdisp - self._data.target > 1.0
     
     def is_object_held(self):
-        return np.abs(self._pluto.gripforce - FCtrl.TGT_FORCE) < FCtrl.TGT_FORCE_WIDTH
+        return np.abs(self._pluto.gripforce - self._data._assessinfo["forcetgt"]) < self._data.forcetargetwidth
     
     def is_object_crushed(self):
-        return self._pluto.gripforce - FCtrl.TGT_FORCE > FCtrl.TGT_FORCE_WIDTH
-    
+        return self._pluto.gripforce - self._data._assessinfo["forcetgt"] > self._data.forcetargetwidth
+
     def away_from_start(self):
         """Check if the subject has moved away from the start position.
         """
@@ -528,9 +536,9 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
             _objparams = self._compute_display_object_params(self.pluto.gripforce)
             self.ui._brick.setRect(_objparams["x"], _objparams["y"],
                                 _objparams["width"], _objparams["height"])
-            if self.pluto.gripforce < FCtrl.TGT_FORCE - FCtrl.TGT_FORCE_WIDTH:
+            if self.pluto.gripforce < self.data.forcetarget - self.data.forcetargetwidth:
                 self.ui._brick.setBrush(QtGui.QBrush(FCtrl.FREE_COLOR))
-            elif self.pluto.gripforce > FCtrl.TGT_FORCE + FCtrl.TGT_FORCE_WIDTH:
+            elif self.pluto.gripforce > self.data.forcetarget + self.data.forcetargetwidth:
                 self.ui._brick.setBrush(QtGui.QBrush(FCtrl.CRUSHED_COLOR))
             else:
                 self.ui._brick.setBrush(QtGui.QBrush(FCtrl.HELD_COLOR))
@@ -638,29 +646,6 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
                                          0, ForceControl.CURSOR_UPPER_LIMIT - ForceControl.CURSOR_LOWER_LIMIT)
     
     def _reset_display(self):
-        # Reset ROM display
-        # self.ui.romLine1.setData(
-        #     [0, 0],
-        #     [ForceControl.CURSOR_LOWER_LIMIT, ForceControl.CURSOR_UPPER_LIMIT]
-        # )
-        # self.ui.romLine2.setData(
-        #     [0, 0],
-        #     [ForceControl.CURSOR_LOWER_LIMIT, ForceControl.CURSOR_UPPER_LIMIT]
-        # )
-        # # Fill between the two AROM lines
-        # self.ui.romFill.setRect(0, ForceControl.CURSOR_LOWER_LIMIT,
-        #                         0, ForceControl.CURSOR_UPPER_LIMIT - ForceControl.CURSOR_LOWER_LIMIT)
-        # # Reset stop zone.
-        # self.ui.stopLine1.setData(
-        #     [0, 0],
-        #     [ForceControl.CURSOR_LOWER_LIMIT, ForceControl.CURSOR_UPPER_LIMIT]
-        # )
-        # self.ui.stopLine2.setData(
-        #     [0, 0],
-        #     [ForceControl.CURSOR_LOWER_LIMIT, ForceControl.CURSOR_UPPER_LIMIT]
-        # )
-        # self.ui.strtZoneFill.setRect(0, ForceControl.CURSOR_LOWER_LIMIT,
-        #                              0, ForceControl.CURSOR_UPPER_LIMIT - ForceControl.CURSOR_LOWER_LIMIT)
         pass
 
     #
@@ -714,9 +699,9 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
     
     def _compute_display_object_params(self, force):
         # Object width
-        _tgtmid = np.cbrt(FCtrl.TGT_FORCE / pdef.MAX_HOC_FORCE)
-        if force is None or force < FCtrl.TGT_FORCE - FCtrl.TGT_FORCE_WIDTH:
-            _tgtlow = np.cbrt((FCtrl.TGT_FORCE - FCtrl.TGT_FORCE_WIDTH) / pdef.MAX_HOC_FORCE)
+        _tgtmid = np.cbrt(self.data.forcetarget / pdef.MAX_HOC_FORCE)
+        if force is None or force < self.data.forcetarget - self.data.forcetargetwidth:
+            _tgtlow = np.cbrt((self.data.forcetarget - self.data.forcetargetwidth) / pdef.MAX_HOC_FORCE)
         else:
             _tgtlow = np.cbrt(force / pdef.MAX_HOC_FORCE)
         _objwidth = float(self.data.target + (_tgtmid - _tgtlow) * FCtrl.FULL_RANGE_WIDTH)
@@ -835,7 +820,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM12")
+    plutodev = QtPluto("COM4")
     pcalib = PlutoForceControlWindow(
         plutodev=plutodev, 
         assessinfo={
@@ -845,6 +830,8 @@ if __name__ == '__main__':
             "mechanism": "HOC",
             "session": "testing",
             "ntrials": 3,
+            "forcetgt": 2,
+            "forcetgtwidth": 2,
             "rawfile": "rawfiletest.csv",
             "summaryfile": "summaryfiletest.csv",
             "arom": [0, 6],

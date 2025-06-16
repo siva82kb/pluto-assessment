@@ -53,6 +53,8 @@ class PlutoAssessmentData(object):
     
     def __init__(self):
         self.init_values()
+        # Create data folder if it does not exist.
+        pathlib.Path(passdef.DATA_DIR).mkdir(exist_ok=True, parents=True)
     
     @property
     def subjid(self):
@@ -669,6 +671,16 @@ class PlutoAssessmentDetailsData(object):
             raise ValueError("Mechanism not set. Cannot get AROM data.")
         try:
             return self._val[self._mech]["tasks"]["AROM"][-1]["rom"]
+        except KeyError:
+            return None
+    
+    def get_prom(self):
+        """Get the PROM data for the current mechanism.
+        """
+        if self._mech is None:
+            raise ValueError("Mechanism not set. Cannot get PROM data.")
+        try:
+            return self._val[self._mech]["tasks"]["PROM"][-1]["rom"]
         except KeyError:
             return None
 

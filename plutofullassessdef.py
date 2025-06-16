@@ -47,7 +47,7 @@ class AssessStatus(Enum):
 # Full Assessment Constant
 #
 # Module level constants.
-DATA_DIR = "fullassessment"
+DATA_DIR = "../fullassessment"
 SUBJLIST_FILE = f"{DATA_DIR}/fullassess_subjects.csv"
 
 # Proprioceptive assessment control timer delta (seconds).
@@ -223,7 +223,7 @@ class BaseConstants:
 # Active Range of Motion Constants
 #
 class AROM(BaseConstants):
-    NO_OF_TRIALS = 1                   # Number of trials.
+    NO_OF_TRIALS = 3                   # Number of trials.
 
 
 #
@@ -236,7 +236,7 @@ class PROM(BaseConstants):
 class APROM(BaseConstants):
     TORQUE_DIR1 = +1.0                  # Toque to apply in direction 1
     TORQUE_DIR2 = -1.0                  # Toque to apply in direction 2
-    NO_OF_TRIALS = 1                    # Number of trials
+    NO_OF_TRIALS = 3                    # Number of trials
     
     # Data logging constants
     RAW_HEADER = [
@@ -271,7 +271,7 @@ class APROMFast(APROM):
 # Position Hold Constants
 #
 class PositionHold(BaseConstants):
-    NO_OF_TRIALS = 1                # Number of trials.
+    NO_OF_TRIALS = 3                # Number of trials.
     TGT_POSITIONS = [0.1, 0.9]      # Fraction of AROM range
     TGT_WIDTH_DEG = 4               # Absolute target width in degrees
     TGT_HOLD_DURATION = 01.0        # seconds
@@ -295,7 +295,7 @@ class PositionHold(BaseConstants):
 # Discrete Reaching Constants
 #
 class DiscreteReach(BaseConstants):
-    NO_OF_TRIALS = 1                # Number of trials.
+    NO_OF_TRIALS = 3                # Number of trials.
     TGT1_POSITION = 0.20            # Fraction of AROM range
     TGT2_POSITION = 0.80            # Fraction of AROM range
     TGT_WIDTH = 0.05                # Fraction of AROM range
@@ -324,20 +324,16 @@ class DiscreteReach(BaseConstants):
 # Prioprioceptive Assessment Constants
 #
 class Proprioception(BaseConstants):
-    NO_OF_TRIALS = 1                    # Number of trials.
-    # NO_OF_TRIALS = 1                    # Number of trials.
+    NO_OF_TRIALS = 3                    # Number of trials.
     START_POSITION_TH = 0.25            # Start position of the hanbd (cm).       
     TGT_POSITIONS = [0.25, 0.5, 0.75]   # Target positions (fraction of PROM).
     MIN_TGT_SEP = 1                     # Minimum target separation (cm).
     MOVE_SPEED = 0.5                    # Duration for haptic demonstration (cm/seconds).
     ON_OFF_TGT_DURATION = 1             # Duration for deciding the hand is on or off target (seconds).
-    TGT_ERR_TH = 0.25                   # Target error threshold (cm).
-    DEMO_DURATION = 1                   # Duration for haptic demonstration (seconds).
-    # DEMO_DURATION = 5                   # Duration for haptic demonstration (seconds).
-    INTRA_TRIAL_REST_DURATION = 1       # Intra-Trial Rest Duration (seconds).
-    INTER_TRIAL_REST_DURATION = 1       # Inter-Trial Rest Duration (seconds).
-    # INTRA_TRIAL_REST_DURATION = 3       # Intra-Trial Rest Duration (seconds).
-    # INTER_TRIAL_REST_DURATION = 5       # Inter-Trial Rest Duration (seconds).
+    TGT_ERR_TH = 0.50                   # Target error threshold (cm).
+    DEMO_DURATION = 3                   # Duration for haptic demonstration (seconds).
+    INTRA_TRIAL_REST_DURATION = 3       # Intra-Trial Rest Duration (seconds).
+    INTER_TRIAL_REST_DURATION = 5       # Inter-Trial Rest Duration (seconds).
     DEMO_TGT_REACH_DURATION = 2.0       # Duration for the position controller to reach the target.
 
     # Raw data file header.
@@ -360,7 +356,7 @@ class Proprioception(BaseConstants):
 # Force Control Assessment Constants
 #
 class ForceControl(BaseConstants):
-    NO_OF_TRIALS = 1                    # Number of trials.
+    NO_OF_TRIALS = 3                    # Number of trials.
     FULL_RANGE_WIDTH = 2.0              # The full force range in position. (cm) 
     TGT_POSITION = 0.4                  # Target positions (fraction of AROM).
     TGT_FORCE = 8.00                   # Target force (N).

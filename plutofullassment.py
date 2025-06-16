@@ -510,7 +510,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom(),
-                "prom": self.data.detailedsummary["PROM"][self.protocol.mech][-1]["rom"]
+                "prom": self.data.detailedsummary.get_prom()
             },
             modal=True,
             onclosecb=self._propasswnd_close_event
@@ -549,6 +549,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
                 "ntrials": self.protocol.get_no_of_trials(self.protocol.mech, "FCTRLLOW"),
+                "forcetgt": pfadef.get_task_constants("FCTRLLOW").TGT_FORCE,
+                "forcetgtwidth": pfadef.get_task_constants("FCTRLLOW").TGT_FORCE_WIDTH,
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom()
@@ -590,6 +592,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
                 "ntrials": self.protocol.get_no_of_trials(self.protocol.mech, "FCTRLMED"),
+                "forcetgt": pfadef.get_task_constants("FCTRLMED").TGT_FORCE,
+                "forcetgtwidth": pfadef.get_task_constants("FCTRLMED").TGT_FORCE_WIDTH,
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom()
@@ -631,6 +635,8 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
                 "mechanism": self.protocol.mech,
                 "session": self.data.session,
                 "ntrials": self.protocol.get_no_of_trials(self.protocol.mech, "FCTRLHIGH"),
+                "forcetgt": pfadef.get_task_constants("FCTRLHIGH").TGT_FORCE,
+                "forcetgtwidth": pfadef.get_task_constants("FCTRLHIGH").TGT_FORCE_WIDTH,
                 "rawfile": self.protocol.rawfilename,
                 "summaryfile": self.protocol.summaryfilename,
                 "arom": self.data.detailedsummary.get_arom()

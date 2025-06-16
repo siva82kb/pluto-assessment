@@ -125,7 +125,7 @@ class PositionHoldData(object):
     def all_trials_done(self):
         """Check if all trials are done.
         """
-        return self._currtrial == len(self.targets) - 1
+        return self._currtrial == len(self.targets)
     
     @property
     def rawfilewriter(self):
@@ -134,13 +134,13 @@ class PositionHoldData(object):
     def start_newtrial(self, reset: bool = False):
         """Start a new trial.
         """
-        if not self.all_trials_done:
+        self._currtrial = 0 if reset else self._currtrial + 1
+        if self._currtrial < len(self._targets):
             self._trialdata = {"dt": [], "pos": [], "vel": []}
             self._trialrom = []
             self._startpos = None
-            self._currtrial = 0 if reset else self._currtrial + 1
             self._currtarget = self._targets[self._currtrial]
-
+        
     def _generate_targets(self):
         # Target positions.
         _temp1 = [self.aromrange * _tgt + self.arom[0]
@@ -286,10 +286,9 @@ class PlutoAPRomAssessmentStateMachine():
             if self._statetimer < 0:
                 # Failed trial.
                 self._state = States.REST
-                 # Set the ROM for the current trial.
+                # Set the ROM for the current trial.
                 if not self._data.demomode:
                     self._data.start_newtrial()
-
     
     def _handle_done(self, event, dt):
         pass
@@ -629,13 +628,13 @@ class PlutoPositionHoldAssessWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM12")
+    plutodev = QtPluto("COM4")
     pcalib = PlutoPositionHoldAssessWindow(
         plutodev=plutodev, 
         assessinfo={
             "subjid": "1234",
             "type": "Stroke",
-            "limb": "Left",
+            "limb": "Right",
             "mechanism": "FPS",
             "session": "testing",
             "ntrials": 3,

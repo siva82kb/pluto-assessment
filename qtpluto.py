@@ -115,15 +115,18 @@ class QtPluto(QObject):
     
     @property
     def angle(self):
-        return self.currsensordata[0] if len(self.currsensordata) > 0 else None
-    
+        _dtype = (self.datatype == pdef.OutDataType["SENSORSTREAM"]
+                  or self.datatype == pdef.OutDataType["DIAGNOSTICS"])
+        return self.currsensordata[0] if _dtype else None
+
     @property
     def hocdisp(self):
-        return pdef.HOCScale * abs(self.currsensordata[0]) if len(self.currsensordata) > 0 else None
-    
+        _dtype = (self.datatype == pdef.OutDataType["SENSORSTREAM"]
+                  or self.datatype == pdef.OutDataType["DIAGNOSTICS"])
+        return pdef.HOCScale * abs(self.currsensordata[0]) if _dtype else None
+
     @property
     def torque(self):
-        # return self.currsensordata[1] if len(self.currsensordata) > 0 else None
         if self.control is None: return None
         return pdef.control_to_torque(self.control)
     
@@ -134,28 +137,37 @@ class QtPluto(QObject):
     
     @property
     def control(self):
-        return self.currsensordata[2] if len(self.currsensordata) > 0 else None
+        _dtype = (self.datatype == pdef.OutDataType["SENSORSTREAM"]
+                  or self.datatype == pdef.OutDataType["DIAGNOSTICS"])
+        return self.currsensordata[2] if _dtype else None
     
     @property
     def target(self):
-        return self.currsensordata[3] if len(self.currsensordata) > 0 else None
+        _dtype = (self.datatype == pdef.OutDataType["SENSORSTREAM"]
+                  or self.datatype == pdef.OutDataType["DIAGNOSTICS"])
+        return self.currsensordata[3] if _dtype else None
     
     @property
     def desired(self):
-        return self.currsensordata[4] if len(self.currsensordata) > 0 else None
+        _dtype = (self.datatype == pdef.OutDataType["SENSORSTREAM"]
+                  or self.datatype == pdef.OutDataType["DIAGNOSTICS"])
+        return self.currsensordata[4] if _dtype else None
     
     @property
     def err(self):
-        return self.currsensordata[5] if len(self.currsensordata) > 4 else None
-    
+        _dtype = self.datatype == pdef.OutDataType["DIAGNOSTICS"]
+        return self.currsensordata[5] if _dtype else None
+
     @property
     def errdiff(self):
-        return self.currsensordata[6] if len(self.currsensordata) > 5 else None
-    
+        _dtype = self.datatype == pdef.OutDataType["DIAGNOSTICS"]
+        return self.currsensordata[6] if _dtype else None
+
     @property
     def errsum(self):
-        return self.currsensordata[7] if len(self.currsensordata) > 6 else None
-    
+        _dtype = self.datatype == pdef.OutDataType["DIAGNOSTICS"]
+        return self.currsensordata[7] if _dtype else None
+
     @property
     def currt(self):
         return self._currt
