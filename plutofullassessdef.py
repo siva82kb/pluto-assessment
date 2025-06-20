@@ -289,7 +289,11 @@ class PositionHold(BaseConstants):
         "limb", "mechanism", "angle", "hocdisp", "button", "trialno",
         "assessmentstate"
     ]
-
+    # POSHOLD SUMMARY HEADER
+    SUMMARY_HEADER = [
+        "session", "type", "limb", "mechanism", "trial", "arommin", "arommax",
+        "aromrange", "targetpos", "targetwidthmin", "targetwidthmax"
+    ]
 
 #
 # Discrete Reaching Constants
@@ -317,6 +321,12 @@ class DiscreteReach(BaseConstants):
         "systime", "devtime", "packno", "status", "controltype", "error",
         "limb", "mechanism", "angle", "hocdisp", "button", "trialno",
         "assessmentstate"
+    ]
+    # DISC SUMMARY HEADER
+    SUMMARY_HEADER = [
+        "session", "type", "limb", "mechanism", "trial", "arommin", "arommax",
+        "aromrange", "target1pos", "target1widthmin", "target1widthmax",
+        "target2pos", "target2widthmin", "target2widthmax"
     ]
 
 

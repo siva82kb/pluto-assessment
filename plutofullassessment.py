@@ -1286,18 +1286,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         return ((self.rbWFE.isChecked() and _wfe_incomplete) or
                 (self.rbFPS.isChecked() and _fps_incomplete) or
                 (self.rbHOC.isChecked() and _hoc_incomplete))
-
-    # def _get_chosen_mechanism(self):
-    #     """Get the selected mechanism.
-    #     """
-    #     if self.rbWFE.isChecked():
-    #         return "WFE"
-    #     elif self.rbFPS.isChecked():
-    #         return "FPS"
-    #     elif self.rbHOC.isChecked():
-    #         return "HOC"
-    #     else:
-    #         return None
     
     def _reset_mech_selection(self):
         """Reset the mechanism selection.
@@ -1306,18 +1294,6 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             self.mechButtonGroup.removeButton(button)
             button.setChecked(False)
             self.mechButtonGroup.addButton(button)
-    
-    # def _get_chosen_mechanism_set_event(self, mechchosen):
-    #     """Get the event for the selected mechanism.
-    #     """
-    #     if mechchosen == WFE:
-    #         return Events.WFE_SET
-    #     elif self.rbFPS.isChecked():
-    #         return Events.FPS_SET
-    #     elif self.rbHOC.isChecked():
-    #         return Events.HOC_SET
-    #     else:
-    #         return Events.NOMECH_SET
 
     def _get_chosen_mechanism_skip_event(self):
         """Get the event for skipping the selected mechanism.

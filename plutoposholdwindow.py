@@ -12,6 +12,7 @@ import sys
 import numpy as np
 import random
 
+import misc
 from qtpluto import QtPluto
 
 from PyQt5 import (
@@ -60,7 +61,13 @@ class PositionHoldData(object):
             self.rawfile, 
             header=PositionHold.RAW_HEADER
         )
-    
+        self._summaryfilewriter: CSVBufferWriter = CSVBufferWriter(
+            self.summaryfile, 
+            header=pfadef.PositionHold.SUMMARY_HEADER,
+            flush_interval=0.0,
+            max_rows=1
+        )
+
     @property
     def type(self):
         return self._assessinfo['type']
@@ -98,6 +105,10 @@ class PositionHoldData(object):
         return self._assessinfo['rawfile']
     
     @property
+    def summaryfile(self):
+        return self._assessinfo['summaryfile']
+    
+    @property
     def arom(self):
         return self._assessinfo["arom"]
     
@@ -131,6 +142,10 @@ class PositionHoldData(object):
     def rawfilewriter(self):
         return self._rawfilewriter
     
+    @property
+    def summaryfilewriter(self):
+        return self._summaryfilewriter
+    
     def start_newtrial(self, reset: bool = False):
         """Start a new trial.
         """
@@ -140,6 +155,20 @@ class PositionHoldData(object):
             self._trialrom = []
             self._startpos = None
             self._currtarget = self._targets[self._currtrial]
+            # Update the summary file.
+            self._summaryfilewriter.write_row([
+                self.session,
+                self.type,
+                self.limb,
+                self.mechanism,
+                self.current_trial,
+                self.arom[0],
+                self.arom[1],
+                self.aromrange,
+                self._currtarget,
+                self._currtarget - 0.5 * PositionHold.TGT_WIDTH_DEG,
+                self._currtarget + 0.5 * PositionHold.TGT_WIDTH_DEG,
+            ])
         
     def _generate_targets(self):
         # Target positions.
@@ -249,6 +278,7 @@ class PlutoAPRomAssessmentStateMachine():
             # Set the logging state.
             if self._data.rawfilewriter is not None: 
                 self._data.terminate_rawlogging()
+                self._data.terminate_summarylogging()
             if event == pdef.PlutoEvents.RELEASED:
                 self._state = States.DONE
                 self._statetimer = 0
@@ -639,6 +669,7 @@ if __name__ == '__main__':
             "session": "testing",
             "ntrials": 3,
             "rawfile": "rawfiletest.csv",
+            "summaryfile": "summaryfiletest.csv",
             "arom": [-20, 30],
         },
         onclosecb=lambda data: print(f"ROM set: {data}"),

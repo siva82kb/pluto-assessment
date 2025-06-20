@@ -70,6 +70,12 @@ class DiscreteReachData(object):
             self.rawfile, 
             header=DiscreteReach.RAW_HEADER
         )
+        self._summaryfilewriter: CSVBufferWriter = CSVBufferWriter(
+            self.summaryfile, 
+            header=pfadef.DiscreteReach.SUMMARY_HEADER,
+            flush_interval=0.0,
+            max_rows=1
+        )
     
     @property
     def type(self):
@@ -94,6 +100,10 @@ class DiscreteReachData(object):
     @property
     def rawfile(self):
         return self._assessinfo['rawfile']
+    
+    @property
+    def summaryfile(self):
+        return self._assessinfo['summaryfile']
     
     @property
     def summaryfile(self):
@@ -153,6 +163,10 @@ class DiscreteReachData(object):
     def rawfilewriter(self):
         return self._rawfilewriter
     
+    @property
+    def summaryfilewriter(self):
+        return self._summaryfilewriter
+    
     def start_newtrial(self, reset: bool = False):
         """Start a new trial.
         """
@@ -161,6 +175,26 @@ class DiscreteReachData(object):
             self._trialrom = []
             self._startpos = None
             self._currtrial = 0 if reset else self._currtrial + 1
+            # Update the summary file.
+            if self._currtrial == self.ntrials: return
+            # All trials are not done.
+            tgt_width = 0.5 * DiscreteReach.TGT_WIDTH * self.aromrange
+            self._summaryfilewriter.write_row([
+                self.session,
+                self.type,
+                self.limb,
+                self.mechanism,
+                self._currtrial,
+                self.arom[0],
+                self.arom[1],
+                self.aromrange,
+                self.target1,
+                self.target1 - tgt_width,
+                self.target1 + tgt_width,
+                self.target2,
+                self.target2 - tgt_width,
+                self.target2 + tgt_width,
+            ])
 
     def add_newdata(self, dt, pos):
         """Add new data to the trial data.
@@ -189,32 +223,6 @@ class DiscreteReachData(object):
             self._trialrom.sort()
             return True
         return False
-    
-    # def set_rom(self):
-    #     """Set the ROM value for the given trial.
-    #     """
-    #     # Update ROM 
-    #     self._rom[self._currtrial] = [self._trialrom[0], self._trialrom[-1]]
-    #     # Update the summary file.
-    #     self._summaryfilewriter.write_row([
-    #         self.session,
-    #         self.type,
-    #         self.limb,
-    #         self.mechanism,
-    #         self.currtrial,
-    #         self._startpos,
-    #         self._trialrom[0],
-    #         self._trialrom[-1],
-    #         self._trialrom[-1] - self._trialrom[0],
-    #         0,
-    #         0
-    #     ])
-        
-    # def set_startpos(self):
-    #     """Sets the start position as the average of trial data.
-    #     """
-    #     self._startpos = float(np.mean(self._trialdata['pos']))
-    #     self._trialrom = [self._startpos]
 
     def start_rawlogging(self):
         self._logstate = RawDataLoggingState.LOG_DATA
@@ -291,6 +299,7 @@ class PlutoAPRomAssessmentStateMachine():
             # Set the logging state.
             if self._data.rawfilewriter is not None: 
                 self._data.terminate_rawlogging()
+                self._data.terminate_summarylogging()
             if event == pdef.PlutoEvents.RELEASED:
                 self._state = States.DISC_REACH_DONE
                 self._statetimer = 0
@@ -1066,10 +1075,11 @@ if __name__ == '__main__':
             "subjid": "1234",
             "type": "Stroke",
             "limb": "Left",
-            "mechanism": "WFE",
+            "mechanism": "FPS",
             "session": "testing",
-            "ntrials": 1,
+            "ntrials": 3,
             "rawfile": "rawfiletest.csv",
+            "summaryfile": "summaryfiletest.csv",
             "arom": [-30, 40],
         },
         onclosecb=lambda data: print(f"Data: {data}"),
