@@ -323,7 +323,6 @@ class PlutoAssessmentProtocolData(object):
     @property
     def summaryfilename(self):
         # Create the new file and handle.
-        if self._task == "DISC": return ""
         return pathlib.Path(
             self._sessdir, 
             f"{self._subjid}_{self._type}_{self._limb}_{self._mech}_{self._task}_summary-{self._tasktime}.csv"

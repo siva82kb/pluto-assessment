@@ -387,7 +387,7 @@ class ForceControl(BaseConstants):
     # Summary file header.
     SUMMARY_HEADER = [
         "session", "type", "limb", "mechanism", "trial", 
-        "aromin", "aromax", "targetposition", "targetforcemin", "targetforcemax" 
+        "aromin", "aromax", "targetposition", "targetforce", "targetforcemin", "targetforcemax" 
     ]
 
     # Display constants

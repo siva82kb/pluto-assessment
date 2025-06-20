@@ -175,6 +175,7 @@ class PlutoForceControlData(object):
             self.arom[0],
             self.arom[1],
             self.target,
+            self.forcetarget,
             self.forcetarget - self.forcetargetwidth,
             self.forcetarget + self.forcetargetwidth,
         ])
