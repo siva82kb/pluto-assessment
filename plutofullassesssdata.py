@@ -671,7 +671,7 @@ class PlutoAssessmentDetailsData(object):
         try:
             return self._val[self._mech]["tasks"]["AROM"][-1]["rom"]
         except KeyError:
-            return None
+            return pdef.get_range_for_mechanism(self._mech)
     
     def get_prom(self):
         """Get the PROM data for the current mechanism.
@@ -681,7 +681,7 @@ class PlutoAssessmentDetailsData(object):
         try:
             return self._val[self._mech]["tasks"]["PROM"][-1]["rom"]
         except KeyError:
-            return None
+            return pdef.get_range_for_mechanism(self._mech)
 
     def update(self, session: str, tasktime: str, rawfile: str,
                summaryfile: str, taskcomment: str="", status: str="", romval: list=None):

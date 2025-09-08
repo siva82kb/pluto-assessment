@@ -273,7 +273,7 @@ class APROMFast(APROM):
 class PositionHold(BaseConstants):
     NO_OF_TRIALS = 3                # Number of trials.
     TGT_POSITIONS = [0.1, 0.9]      # Fraction of AROM range
-    TGT_WIDTH_DEG = 4               # Absolute target width in degrees
+    TGT_WIDTH_DEG = 10              # Absolute target width in degrees
     TGT_HOLD_DURATION = 01.0        # seconds
     
     # Display color constant

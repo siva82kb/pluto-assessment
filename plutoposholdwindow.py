@@ -587,13 +587,13 @@ class PlutoPositionHoldAssessWindow(QtWidgets.QMainWindow):
             pos=self.pluto.hocdisp if self.data.mechanism == "HOC" else self.pluto.angle
         )
         # Run the statemachine
-        if _uiupdate or np.random.rand() < 0.2:
-            _uiupdate = self._smachine.run_statemachine(
-                pdef.PlutoEvents.NEWDATA,
-                dt=self.pluto.delt()
-            )
+        _uiupdate = self._smachine.run_statemachine(
+            pdef.PlutoEvents.NEWDATA,
+            dt=self.pluto.delt()
+        )
+        
         # Update the GUI only at 1/10 the data rate
-        if _uiupdate or np.random.rand() < 0.025:
+        if np.random.rand() < 0.05:
             self.update_ui()
         #
         # Log data
