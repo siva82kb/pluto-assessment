@@ -18,7 +18,7 @@ from PyQt5.QtGui import QColor
 #
 # PLUTO COM Port
 #
-PLUTOCOMM = "COM4"
+PLUTOCOMM = "COM13"
 
 
 class ROMType(Enum):
@@ -195,7 +195,7 @@ class BaseConstants:
     STOP_POS_HOC_THRESHOLD = 0.5        # cm
     STOP_POS_NOT_HOC_THRESHOLD = 5      # deg
     VEL_HOC_THRESHOLD = 1               # cm/sec
-    VEL_NOT_HOC_THRESHOLD = 5           # deg/sec
+    VEL_NOT_HOC_THRESHOLD = 7.5         # deg/sec
     STOP_ZONE_DURATION_THRESHOLD = 1    # sec
     HOC_NEW_ROM_TH = 0.10               # cm
     NOT_HOC_NEW_ROM_TH = 1.0            # deg

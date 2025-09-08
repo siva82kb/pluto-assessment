@@ -251,6 +251,13 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         # Torque or position target is to be set.
         if self.ui.radioTorque.isChecked():
             _tgt = self.ui.dsbTorqTgtValue.value()
+            # Set the control target.
+            self.pluto.set_control_target(
+                target=_tgt,
+                target0=self.pluto.target,
+                t0=0,
+                dur=_dur
+            )
         elif self.ui.radioPosition.isChecked() or self.ui.radioPositionLinear.isChecked():
             _tgt = self.ui.dsbPosTgtValue.value()
             _tgt = - _tgt / pdef.HOCScale if self._mech == "HOC" else _tgt
@@ -262,13 +269,13 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
             self.pluto.set_control_gain(self.ui.dsbCtrlGainValue.value())
             # Wait for 100ms
             QtCore.QThread.msleep(100)
-        # Set the control target.
-        self.pluto.set_control_target(
-            target=_tgt,
-            target0=self.pluto.angle,
-            t0=0,
-            dur=_dur
-        )
+            # Set the control target.
+            self.pluto.set_control_target(
+                target=_tgt,
+                target0=self.pluto.angle,
+                t0=0,
+                dur=_dur
+            )
     
     def _callback_on_control_hold(self, event):
         self.pluto.hold_control()

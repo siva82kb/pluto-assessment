@@ -944,7 +944,7 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
         )
         # self._perform_action(_action)
         # Update the GUI only at 1/10 the data rate
-        if np.random.rand() < 0.1:
+        if np.random.rand() < 0.05:
             self.update_ui()
         #
         # Log data
@@ -974,6 +974,7 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
             ])
 
     def _callback_pluto_btn_released(self):
+        print("Pluto Button Released!")
         # Run the statemachine
         _action = self._smachine.run_statemachine(
             pdef.PlutoEvents.RELEASED,
@@ -1053,7 +1054,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM4")
+    plutodev = QtPluto("COM11")
     pcalib = PlutoAssistPRomAssessWindow(
         plutodev=plutodev, 
         assessinfo={

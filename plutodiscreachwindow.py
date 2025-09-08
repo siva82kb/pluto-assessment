@@ -737,6 +737,7 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
 
         # APROM assessment data
         self.data: DiscreteReachData = DiscreteReachData(assessinfo=assessinfo)
+        print(assessinfo["arom"])
 
         # Set control to NONE
         self._pluto.set_control_type("NONE")
@@ -1002,7 +1003,7 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
             dt=self.pluto.delt()
         )
         # Update the GUI only at 1/10 the data rate
-        if _uiupdate or np.random.rand() < 0.1:
+        if _uiupdate or np.random.rand() < 0.05:
             self.update_ui()
         #
         # Log data

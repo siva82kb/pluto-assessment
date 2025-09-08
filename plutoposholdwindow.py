@@ -452,8 +452,8 @@ class PlutoPositionHoldAssessWindow(QtWidgets.QMainWindow):
     def current_polar_pos(self):
         if self._pluto.angle is None:
             return [0, 0]
-        return [50 * np.cos(np.deg2rad(self._pluto.angle + 90)),
-                50 * np.sin(np.deg2rad(self._pluto.angle + 90))]
+        return [50 * np.cos(np.deg2rad(-self._pluto.angle + 90)),
+                50 * np.sin(np.deg2rad(-self._pluto.angle + 90))]
     #
     # Update UI
     #
@@ -537,8 +537,8 @@ class PlutoPositionHoldAssessWindow(QtWidgets.QMainWindow):
         self.ui.tgt = {
             _t:create_sector(center=QPointF(0, 0),
                              radius=50,
-                             start_angle_deg=90 + _t - 0.5 * PositionHold.TGT_WIDTH_DEG,
-                             span_angle_deg=PositionHold.TGT_WIDTH_DEG,
+                             start_angle_deg=90 - _t + 0.5 * PositionHold.TGT_WIDTH_DEG,
+                             span_angle_deg=-PositionHold.TGT_WIDTH_DEG,
                              color=PositionHold.TARGET_DISPLAY_COLOR)
             for _t in list(set(self.data.targets))
         }
@@ -587,12 +587,13 @@ class PlutoPositionHoldAssessWindow(QtWidgets.QMainWindow):
             pos=self.pluto.hocdisp if self.data.mechanism == "HOC" else self.pluto.angle
         )
         # Run the statemachine
-        _uiupdate = self._smachine.run_statemachine(
-            pdef.PlutoEvents.NEWDATA,
-            dt=self.pluto.delt()
-        )
+        if _uiupdate or np.random.rand() < 0.2:
+            _uiupdate = self._smachine.run_statemachine(
+                pdef.PlutoEvents.NEWDATA,
+                dt=self.pluto.delt()
+            )
         # Update the GUI only at 1/10 the data rate
-        if _uiupdate or np.random.rand() < 0.1:
+        if _uiupdate or np.random.rand() < 0.025:
             self.update_ui()
         #
         # Log data
@@ -658,7 +659,7 @@ class PlutoPositionHoldAssessWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM4")
+    plutodev = QtPluto("COM13")
     pcalib = PlutoPositionHoldAssessWindow(
         plutodev=plutodev, 
         assessinfo={

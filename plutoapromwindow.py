@@ -792,7 +792,7 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
             dt=self.pluto.delt()
         )
         # Update the GUI only at 1/10 the data rate
-        if np.random.rand() < 0.1:
+        if np.random.rand() < 0.05:
             self.update_ui()
         #
         # Log data

@@ -697,6 +697,10 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
             instdisp=self.ui.subjInst
         )
         
+        # Down sample loop to 100Hz
+        self._prevt = 0
+        self.LOOP_TIMER_DELTA = 0.01  # 10ms
+
         # Attach callbacks
         self._attach_pluto_callbacks()
 
@@ -908,17 +912,22 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         self.pluto.btnreleased.disconnect(self._callback_pluto_btn_released)
     
     def _callback_pluto_newdata(self):
+        if (self.pluto.currt - self._prevt) < self.LOOP_TIMER_DELTA:
+            return
+        _delt = self.pluto.currt - self._prevt
+        self._prevt = self.pluto.currt
         # Update trial data.
         self.data.add_newdata(
-            dt=self.pluto.delt(),
+            dt=_delt,
             pos=self.pluto.hocdisp if self.data.mechanism == "HOC" else self.pluto.angle,
             ctrl=self.pluto.control
         )
         # Run the statemachine
         self._smachine.run_statemachine(
             PlEvnts.NEWDATA,
-            self.pluto.delt()
+            _delt
         )
+        # Update UI at 20Hz
         if np.random.rand() < 0.2:
             self.update_ui()
         
@@ -958,7 +967,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM12")
+    plutodev = QtPluto("COM13")
     pcalib = PlutoPropAssessWindow(
         plutodev=plutodev, 
         assessinfo={

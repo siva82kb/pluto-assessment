@@ -816,7 +816,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         """Update the UI of the appropriate window.
         """
         # Update data viewer window.
-        if np.random.rand() < 0.05:
+        if np.random.rand() < 0.01:
             self.update_ui()
             
     def _callback_btn_pressed(self):

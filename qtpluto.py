@@ -298,6 +298,7 @@ class QtPluto(QObject):
         Function to handle VERSION data.
         """
         self._devname, self._version, self._compliedate = bytes(newdata[4:]).decode('ascii').split(",")
+        print(self._devname, self._version, self._compliedate)
     
     def _handle_object_param(self, newdata):
         """
@@ -476,8 +477,14 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     from qtjedi import JediComm
     app = QApplication(sys.argv)
-    pluto = QtPluto(port="COM13")
+    pluto = QtPluto(port="COM11")
     pluto.stop_sensorstream()
+    pluto.get_version()
+    pluto.get_version()
+    pluto.get_version()
+    pluto.get_version()
+    pluto.get_version()
+    pluto.get_version()
     pluto.get_version()
     pluto.send_heartbeat()
     pluto.start_sensorstream()
