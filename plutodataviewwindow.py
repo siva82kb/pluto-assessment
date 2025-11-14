@@ -87,15 +87,15 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
             f"Dev Name : {self.pluto.devname}",
             f"F/W Ver  : {self.pluto.version} | Compile Date: {self.pluto.compliedate}",
             f"Time     : {self.pluto.systime}",
-            f"Dev Time : {self.pluto.currt:6.3f}s   | Pack No : {self.pluto.packetnumber:06d}",
+            f"Dev Time : {self.pluto.currt:6.3f}s  | Pack No : {self.pluto.packetnumber:06d}",
         ]
         _statusstr = ' | '.join((pdef.get_name(pdef.OutDataType, self.pluto.datatype),
                                  pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)))
         _dispdata += [
             f"Status   : {_statusstr}",
             f"Error    : {pdef.get_name(pdef.ErrorTypes, self.pluto.error)}",
-            f"Control  : {pdef.get_name(pdef.ControlTypes, self.pluto.controltype):<11s} | Control Hold: {pdef.get_name(pdef.ControlHoldTypes, self.pluto.controlhold)}",
-            f"Lmb-Mech : {pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<11s} | {pdef.get_name(pdef.LimbType, self.pluto.limb):<6s} | {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
+            f"Control  : {pdef.get_name(pdef.ControlTypes, self.pluto.controltype):<11s}",
+            f"Mechanism: {pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<11s} | {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
             f"Actd     : {self.pluto.actuated:<11d} | Button  : {self.pluto.button}",
             ""
         ]
@@ -105,20 +105,14 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
             + (f" [{self.pluto.hocdisp:05.2f}cm]" if self.pluto.calibration == 1 else "")
         ]
         _dispdata += [
-            f"Torque  : {self.pluto.torque:+3.1f}Nm | Grip Force: {self.pluto.gripforce:+3.1f}N / {pdef.MAX_HOC_FORCE:3.1f}N",
+            f"Torque  : {self.pluto.torque:+3.1f}Nm",
             f"Control  : {self.pluto.control:3.1f}",
         ]
         # Display target and desired only for NONE, TORQUE, POSITION/AAN/LINEAR controllers.
-        if self.pluto.controltype == pdef.ControlTypes["OBJECTSIM"]:
-            _dispdata += [
-                "Obj dPos  : " + (f"{self.pluto.objectDelPosition:3.1f}" if self.pluto.objectDelPosition is not None else "-"),
-                "Obj Pos   : " + (f"{self.pluto.objectPosition:3.1f}" if self.pluto.objectPosition is not None else "-"),
-            ]
-        else:
-            _dispdata += [
-                f"Target   : {self.pluto.target:3.1f}",
-                f"Desired  : {self.pluto.desired:3.1f}",
-            ]
+        _dispdata += [
+            f"Target   : {self.pluto.target:3.1f}",
+            f"Desired  : {self.pluto.desired:3.1f}",
+        ]
         # Check if in DIAGNOSTICS mode.
         if pdef.get_name(pdef.OutDataType, self.pluto.datatype) == "DIAGNOSTICS":
             _dispdata += [
@@ -169,7 +163,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM13")
+    plutodev = QtPluto("COM4")
     plutodev.send_heartbeat()
     plutodev.set_limb("RIGHT")
     pdataview = PlutoDataViewWindow(plutodev=plutodev,

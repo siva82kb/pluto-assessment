@@ -27,7 +27,7 @@ class QtPluto(QObject):
     btnpressed = pyqtSignal()
     btnreleased = pyqtSignal()
 
-    def __init__(self, port=None, baudrate=115200, limb="Right") -> None:
+    def __init__(self, port=None, baudrate=115200) -> None:
         super().__init__()
         self.dev = JediComm(port, baudrate)
         # Upacked data from PLUTO with time stamp.
@@ -50,7 +50,7 @@ class QtPluto(QObject):
         # Object simulator params
         self._objparams = {}
         # Limb being used with Pluto
-        self._limb = limb
+        self._limb = None
         # Packet decoding functions.
         self._packet_type_handlers = {
             pdef.OutDataType["SENSORSTREAM"]: self._handle_stream,
@@ -64,6 +64,13 @@ class QtPluto(QObject):
         # start the communication
         self.dev.start()
 
+    @property
+    def limb(self):
+        return self._limb
+    
+    def set_limb(self, limb):
+        self._limb = limb.upper()
+        
     @property
     def devname(self):
         return self._devname
@@ -105,10 +112,6 @@ class QtPluto(QObject):
         return self.currstatedata[3] >> 4 if len(self.currstatedata) > 0 else None
     
     @property
-    def limb(self):
-        return (self.currstatedata[3] >> 2) & 0x03 if len(self.currstatedata) > 0 else None
-    
-    @property
     def actuated(self):
         return self.currstatedata[3] & 0x01 if len(self.currstatedata) > 0 else None
     
@@ -128,12 +131,7 @@ class QtPluto(QObject):
     def torque(self):
         if self.control is None: return None
         return pdef.control_to_torque(self.control)
-    
-    @property
-    def gripforce(self):
-        if self.control is None: return None
-        return 0.5 * abs(self.torque) / pdef.HOC_PINION_SCALE
-    
+        
     @property
     def control(self):
         _dtype = (self.datatype == pdef.OutDataType["SENSORSTREAM"]
@@ -209,7 +207,7 @@ class QtPluto(QObject):
     
     @property
     def button(self):
-        return self.currstatedata[10] if len(self.currstatedata) > 0 else None
+        return self.currstatedata[9] if len(self.currstatedata) > 0 else None
 
     def delt(self):
         return self._deltimes[-1] if len(self._deltimes) > 0 else 0
@@ -436,15 +434,6 @@ class QtPluto(QObject):
         if not self.is_connected():
             return
         self.dev.send_message([pdef.InDataType["DECAY_CONTROL"]])
-    
-    # def set_limb(self, limb):
-    #     """Set the limb.
-    #     """
-    #     if not self.is_connected():
-    #         return
-    #     _payload = [pdef.InDataType["SET_LIMB"]]
-    #     _payload.append(struct.pack('b', pdef.LimbType[limb])[0])
-    #     self.dev.send_message(_payload)
     
     def send_heartbeat(self):
         """Send a heartbeat signal to the device.
