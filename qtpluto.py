@@ -56,7 +56,6 @@ class QtPluto(QObject):
             pdef.OutDataType["SENSORSTREAM"]: self._handle_stream,
             pdef.OutDataType["DIAGNOSTICS"]: self._handle_stream,
             pdef.OutDataType["VERSION"]: self._handle_version,
-            pdef.OutDataType["OBJECTPARAM"]: self._handle_object_param,
         }
 
         # Call back for newdata_signal
@@ -256,7 +255,10 @@ class QtPluto(QObject):
         self.currstatedata.append(struct.unpack('L', bytes(newdata[6:10]))[0])
 
         # Robot sensor data. This depends on the datatype.
-        N = pdef.PlutoSensorDataNumber[pdef.get_name(pdef.OutDataType, self.datatype)]
+        datatype_name = pdef.get_name(pdef.OutDataType, self.datatype)
+        if datatype_name is None:
+            return  # Exit early if datatype is invalid
+        N = pdef.PlutoSensorDataNumber[datatype_name]
 
         # pluto sensor data
         self.currsensordata = [
@@ -268,12 +270,10 @@ class QtPluto(QObject):
         self.currstatedata.append(newdata[10 + N * 4])
         # Control direction - 7
         self.currstatedata.append(newdata[10 + N * 4 + 1])
-        # # Control gain - 8
+        # Control gain - 8
         self.currstatedata.append(newdata[10 + N * 4 + 2])
-        # # Control hold - 9
+        # PLUTO button - 9
         self.currstatedata.append(newdata[10 + N * 4 + 3])
-        # PLUTO button - 10
-        self.currstatedata.append(newdata[10 + N * 4 + 4])
         
         # Update frame rate related data.
         self._currt = self.currstatedata[5] * 1e-3
@@ -288,9 +288,9 @@ class QtPluto(QObject):
 
         # Check and verify button events.
         if len(self.currstatedata) > 0 and len(self.prevstatedata) > 4:    
-            if self.prevstatedata[10] == 1.0 and self.currstatedata[10] == 0.0:
+            if self.prevstatedata[9] == 1.0 and self.currstatedata[9] == 0.0:
                 self.btnpressed.emit()
-            if self.prevstatedata[10] == 0.0 and self.currstatedata[10] == 1.0:
+            if self.prevstatedata[9] == 0.0 and self.currstatedata[9] == 1.0:
                 self.btnreleased.emit()
     
     def _handle_version(self, newdata):
@@ -300,23 +300,6 @@ class QtPluto(QObject):
         self._devname, self._version, self._compliedate = bytes(newdata[4:]).decode('ascii').split(",")
         print(self._devname, self._version, self._compliedate)
     
-    def _handle_object_param(self, newdata):
-        """
-        Function to handle OBJECTPARAM data.
-        """
-        # Robot sensor data. This depends on the datatype.
-        N = pdef.PlutoSensorDataNumber[pdef.get_name(pdef.OutDataType, self.datatype)]
-
-        # pluto sensor data
-        self.currsensordata = [
-            struct.unpack('f', bytes(newdata[i:i+4]))[0]
-            for i in range(4, 4 + N * 4, 4)
-        ]
-        self._objparams = {
-            "delposition": self.currsensordata[0],
-            "position": self.currsensordata[1],
-        }
-
     def close(self):
         """Function to close the connection.
         """
@@ -454,14 +437,14 @@ class QtPluto(QObject):
             return
         self.dev.send_message([pdef.InDataType["DECAY_CONTROL"]])
     
-    def set_limb(self, limb):
-        """Set the limb.
-        """
-        if not self.is_connected():
-            return
-        _payload = [pdef.InDataType["SET_LIMB"]]
-        _payload.append(struct.pack('b', pdef.LimbType[limb])[0])
-        self.dev.send_message(_payload)
+    # def set_limb(self, limb):
+    #     """Set the limb.
+    #     """
+    #     if not self.is_connected():
+    #         return
+    #     _payload = [pdef.InDataType["SET_LIMB"]]
+    #     _payload.append(struct.pack('b', pdef.LimbType[limb])[0])
+    #     self.dev.send_message(_payload)
     
     def send_heartbeat(self):
         """Send a heartbeat signal to the device.
@@ -477,7 +460,7 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     from qtjedi import JediComm
     app = QApplication(sys.argv)
-    pluto = QtPluto(port="COM11")
+    pluto = QtPluto(port="COM4")
     pluto.stop_sensorstream()
     pluto.get_version()
     pluto.get_version()

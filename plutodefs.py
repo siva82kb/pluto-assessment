@@ -37,21 +37,12 @@ class PlutoEvents(Enum):
     RELEASED = 1
     NEWDATA = 2
 
-LimbType = {
-    "NOLIMB":   0x00,
-    "RIGHT":    0x01,
-    "LEFT":     0x02,
-}
-
 ControlTypes = {
     "NONE":             0x00,
     "POSITION":         0x01,
     "RESIST":           0x02,
     "TORQUE":           0x03,
-    "POSITIONAAN":      0x04,
-    "POSITIONLINEAR":   0x05,
-    "OBJECTSIM":        0x06,
-    "TORQUELINEAR":     0x07,
+    "POSITIONAAN":      0x04
 }
 
 Mehcanisms = {
@@ -69,34 +60,24 @@ OutDataType = {
     "CONTROLPARAM": 0x01,
     "DIAGNOSTICS":  0x02,
     "VERSION":      0x03,
-    "OBJECTPARAM":  0x04,
 }
 
 InDataType = {
-    "GET_VERSION":          0x00,
-    "CALIBRATE":            0x01,
-    "START_STREAM":         0x02,
-    "STOP_STREAM":          0x03,
-    "SET_CONTROL_TYPE":     0x04,
-    "SET_CONTROL_TARGET":   0x05,
-    "SET_DIAGNOSTICS":      0x06,
-    "SET_CONTROL_BOUND":    0x07,
-    "RESET_PACKETNO":       0x08,
-    "SET_CONTROL_DIR":      0x09,
-    "SET_AAN_TARGET":       0x0A,
-    "RESET_AAN_TARGET":     0x0B,
-    "SET_CONTROL_GAIN":     0x0C,
-    "SET_LIMB":             0x0D,
-    "HOLD_CONTROL":         0x0E,
-    "DECAY_CONTROL":        0x0F,
-    "SET_OBJECT_PARAM":     0x10,
-    "GET_OBJECT_PARAM":     0x11,
-    "HEARTBEAT":            0x80,
-}
-
-ControlDetails = {
-    "POSITIONTGT":    0x08,
-    "FEEDFORWARDTGT": 0x20
+    "GET_VERSION":         0x00,
+    "CALIBRATE_START":     0x01,
+    "START_STREAM":        0x02,
+    "STOP_STREAM":         0x03,
+    "SET_CONTROL_TYPE":    0x04,
+    "SET_CONTROL_TARGET":  0x05,
+    "SET_DIAGNOSTICS":     0x06,
+    "SET_CONTROL_BOUND":   0x07,
+    "RESET_PACKETNO":      0x08,
+    "SET_CONTROL_DIR":     0x09,
+    "SET_AAN_TARGET":      0x0A,
+    "RESET_AAN_TARGET":    0x0B,
+    "SET_CONTROL_GAIN":    0x0C,
+    "CALIBRATE_END":       0x0D,
+    "HEARTBEAT":           0x80,
 }
 
 ErrorTypes = {
@@ -115,28 +96,23 @@ CalibrationStatus = {
     "YESCALIB": 0x01,
 }
 
-ControlHoldTypes = {
-    "FREE":     0x00,
-    "HOLD":     0x01,
-    "DECAY":    0x02,
+PlutoAngleOffset = {
+    "WFE": 68,
+    "WURD": 68,
+    "FPS": 90,
+    "HOC": 0,
 }
 
 PlutoAngleRanges = {
-    "WFE": [-75, 75],
-    "WURD": [-75, 75],
-    "FPS": [-90, 90],
-    "HOC": [0, -90],
-}
-
-PlutoTargetRanges = {
-    "TORQUE":   [-MAX_TORQUE, MAX_TORQUE],
-    "POSITION": PlutoAngleRanges
+    "WFE": 136,
+    "WURD": 136,
+    "FPS": 180,
+    "HOC": 0,
 }
 
 PlutoSensorDataNumber = {
     "SENSORSTREAM": 5,
-    "DIAGNOSTICS": 8,
-    "OBJECTPARAM": 2
+    "DIAGNOSTICS": 8
 }
 
 def get_name(def_dict, code):
@@ -158,5 +134,6 @@ def control_to_torque(pwm):
 def get_range_for_mechanism(mech: str) -> list[float]:
     """Gets the range for the given mechanism.
     """
-    return (PlutoAngleRanges[mech] if mech != "HOC"
-            else [0, abs(PlutoAngleRanges[mech][1]) * HOC_PINION_SCALE])
+    # return (PlutoAngleRanges[mech] if mech != "HOC"
+    #         else [0, abs(PlutoAngleRanges[mech][1]) * HOC_PINION_SCALE])
+    return [0, 0]
