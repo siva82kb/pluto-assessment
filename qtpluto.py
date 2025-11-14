@@ -346,17 +346,6 @@ class QtPluto(QObject):
         _payload += list(struct.pack('f', dur))
         self.dev.send_message(_payload)
     
-    def set_object_param(self, delposition, position):
-        """Function to set object parameters.
-        """
-        if not self.is_connected():
-            return
-        # Set default values
-        _payload = [pdef.InDataType["SET_OBJECT_PARAM"]]
-        _payload += list(struct.pack('f', delposition))
-        _payload += list(struct.pack('f', position))
-        self.dev.send_message(_payload)
-
     def start_sensorstream(self):
         """Starts sensor stream.
         """
@@ -379,12 +368,6 @@ class QtPluto(QObject):
         """Get the version of the device.
         """
         _payload = [pdef.InDataType["GET_VERSION"]]
-        self.dev.send_message(_payload)
-    
-    def get_object_param(self):
-        """Get the object parameters.
-        """
-        _payload = [pdef.InDataType["GET_OBJECT_PARAM"]]
         self.dev.send_message(_payload)
     
     def set_control_bound(self, bound):
@@ -420,21 +403,7 @@ class QtPluto(QObject):
         _payload = [pdef.InDataType["SET_CONTROL_GAIN"]]
         _payload.append(int((gain - pdef.PlutoMinControlGain) * 255 / (pdef.PlutoMaxControlGain - pdef.PlutoMinControlGain)))
         self.dev.send_message(_payload)
-    
-    def hold_control(self):
-        """Hold control.
-        """
-        if not self.is_connected():
-            return
-        self.dev.send_message([pdef.InDataType["HOLD_CONTROL"]])
-    
-    def decay_control(self):
-        """Decay control.
-        """
-        if not self.is_connected():
-            return
-        self.dev.send_message([pdef.InDataType["DECAY_CONTROL"]])
-    
+
     def send_heartbeat(self):
         """Send a heartbeat signal to the device.
         """
