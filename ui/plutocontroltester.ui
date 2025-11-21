@@ -59,6 +59,9 @@
           </item>
           <item row="1" column="2">
            <widget class="QRadioButton" name="radioPositionLinear">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="font">
              <font>
               <family>Bahnschrift Light</family>
@@ -98,6 +101,9 @@
           </item>
           <item row="2" column="0">
            <widget class="QRadioButton" name="radioObjectSim">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="text">
              <string>Object Sim</string>
             </property>
@@ -424,6 +430,9 @@
        </item>
        <item row="5" column="1">
         <widget class="QDoubleSpinBox" name="dsbObjPos">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="font">
           <font>
            <family>Cascadia Mono Light</family>
@@ -452,6 +461,9 @@
        </item>
        <item row="6" column="1">
         <widget class="QDoubleSpinBox" name="dsbObjDelPos">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="font">
           <font>
            <family>Cascadia Mono Light</family>
@@ -497,6 +509,9 @@
       <layout class="QHBoxLayout" name="horizontalLayout_2">
        <item>
         <widget class="QPushButton" name="pbCtrlHold">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="font">
           <font>
            <family>Bahnschrift Light</family>
@@ -510,6 +525,9 @@
        </item>
        <item>
         <widget class="QPushButton" name="pbCtrlDecay">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="font">
           <font>
            <family>Bahnschrift Light</family>

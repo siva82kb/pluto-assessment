@@ -95,7 +95,7 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
             f"Status   : {_statusstr}",
             f"Error    : {pdef.get_name(pdef.ErrorTypes, self.pluto.error)}",
             f"Control  : {pdef.get_name(pdef.ControlTypes, self.pluto.controltype):<11s}",
-            f"Mechanism: {pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<11s} | {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
+            f"Mechanism: {pdef.get_name(pdef.Mechanisms, self.pluto.mechanism):<11s} | {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
             f"Actd     : {self.pluto.actuated:<11d} | Button  : {self.pluto.button}",
             ""
         ]
@@ -163,7 +163,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM4")
+    plutodev = QtPluto("COM5")
     plutodev.send_heartbeat()
     plutodev.set_limb("RIGHT")
     pdataview = PlutoDataViewWindow(plutodev=plutodev,

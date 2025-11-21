@@ -306,14 +306,24 @@ class QtPluto(QObject):
             self.dev.quit()
             self.dev.wait()
     
-    def calibrate(self, mech):
-        """Function to set the encoder calibration.
+    def calibrate_start(self, mech):
+        """Function to start the encoder calibration.
         """
         if not self.is_connected():
             return
         self.dev.send_message([
-            pdef.InDataType["CALIBRATE"],
-            pdef.Mehcanisms[mech]
+            pdef.InDataType["CALIBRATE_START"],
+            pdef.Mechanisms[mech]
+        ])
+    
+    def calibrate_end(self, mech):
+        """Function to complete the encoder calibration.
+        """
+        if not self.is_connected():
+            return
+        self.dev.send_message([
+            pdef.InDataType["CALIBRATE_END"],
+            pdef.Mechanisms[mech]
         ])
     
     def set_control_type(self, control):
@@ -325,25 +335,35 @@ class QtPluto(QObject):
                     pdef.ControlTypes[control]]
         self.dev.send_message(_payload)
     
-    def set_control_target(self, target, target0=None, t0=None, dur=None):
+    def set_control_target(self, target):
         """Function to set the contoller target position.
         """
         if not self.is_connected():
             return
-        # Set default values
-        # Assign the start position carefully.
-        if target0 is None:
-            _posctrlcond = (self.controltype == pdef.ControlTypes["POSITION"]
-                            or self.controltype == pdef.ControlTypes["POSITIONAAN"])
-            target0 = (self.angle if _posctrlcond 
-                       else (0 if self.desired == 999.0 else self.desired)) 
-        t0 = t0 if t0 is not None else 0.0
-        dur = dur if dur is not None else 0.0
         _payload = [pdef.InDataType["SET_CONTROL_TARGET"]]
+        _payload += list(struct.pack('f', target))
+        self.dev.send_message(_payload)
+        print("Setting target:", target)
+    
+    def set_aan_target(self, target, target0, t0, dur):
+        """Function to set the AAN contoller target position.
+        """
+        if not self.is_connected():
+            return
+        _payload = [pdef.InDataType["SET_AAN_TARGET"]]
         _payload += list(struct.pack('f', target0))
         _payload += list(struct.pack('f', t0))
         _payload += list(struct.pack('f', target))
         _payload += list(struct.pack('f', dur))
+        print("Setting AAN target:", target, "from", target0, "over", dur, "s")
+        self.dev.send_message(_payload)
+    
+    def reset_aan_target(self):
+        """Function to reset the AAN contoller target position.
+        """
+        if not self.is_connected():
+            return
+        _payload = [pdef.InDataType["RESET_AAN_TARGET"]]
         self.dev.send_message(_payload)
     
     def start_sensorstream(self):

@@ -132,7 +132,7 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         else:
             # Desired torque
             _str = "Feedforward Torque Value (Nm) "
-            _str += f"[{pdef.PlutoTargetRanges['TORQUE'][0]:3.0f}, {pdef.PlutoTargetRanges['TORQUE'][1]:3.0f}]:"
+            _str += f"[{pdef.PlutoTorqueTargetRanges[0]:3.0f}, {pdef.PlutoTorqueTargetRanges[1]:3.0f}]:"
             slrrange, valrange = self.get_torque_slider_value_ranges()
             _val = self._pos2tgt(slrrange, valrange, self.ui.dsbTorqTgtValue.value())
             _str += f" {_val:-3.1f}Nm"
@@ -144,7 +144,7 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
     def _update_tgtpos_dsb(self):
         _str = "Joint angle (deg): " if self._mech != "HOC" else "Hand Aperture (cm): "
         _scale = -pdef.HOCScale if self._mech == "HOC" else 1.0
-        _posrange = [_scale * _v for _v in pdef.PlutoTargetRanges["POSITION"][self._mech]]
+        _posrange = [_scale * _v for _v in pdef.get_range_for_mechanism(self._mech)]
         # First disable the callback function for value change.
         self.ui.dsbPosTgtValue.blockSignals(True)
         self.ui.dsbPosTgtValue.setRange(_posrange[0], _posrange[1])
@@ -290,8 +290,8 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         return (
             (self.ui.dsbTorqTgtValue.minimum(),
              self.ui.dsbTorqTgtValue.maximum()),
-            (pdef.PlutoTargetRanges["TORQUE"][0],
-             pdef.PlutoTargetRanges["TORQUE"][1])
+            (pdef.get_taerget_range("TORQUE", self._mech)[0],
+             pdef.get_taerget_range("TORQUE", self._mech)[1])
         )
 
     def get_position_slider_value_ranges(self):
@@ -299,8 +299,8 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         return (
             (self.ui.dsbPosTgtValue.minimum(),
              self.ui.dsbPosTgtValue.maximum()),
-            (_scale * pdef.PlutoTargetRanges["POSITION"][self._mech][0],
-             _scale * pdef.PlutoTargetRanges["POSITION"][self._mech][1])
+            (_scale * pdef.get_taerget_range("POSITION", self._mech)[0],
+             _scale * pdef.get_taerget_range("POSITION", self._mech)[1])
         )
 
     def get_ctrlbnd_slider_value_ranges(self):
@@ -360,7 +360,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM13")
+    plutodev = QtPluto("COM4")
     pdataview = PlutoControlTesterWindow(plutodev=plutodev,
                                          mech="WFE",
                                          dataviewer=True,

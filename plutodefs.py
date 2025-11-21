@@ -45,7 +45,7 @@ ControlTypes = {
     "POSITIONAAN":      0x04
 }
 
-Mehcanisms = {
+Mechanisms = {
     "NOMECH": 0x00,
     "WFE":    0x01,
     "WURD":   0x02,
@@ -107,7 +107,7 @@ PlutoAngleRanges = {
     "WFE": 136,
     "WURD": 136,
     "FPS": 180,
-    "HOC": 0,
+    "HOC": 90,
 }
 
 PlutoSensorDataNumber = {
@@ -137,3 +137,13 @@ def get_range_for_mechanism(mech: str) -> list[float]:
     # return (PlutoAngleRanges[mech] if mech != "HOC"
     #         else [0, abs(PlutoAngleRanges[mech][1]) * HOC_PINION_SCALE])
     return [0, 0]
+
+def get_target_range(ctrl: str, mech: str) -> list[float]:
+    """Gets the target range for the given control type and mechanism.
+    """
+    if ctrl == "POSITION":
+        return get_range_for_mechanism(mech)
+    elif ctrl == "TORQUE":
+        return [-1.0, 1.0]
+    else:
+        return [0.0, 0.0]
