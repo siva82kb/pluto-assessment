@@ -60,8 +60,6 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         self.ui.radioTorque.clicked.connect(self._callback_test_device_control_selected)
         self.ui.radioObjectSim.clicked.connect(self._callback_test_device_control_selected)
         self.ui.pbSetTarget.clicked.connect(self._callback_on_set_target)
-        self.ui.pbCtrlHold.clicked.connect(self._callback_on_control_hold)
-        self.ui.pbCtrlDecay.clicked.connect(self._callback_on_control_decay)
 
         # Update UI.
         self._dsbupdate = False
@@ -106,12 +104,8 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         self.ui.dsbTorqTgtValue.setEnabled(self.ui.radioTorque.isChecked())
         self.ui.dsbCtrlBndValue.setEnabled(_poscontrol)
         self.ui.dsbCtrlGainValue.setEnabled(_poscontrol)
-        self.ui.dsbObjPos.setEnabled(_objsimcontrol)
-        self.ui.dsbObjDelPos.setEnabled(_objsimcontrol)
         # Enable/disable control buttons
         self.ui.pbSetTarget.setEnabled(_torqcontrol or _poscontrol or _objsimcontrol)
-        self.ui.pbCtrlHold.setEnabled(_poscontrol)
-        self.ui.pbCtrlDecay.setEnabled(_poscontrol or _objsimcontrol)
         
         # Check the status of the radio buttons.
         if not (_torqcontrol or _poscontrol or _objsimcontrol):
@@ -132,7 +126,7 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         else:
             # Desired torque
             _str = "Feedforward Torque Value (Nm) "
-            _str += f"[{pdef.PlutoTorqueTargetRanges[0]:3.0f}, {pdef.PlutoTorqueTargetRanges[1]:3.0f}]:"
+            _str += f"[{pdef.get_target_range('TORQUE', self._mech)[0]:3.0f}, {pdef.get_target_range('TORQUE', self._mech)[1]:3.0f}]:"
             slrrange, valrange = self.get_torque_slider_value_ranges()
             _val = self._pos2tgt(slrrange, valrange, self.ui.dsbTorqTgtValue.value())
             _str += f" {_val:-3.1f}Nm"
@@ -194,8 +188,6 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
     #
     def _callback_test_device_control_selected(self, event):
         # Reset the torque & position slider values
-        # self._set_torque_slider_value(0)
-        # self._set_position_slider_value(self.pluto.angle)
         # Check what has been selected.
         if self.ui.radioNone.isChecked():
             self.pluto.set_control_type("NONE")
@@ -211,11 +203,6 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         self.update_ui()
     
     def _callback_test_position_target_changed(self, event):
-        print(self.ui.dsbPosTgtValue.value())
-        # Get the current target position and send it to the device.
-        # slrrange, valrange = self.get_position_slider_value_ranges()
-        # _tgt = self._pos2tgt(slrrange, valrange, self.ui.dsbPosTgtValue.value())
-        # self.pluto.set_control_target(_tgt)
         self.update_ui()
     
     def _callback_test_torque_target_changed(self, event):
@@ -237,28 +224,14 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
     
     def _callback_on_set_target(self, event):
         _dur = self.ui.dsbTgtDur.value()
-        # Check if object param is to be set.
-        if self.ui.radioObjectSim.isChecked():
-            _delposition = self.ui.dsbObjDelPos.value()
-            _position = self.ui.dsbObjPos.value()
-            self.pluto.set_object_param(_delposition, _position)
-            QtCore.QThread.msleep(100)
-            self.pluto.get_object_param()
-            # QtCore.QThread.msleep(100)
-            # self.pluto.set_diagnostic_mode()
-            print(f"Delta Position: {_delposition}, Position: {_position}")
-            return
         # Torque or position target is to be set.
         if self.ui.radioTorque.isChecked():
             _tgt = self.ui.dsbTorqTgtValue.value()
             # Set the control target.
             self.pluto.set_control_target(
-                target=_tgt,
-                target0=self.pluto.target,
-                t0=0,
-                dur=_dur
+                target=_tgt
             )
-        elif self.ui.radioPosition.isChecked() or self.ui.radioPositionLinear.isChecked():
+        elif self.ui.radioPosition.isChecked():
             _tgt = self.ui.dsbPosTgtValue.value()
             _tgt = - _tgt / pdef.HOCScale if self._mech == "HOC" else _tgt
             # Set control bound.
@@ -271,10 +244,7 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
             QtCore.QThread.msleep(100)
             # Set the control target.
             self.pluto.set_control_target(
-                target=_tgt,
-                target0=self.pluto.angle,
-                t0=0,
-                dur=_dur
+                target=_tgt
             )
     
     def _callback_on_control_hold(self, event):
@@ -290,8 +260,8 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         return (
             (self.ui.dsbTorqTgtValue.minimum(),
              self.ui.dsbTorqTgtValue.maximum()),
-            (pdef.get_taerget_range("TORQUE", self._mech)[0],
-             pdef.get_taerget_range("TORQUE", self._mech)[1])
+            (pdef.get_target_range("TORQUE", self._mech)[0],
+             pdef.get_target_range("TORQUE", self._mech)[1])
         )
 
     def get_position_slider_value_ranges(self):
@@ -299,8 +269,8 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         return (
             (self.ui.dsbPosTgtValue.minimum(),
              self.ui.dsbPosTgtValue.maximum()),
-            (_scale * pdef.get_taerget_range("POSITION", self._mech)[0],
-             _scale * pdef.get_taerget_range("POSITION", self._mech)[1])
+            (_scale * pdef.get_target_range("POSITION", self._mech)[0],
+             _scale * pdef.get_target_range("POSITION", self._mech)[1])
         )
 
     def get_ctrlbnd_slider_value_ranges(self):
@@ -360,7 +330,7 @@ if __name__ == '__main__':
     import qtjedi
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM4")
+    plutodev = QtPluto("COM5")
     pdataview = PlutoControlTesterWindow(plutodev=plutodev,
                                          mech="WFE",
                                          dataviewer=True,

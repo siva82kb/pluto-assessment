@@ -134,9 +134,11 @@ def control_to_torque(pwm):
 def get_range_for_mechanism(mech: str) -> list[float]:
     """Gets the range for the given mechanism.
     """
-    # return (PlutoAngleRanges[mech] if mech != "HOC"
-    #         else [0, abs(PlutoAngleRanges[mech][1]) * HOC_PINION_SCALE])
-    return [0, 0]
+    _range = [-PlutoAngleOffset[mech],
+              PlutoAngleRanges[mech] - PlutoAngleOffset[mech]]
+    _range[1] = (_range[1] * HOC_PINION_SCALE if mech == "HOC" else _range[1])
+    return _range
+    
 
 def get_target_range(ctrl: str, mech: str) -> list[float]:
     """Gets the target range for the given control type and mechanism.
