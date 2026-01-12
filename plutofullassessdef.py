@@ -18,7 +18,7 @@ from PyQt5.QtGui import QColor
 #
 # PLUTO COM Port
 #
-PLUTOCOMM = "COM13"
+PLUTOCOMM = "COM19"
 
 
 class ROMType(Enum):

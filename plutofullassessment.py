@@ -786,7 +786,7 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         _dispdata += [
             f"Status    : {_statusstr}",
             f"Error     : {pdef.get_name(pdef.ErrorTypes, self.pluto.error)}",
-            f"Limb-Mech : {pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism):<6s} | {pdef.get_name(pdef.LimbType, self.pluto.limb):<6s} | {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
+            f"Limb-Mech : {pdef.get_name(pdef.Mechanisms, self.pluto.mechanism):<6s} |  {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
             f"Button    : {self.pluto.button}",
             ""
         ]

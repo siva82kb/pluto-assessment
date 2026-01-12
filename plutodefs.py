@@ -115,6 +115,14 @@ PlutoSensorDataNumber = {
     "DIAGNOSTICS": 8
 }
 
+LimbTypes = {
+    "NOLIMB": 0x00,
+    "LEFT":   0x01,
+    "RIGHT":  0x02,
+}
+
+
+
 def get_name(def_dict, code):
     """Gets the name corresponding to the given code from the definition  dictionary.
     """
