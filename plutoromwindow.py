@@ -7,7 +7,6 @@ Date: 04 August 2024
 Email: siva82kb@gmail.com
 """
 
-
 import sys
 import numpy as np
 
@@ -15,7 +14,8 @@ from qtpluto import QtPluto
 
 from PyQt5 import (
     QtCore,
-    QtWidgets,)
+    QtWidgets,
+)
 from PyQt5.QtCore import pyqtSignal
 import pyqtgraph as pg
 from enum import Enum
@@ -36,7 +36,7 @@ class PlutoRomAssessStates(Enum):
     ROM_DONE = 3
 
 
-class PlutoRomAssessmentStateMachine():
+class PlutoRomAssessmentStateMachine:
     def __init__(self, plutodev, aromval=-1, promval=-1):
         self._state = PlutoRomAssessStates.FREE_RUNNING
         self._arom = aromval if aromval >= 0 else 0
@@ -50,17 +50,17 @@ class PlutoRomAssessmentStateMachine():
             PlutoRomAssessStates.FREE_RUNNING: self._free_running,
             PlutoRomAssessStates.AROM_ASSESS: self._arom_assess,
             PlutoRomAssessStates.PROM_ASSESS: self._prom_assess,
-            PlutoRomAssessStates.ROM_DONE: self._rom_done
+            PlutoRomAssessStates.ROM_DONE: self._rom_done,
         }
 
     @property
     def state(self):
         return self._state
-    
+
     @property
     def arom(self):
         return self._arom
-    
+
     @property
     def prom(self):
         return self._prom
@@ -70,10 +70,9 @@ class PlutoRomAssessmentStateMachine():
         return self._instruction
 
     def run_statemachine(self, event):
-        """Execute the state machine depending on the given even that has occured.
-        """
+        """Execute the state machine depending on the given even that has occured."""
         return self._stateactions[self._state](event)
-    
+
     def _free_running(self, event):
         # Wait for AROM or PROM to be selected.
         if event == PlutoRomAssessEvent.AROM_SELECTED:
@@ -90,7 +89,7 @@ class PlutoRomAssessmentStateMachine():
             self._instruction = "ROM Assessment Done. Press the PLUTO Button to exit."
             if event == pdef.PlutoEvents.RELEASED:
                 self._state = PlutoRomAssessStates.ROM_DONE
-    
+
     def _arom_assess(self, event):
         # Check if the button release event has happened.
         if event == pdef.PlutoEvents.RELEASED:
@@ -101,7 +100,7 @@ class PlutoRomAssessmentStateMachine():
             self._instruction = "Select AROM or PROM to assess."
             self._state = PlutoRomAssessStates.FREE_RUNNING
             return "aromset"
- 
+
     def _prom_assess(self, event):
         # Check if the button release event has happened.
         if event == pdef.PlutoEvents.RELEASED:
@@ -115,20 +114,22 @@ class PlutoRomAssessmentStateMachine():
                 # Update the instruction
                 self._instruction = "Error! PROM cannot be less than AROM.\nAssessing PROM. Press the PLUTO Button when done."
                 pass
-    
+
     def _rom_done(self, event):
         pass
-
 
 
 class PlutoRomAssessWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO ROM assessment window.
     """
+
     aromset = pyqtSignal()
     promset = pyqtSignal()
 
-    def __init__(self, parent=None, plutodev: QtPluto=None, mechanism: str=None, modal=False):
+    def __init__(
+        self, parent=None, plutodev: QtPluto = None, mechanism: str = None, modal=False
+    ):
         """
         Constructor for the PlutoRomAssessWindow class.
         """
@@ -143,7 +144,7 @@ class PlutoRomAssessWindow(QtWidgets.QMainWindow):
 
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
-        
+
         # PLUTO device
         self._pluto = plutodev
         self._mechanism = mechanism
@@ -171,23 +172,23 @@ class PlutoRomAssessWindow(QtWidgets.QMainWindow):
     @property
     def pluto(self):
         return self._pluto
-    
+
     @property
     def mechanism(self):
         return self._mechanism
-    
+
     @property
     def statemachine(self):
         return self._smachine
-    
+
     @property
     def arom(self):
         return self._smachine.arom
-    
+
     @property
     def prom(self):
         return self._smachine.prom
-    
+
     #
     # Update UI
     #
@@ -199,36 +200,30 @@ class PlutoRomAssessWindow(QtWidgets.QMainWindow):
                 return
             # Plot when there is data to be shown
             self.ui.currPosLine1.setData(
-                [self.pluto.hocdisp, self.pluto.hocdisp],
-                [-30, 30]
+                [self.pluto.hocdisp, self.pluto.hocdisp], [-30, 30]
             )
             self.ui.currPosLine2.setData(
-                [-self.pluto.hocdisp, -self.pluto.hocdisp],
-                [-30, 30]
+                [-self.pluto.hocdisp, -self.pluto.hocdisp], [-30, 30]
             )
         elif self._smachine.state == PlutoRomAssessStates.AROM_ASSESS:
             self.ui.currPosLine1.setData([0, 0], [-30, 30])
             self.ui.currPosLine2.setData([0, 0], [-30, 30])
             # AROM position
             self.ui.aromLine1.setData(
-                [self.pluto.hocdisp, self.pluto.hocdisp],
-                [-30, 30]
+                [self.pluto.hocdisp, self.pluto.hocdisp], [-30, 30]
             )
             self.ui.aromLine2.setData(
-                [-self.pluto.hocdisp, -self.pluto.hocdisp],
-                [-30, 30]
+                [-self.pluto.hocdisp, -self.pluto.hocdisp], [-30, 30]
             )
         elif self._smachine.state == PlutoRomAssessStates.PROM_ASSESS:
             self.ui.currPosLine1.setData([0, 0], [-30, 30])
             self.ui.currPosLine2.setData([0, 0], [-30, 30])
             # PROM position
             self.ui.promLine1.setData(
-                [self.pluto.hocdisp, self.pluto.hocdisp],
-                [-30, 30]
+                [self.pluto.hocdisp, self.pluto.hocdisp], [-30, 30]
             )
             self.ui.promLine2.setData(
-                [-self.pluto.hocdisp, -self.pluto.hocdisp],
-                [-30, 30]
+                [-self.pluto.hocdisp, -self.pluto.hocdisp], [-30, 30]
             )
 
         # Update main text
@@ -249,14 +244,13 @@ class PlutoRomAssessWindow(QtWidgets.QMainWindow):
 
         # Close if needed
         if self._smachine.state == PlutoRomAssessStates.ROM_DONE:
-            self.close()   
+            self.close()
 
     #
     # Graph plot initialization
     #
     def _romassess_add_graph(self):
-        """Function to add graph and other objects for displaying HOC movements.
-        """
+        """Function to add graph and other objects for displaying HOC movements."""
         _pgobj = pg.PlotWidget()
         _templayout = QtWidgets.QGridLayout()
         _templayout.addWidget(_pgobj)
@@ -264,65 +258,49 @@ class PlutoRomAssessWindow(QtWidgets.QMainWindow):
         self.ui.hocGraph.setLayout(_templayout)
         _pgobj.setYRange(-20, 20)
         _pgobj.setXRange(-10, 10)
-        _pgobj.getAxis('bottom').setStyle(showValues=False)
-        _pgobj.getAxis('left').setStyle(showValues=False)
-        
+        _pgobj.getAxis("bottom").setStyle(showValues=False)
+        _pgobj.getAxis("left").setStyle(showValues=False)
+
         # Current position lines
         self.ui.currPosLine1 = pg.PlotDataItem(
-            [0, 0],
-            [-30, 30],
-            pen=pg.mkPen(color = '#FFFFFF',width=2)
+            [0, 0], [-30, 30], pen=pg.mkPen(color="#FFFFFF", width=2)
         )
         self.ui.currPosLine2 = pg.PlotDataItem(
-            [0, 0],
-            [-30, 30],
-            pen=pg.mkPen(color = '#FFFFFF',width=2)
+            [0, 0], [-30, 30], pen=pg.mkPen(color="#FFFFFF", width=2)
         )
         _pgobj.addItem(self.ui.currPosLine1)
         _pgobj.addItem(self.ui.currPosLine2)
-        
+
         # AROM Lines
         self.ui.aromLine1 = pg.PlotDataItem(
-            [0, 0],
-            [-30, 30],
-            pen=pg.mkPen(color = '#FF8888',width=2)
+            [0, 0], [-30, 30], pen=pg.mkPen(color="#FF8888", width=2)
         )
         self.ui.aromLine2 = pg.PlotDataItem(
-            [0, 0],
-            [-30, 30],
-            pen=pg.mkPen(color = '#FF8888',width=2)
+            [0, 0], [-30, 30], pen=pg.mkPen(color="#FF8888", width=2)
         )
         _pgobj.addItem(self.ui.aromLine1)
         _pgobj.addItem(self.ui.aromLine2)
-        
+
         # PROM Lines
         self.ui.promLine1 = pg.PlotDataItem(
-            [0, 0],
-            [-30, 30],
-            pen=pg.mkPen(color = '#8888FF',width=2)
+            [0, 0], [-30, 30], pen=pg.mkPen(color="#8888FF", width=2)
         )
         self.ui.promLine2 = pg.PlotDataItem(
-            [0, 0],
-            [-30, 30],
-            pen=pg.mkPen(color = '#8888FF',width=2)
+            [0, 0], [-30, 30], pen=pg.mkPen(color="#8888FF", width=2)
         )
         _pgobj.addItem(self.ui.promLine1)
         _pgobj.addItem(self.ui.promLine2)
 
     #
     # Signal Callbacks
-    # 
+    #
     def _callback_pluto_newdata(self):
-        self._smachine.run_statemachine(
-            pdef.PlutoEvents.NEWDATA
-        )
+        self._smachine.run_statemachine(pdef.PlutoEvents.NEWDATA)
         self.update_ui()
 
     def _callback_pluto_btn_released(self):
         # Run the statemachine
-        apromset = self._smachine.run_statemachine(
-            pdef.PlutoEvents.RELEASED
-        )
+        apromset = self._smachine.run_statemachine(pdef.PlutoEvents.RELEASED)
         self.update_ui()
         # Check if arom or prom is set
         if apromset == "aromset":
@@ -334,19 +312,15 @@ class PlutoRomAssessWindow(QtWidgets.QMainWindow):
     # Control Callbacks
     #
     def _callback_arom_clicked(self, event):
-        self._smachine.run_statemachine(
-            PlutoRomAssessEvent.AROM_SELECTED
-        )
+        self._smachine.run_statemachine(PlutoRomAssessEvent.AROM_SELECTED)
         self.update_ui()
-    
+
     def _callback_prom_clicked(self, event):
-        self._smachine.run_statemachine(
-            PlutoRomAssessEvent.PROM_SELECTED
-        )
+        self._smachine.run_statemachine(PlutoRomAssessEvent.PROM_SELECTED)
         self.update_ui()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM4")
     pcalib = PlutoRomAssessWindow(plutodev=plutodev, mechanism="HOC")

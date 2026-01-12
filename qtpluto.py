@@ -19,10 +19,12 @@ import plutodefs as pdef
 # Frame rate estimation window
 FR_WINDOW_N = 100
 
+
 class QtPluto(QObject):
     """
-    Class to handle PLUTO IO operations. 
+    Class to handle PLUTO IO operations.
     """
+
     newdata = pyqtSignal()
     btnpressed = pyqtSignal()
     btnreleased = pyqtSignal()
@@ -67,18 +69,18 @@ class QtPluto(QObject):
     @property
     def limb(self):
         return self._limb
-    
+
     def set_limb(self, limb):
         self._limb = limb.upper()
-        
+
     @property
     def devname(self):
         return self._devname
-    
+
     @property
     def compliedate(self):
         return self._compliedate
-    
+
     @property
     def version(self):
         return self._version
@@ -86,19 +88,19 @@ class QtPluto(QObject):
     @property
     def systime(self):
         return self.currstatedata[0] if len(self.currstatedata) > 0 else None
-    
+
     @property
     def status(self):
         return self.currstatedata[1] if len(self.currstatedata) > 0 else None
-    
+
     @property
     def datatype(self):
         return self.status >> 4 if len(self.currstatedata) > 0 else None
-    
+
     @property
     def controltype(self):
         return (self.status & 0x0E) >> 1 if len(self.currstatedata) > 0 else None
-    
+
     @property
     def calibration(self):
         return self.status & 0x01 if len(self.currstatedata) > 0 else None
@@ -106,50 +108,61 @@ class QtPluto(QObject):
     @property
     def error(self):
         return self.currstatedata[2] if len(self.currstatedata) > 0 else None
-    
+
     @property
     def mechanism(self):
         return self.currstatedata[3] >> 4 if len(self.currstatedata) > 0 else None
-    
+
     @property
     def actuated(self):
         return self.currstatedata[3] & 0x01 if len(self.currstatedata) > 0 else None
-    
+
     @property
     def angle(self):
-        _dtype = (self.datatype == pdef.OutDataType["SENSORSTREAM"]
-                  or self.datatype == pdef.OutDataType["DIAGNOSTICS"])
+        _dtype = (
+            self.datatype == pdef.OutDataType["SENSORSTREAM"]
+            or self.datatype == pdef.OutDataType["DIAGNOSTICS"]
+        )
         return self.currsensordata[0] if _dtype else None
 
     @property
     def hocdisp(self):
-        _dtype = (self.datatype == pdef.OutDataType["SENSORSTREAM"]
-                  or self.datatype == pdef.OutDataType["DIAGNOSTICS"])
+        _dtype = (
+            self.datatype == pdef.OutDataType["SENSORSTREAM"]
+            or self.datatype == pdef.OutDataType["DIAGNOSTICS"]
+        )
         return pdef.HOCScale * abs(self.currsensordata[0]) if _dtype else None
 
     @property
     def torque(self):
-        if self.control is None: return None
+        if self.control is None:
+            return None
         return pdef.control_to_torque(self.control)
-        
+
     @property
     def control(self):
-        _dtype = (self.datatype == pdef.OutDataType["SENSORSTREAM"]
-                  or self.datatype == pdef.OutDataType["DIAGNOSTICS"])
+        _dtype = (
+            self.datatype == pdef.OutDataType["SENSORSTREAM"]
+            or self.datatype == pdef.OutDataType["DIAGNOSTICS"]
+        )
         return self.currsensordata[2] if _dtype else None
-    
+
     @property
     def target(self):
-        _dtype = (self.datatype == pdef.OutDataType["SENSORSTREAM"]
-                  or self.datatype == pdef.OutDataType["DIAGNOSTICS"])
+        _dtype = (
+            self.datatype == pdef.OutDataType["SENSORSTREAM"]
+            or self.datatype == pdef.OutDataType["DIAGNOSTICS"]
+        )
         return self.currsensordata[3] if _dtype else None
-    
+
     @property
     def desired(self):
-        _dtype = (self.datatype == pdef.OutDataType["SENSORSTREAM"]
-                  or self.datatype == pdef.OutDataType["DIAGNOSTICS"])
+        _dtype = (
+            self.datatype == pdef.OutDataType["SENSORSTREAM"]
+            or self.datatype == pdef.OutDataType["DIAGNOSTICS"]
+        )
         return self.currsensordata[4] if _dtype else None
-    
+
     @property
     def err(self):
         _dtype = self.datatype == pdef.OutDataType["DIAGNOSTICS"]
@@ -172,52 +185,58 @@ class QtPluto(QObject):
     @property
     def prevt(self):
         return self._prevt
-    
+
     @property
     def packetnumber(self):
         return self.currstatedata[4] if len(self.currstatedata) > 0 else None
-    
+
     @property
     def controlbound(self):
-        return (1.0 * self.currstatedata[6] /255) if len(self.currstatedata) > 0 else None
-    
+        return (
+            (1.0 * self.currstatedata[6] / 255) if len(self.currstatedata) > 0 else None
+        )
+
     @property
     def controldir(self):
         return self.currstatedata[7] if len(self.currstatedata) > 0 else None
-    
+
     @property
     def controlgain(self):
         return (
-            (pdef.PlutoMaxControlGain - pdef.PlutoMinControlGain) * (self.currstatedata[8] / 255.0) + pdef.PlutoMinControlGain
-            if len(self.currstatedata) > 0 
+            (pdef.PlutoMaxControlGain - pdef.PlutoMinControlGain)
+            * (self.currstatedata[8] / 255.0)
+            + pdef.PlutoMinControlGain
+            if len(self.currstatedata) > 0
             else None
         )
-    
+
     @property
     def controlhold(self):
         return self.currstatedata[9] if len(self.currstatedata) > 0 else None
-    
+
     @property
     def objectDelPosition(self):
-        return self._objparams["delposition"] if "delposition" in self._objparams else None
+        return (
+            self._objparams["delposition"] if "delposition" in self._objparams else None
+        )
 
     @property
     def objectPosition(self):
         return self._objparams["position"] if "position" in self._objparams else None
-    
+
     @property
     def button(self):
         return self.currstatedata[9] if len(self.currstatedata) > 0 else None
 
     def delt(self):
         return self._deltimes[-1] if len(self._deltimes) > 0 else 0
-    
+
     def framerate(self):
         return FR_WINDOW_N / sum(self._deltimes) if sum(self._deltimes) != 0 else 0.0
- 
+
     def is_connected(self):
         return self.dev.is_open()
-    
+
     def is_data_available(self):
         return len(self.currstatedata) != 0
 
@@ -227,30 +246,33 @@ class QtPluto(QObject):
         """
         # Store previous data
         self.prevstatedata = self.currstatedata
-        
+
         # Unpack and update current data
         # System time - 0
-        self.currstatedata = [datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')]
+        self.currstatedata = [datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")]
         # status - 1
         self.currstatedata.append(newdata[0])
         # error - 2
         self.currstatedata.append(255 * newdata[2] + newdata[1])
         # actuated - 3
         self.currstatedata.append(newdata[3])
-        
+
         # Decode according to the datatype.
-        if pdef.get_name(pdef.OutDataType, self.datatype) not in self._packet_type_handlers:
+        if (
+            pdef.get_name(pdef.OutDataType, self.datatype)
+            not in self._packet_type_handlers
+        ):
             self._packet_type_handlers[self.datatype](newdata)
-    
+
     def _handle_stream(self, newdata):
         """
         Function to handle SENSORSTREAM and DIAGNOSTICS data.
         """
-        # Packet number - 4 
+        # Packet number - 4
         self.currstatedata.append(255 * newdata[5] + newdata[4])
 
         # Run time - 5
-        self.currstatedata.append(struct.unpack('L', bytes(newdata[6:10]))[0])
+        self.currstatedata.append(struct.unpack("L", bytes(newdata[6:10]))[0])
 
         # Robot sensor data. This depends on the datatype.
         datatype_name = pdef.get_name(pdef.OutDataType, self.datatype)
@@ -260,7 +282,7 @@ class QtPluto(QObject):
 
         # pluto sensor data
         self.currsensordata = [
-            struct.unpack('f', bytes(newdata[i:i+4]))[0]
+            struct.unpack("f", bytes(newdata[i : i + 4]))[0]
             for i in range(10, 10 + N * 4, 4)
         ]
 
@@ -272,7 +294,7 @@ class QtPluto(QObject):
         self.currstatedata.append(newdata[10 + N * 4 + 2])
         # PLUTO button - 9
         self.currstatedata.append(newdata[10 + N * 4 + 3])
-        
+
         # Update frame rate related data.
         self._currt = self.currstatedata[5] * 1e-3
         if self.prevt is not None:
@@ -280,119 +302,104 @@ class QtPluto(QObject):
             if len(self._deltimes) > FR_WINDOW_N:
                 self._deltimes.pop(0)
         self._prevt = self._currt
-        
+
         # Emit newdata signal for other listeners
         self.newdata.emit()
 
         # Check and verify button events.
-        if len(self.currstatedata) > 0 and len(self.prevstatedata) > 4:    
+        if len(self.currstatedata) > 0 and len(self.prevstatedata) > 4:
             if self.prevstatedata[9] == 1.0 and self.currstatedata[9] == 0.0:
                 self.btnpressed.emit()
             if self.prevstatedata[9] == 0.0 and self.currstatedata[9] == 1.0:
                 self.btnreleased.emit()
-    
+
     def _handle_version(self, newdata):
         """
         Function to handle VERSION data.
         """
-        self._devname, self._version, self._compliedate = bytes(newdata[4:]).decode('ascii').split(",")
+        self._devname, self._version, self._compliedate = (
+            bytes(newdata[4:]).decode("ascii").split(",")
+        )
         print(self._devname, self._version, self._compliedate)
-    
+
     def close(self):
-        """Function to close the connection.
-        """
+        """Function to close the connection."""
         if self.dev is not None and self.dev.isRunning():
             self.dev.abort()
             self.dev.quit()
             self.dev.wait()
-    
+
     def calibrate_start(self, mech):
-        """Function to start the encoder calibration.
-        """
+        """Function to start the encoder calibration."""
         if not self.is_connected():
             return
-        self.dev.send_message([
-            pdef.InDataType["CALIBRATE_START"],
-            pdef.Mechanisms[mech]
-        ])
-    
+        self.dev.send_message(
+            [pdef.InDataType["CALIBRATE_START"], pdef.Mechanisms[mech]]
+        )
+
     def calibrate_end(self, mech):
-        """Function to complete the encoder calibration.
-        """
+        """Function to complete the encoder calibration."""
         if not self.is_connected():
             return
-        self.dev.send_message([
-            pdef.InDataType["CALIBRATE_END"],
-            pdef.Mechanisms[mech]
-        ])
-    
+        self.dev.send_message([pdef.InDataType["CALIBRATE_END"], pdef.Mechanisms[mech]])
+
     def set_control_type(self, control):
-        """Function to set the control type.
-        """
+        """Function to set the control type."""
         if not self.is_connected():
             return
-        _payload = [pdef.InDataType["SET_CONTROL_TYPE"],
-                    pdef.ControlTypes[control]]
+        _payload = [pdef.InDataType["SET_CONTROL_TYPE"], pdef.ControlTypes[control]]
         self.dev.send_message(_payload)
-    
+
     def set_control_target(self, target):
-        """Function to set the contoller target position.
-        """
+        """Function to set the contoller target position."""
         if not self.is_connected():
             return
         _payload = [pdef.InDataType["SET_CONTROL_TARGET"]]
-        _payload += list(struct.pack('f', target))
+        _payload += list(struct.pack("f", target))
         self.dev.send_message(_payload)
         print("Setting target:", target)
-    
+
     def set_aan_target(self, target, target0, t0, dur):
-        """Function to set the AAN contoller target position.
-        """
+        """Function to set the AAN contoller target position."""
         if not self.is_connected():
             return
         _payload = [pdef.InDataType["SET_AAN_TARGET"]]
-        _payload += list(struct.pack('f', target0))
-        _payload += list(struct.pack('f', t0))
-        _payload += list(struct.pack('f', target))
-        _payload += list(struct.pack('f', dur))
+        _payload += list(struct.pack("f", target0))
+        _payload += list(struct.pack("f", t0))
+        _payload += list(struct.pack("f", target))
+        _payload += list(struct.pack("f", dur))
         print("Setting AAN target:", target, "from", target0, "over", dur, "s")
         self.dev.send_message(_payload)
-    
+
     def reset_aan_target(self):
-        """Function to reset the AAN contoller target position.
-        """
+        """Function to reset the AAN contoller target position."""
         if not self.is_connected():
             return
         _payload = [pdef.InDataType["RESET_AAN_TARGET"]]
         self.dev.send_message(_payload)
-    
+
     def start_sensorstream(self):
-        """Starts sensor stream.
-        """
+        """Starts sensor stream."""
         _payload = [pdef.InDataType["START_STREAM"]]
         self.dev.send_message(_payload)
-    
+
     def stop_sensorstream(self):
-        """Stop sensor stream.
-        """
+        """Stop sensor stream."""
         _payload = [pdef.InDataType["STOP_STREAM"]]
         self.dev.send_message(_payload)
-    
+
     def set_diagnostic_mode(self):
-        """Sets the device in the diagnostics mode.
-        """
+        """Sets the device in the diagnostics mode."""
         _payload = [pdef.InDataType["SET_DIAGNOSTICS"]]
         self.dev.send_message(_payload)
-    
+
     def get_version(self):
-        """Get the version of the device.
-        """
+        """Get the version of the device."""
         _payload = [pdef.InDataType["GET_VERSION"]]
         self.dev.send_message(_payload)
-    
+
     def set_control_bound(self, bound):
-        """Set the control bound.
-        """
+        """Set the control bound."""
         if not self.is_connected():
             return
         # Make sure the bound is between 0 and 1.
@@ -400,33 +407,36 @@ class QtPluto(QObject):
         _payload = [pdef.InDataType["SET_CONTROL_BOUND"]]
         _payload.append(int(bound * 255))
         self.dev.send_message(_payload)
-    
+
     def set_control_dir(self, dir):
-        """Set the control direction.
-        """
+        """Set the control direction."""
         if not self.is_connected():
             return
         # Make sure the direction is either 0 or +/-1.
         if dir not in [-1, 0, 1]:
             return
         _payload = [pdef.InDataType["SET_CONTROL_DIR"]]
-        _payload.append(struct.pack('b', dir)[0])
+        _payload.append(struct.pack("b", dir)[0])
         self.dev.send_message(_payload)
-    
+
     def set_control_gain(self, gain):
-        """Set the control gain.
-        """
+        """Set the control gain."""
         if not self.is_connected():
             return
         # Limit the gain to the max and min value.
         gain = max(pdef.PlutoMinControlGain, min(gain, pdef.PlutoMaxControlGain))
         _payload = [pdef.InDataType["SET_CONTROL_GAIN"]]
-        _payload.append(int((gain - pdef.PlutoMinControlGain) * 255 / (pdef.PlutoMaxControlGain - pdef.PlutoMinControlGain)))
+        _payload.append(
+            int(
+                (gain - pdef.PlutoMinControlGain)
+                * 255
+                / (pdef.PlutoMaxControlGain - pdef.PlutoMinControlGain)
+            )
+        )
         self.dev.send_message(_payload)
 
     def send_heartbeat(self):
-        """Send a heartbeat signal to the device.
-        """
+        """Send a heartbeat signal to the device."""
         if not self.is_connected():
             return
         _payload = [pdef.InDataType["HEARTBEAT"]]
@@ -437,6 +447,7 @@ if __name__ == "__main__":
     import sys
     from PyQt5.QtWidgets import QApplication
     from qtjedi import JediComm
+
     app = QApplication(sys.argv)
     pluto = QtPluto(port="COM4")
     pluto.stop_sensorstream()

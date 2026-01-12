@@ -1,4 +1,3 @@
-
 """
 Main script file for the PLUTO assessment program.
 
@@ -11,7 +10,7 @@ import sys
 import struct
 
 # Read byte
-read_byte = lambda ser: int.from_bytes(ser.read(), byteorder='big')
+read_byte = lambda ser: int.from_bytes(ser.read(), byteorder="big")
 
 # Connect to the selected COM port
 ser = serial.Serial("COM13")
@@ -34,14 +33,14 @@ while True:
     #     _chksum = (255 + 255 + data_length + sum(data[:24])) % 256
     #     if _chksum == data[24]:
     #         sys.stdout.write(f"\nFound new data ({pcktcount:6d}): Angle: {rdata[0]:0.1f}")
-            
+
     # else:
     #     sys.stdout.write(f"\rWaiting for data({pcktcount:6d})")
-        # checksum = read_byte(ser)
-        # if sum(data) % 256 == checksum:
-        #     print(data)
-        # else:
-        #     print("Checksum error")
+    # checksum = read_byte(ser)
+    # if sum(data) % 256 == checksum:
+    #     print(data)
+    # else:
+    #     print("Checksum error")
     #     # Read the data length
     #     data_length = ser.read()
     #     # Read the data
@@ -56,4 +55,3 @@ while True:
     #         print("Checksum error")
     # else:
     #     sys.stdout.write("\rWaiting for data")
-    

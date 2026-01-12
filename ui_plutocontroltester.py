@@ -15,10 +15,14 @@ class Ui_PlutoControlTesterWindow(object):
     def setupUi(self, PlutoControlTesterWindow):
         PlutoControlTesterWindow.setObjectName("PlutoControlTesterWindow")
         PlutoControlTesterWindow.resize(452, 419)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(PlutoControlTesterWindow.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            PlutoControlTesterWindow.sizePolicy().hasHeightForWidth()
+        )
         PlutoControlTesterWindow.setSizePolicy(sizePolicy)
         self.centralwidget = QtWidgets.QWidget(PlutoControlTesterWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -84,13 +88,17 @@ class Ui_PlutoControlTesterWindow(object):
         self.lblTargetDuration.setFont(font)
         self.lblTargetDuration.setStyleSheet("color: rgb(170, 0, 0);")
         self.lblTargetDuration.setObjectName("lblTargetDuration")
-        self.formLayout_3.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.lblTargetDuration)
+        self.formLayout_3.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.lblTargetDuration
+        )
         self.dsbTgtDur = QtWidgets.QDoubleSpinBox(self.verticalLayoutWidget)
         font = QtGui.QFont()
         font.setFamily("Cascadia Mono Light")
         font.setPointSize(10)
         self.dsbTgtDur.setFont(font)
-        self.dsbTgtDur.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.dsbTgtDur.setAlignment(
+            QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter
+        )
         self.dsbTgtDur.setDecimals(2)
         self.dsbTgtDur.setMinimum(0.0)
         self.dsbTgtDur.setMaximum(10.0)
@@ -106,18 +114,24 @@ class Ui_PlutoControlTesterWindow(object):
         self.lblFeedforwardTorqueValue.setFont(font)
         self.lblFeedforwardTorqueValue.setStyleSheet("color: rgb(170, 0, 0);")
         self.lblFeedforwardTorqueValue.setObjectName("lblFeedforwardTorqueValue")
-        self.formLayout_3.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.lblFeedforwardTorqueValue)
+        self.formLayout_3.setWidget(
+            1, QtWidgets.QFormLayout.LabelRole, self.lblFeedforwardTorqueValue
+        )
         self.dsbTorqTgtValue = QtWidgets.QDoubleSpinBox(self.verticalLayoutWidget)
         font = QtGui.QFont()
         font.setFamily("Cascadia Mono Light")
         font.setPointSize(10)
         self.dsbTorqTgtValue.setFont(font)
-        self.dsbTorqTgtValue.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.dsbTorqTgtValue.setAlignment(
+            QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter
+        )
         self.dsbTorqTgtValue.setMinimum(-1.0)
         self.dsbTorqTgtValue.setMaximum(1.0)
         self.dsbTorqTgtValue.setSingleStep(0.01)
         self.dsbTorqTgtValue.setObjectName("dsbTorqTgtValue")
-        self.formLayout_3.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.dsbTorqTgtValue)
+        self.formLayout_3.setWidget(
+            1, QtWidgets.QFormLayout.FieldRole, self.dsbTorqTgtValue
+        )
         self.lblPositionTargetValue = QtWidgets.QLabel(self.verticalLayoutWidget)
         self.lblPositionTargetValue.setMinimumSize(QtCore.QSize(320, 20))
         self.lblPositionTargetValue.setMaximumSize(QtCore.QSize(320, 20))
@@ -127,18 +141,24 @@ class Ui_PlutoControlTesterWindow(object):
         self.lblPositionTargetValue.setFont(font)
         self.lblPositionTargetValue.setStyleSheet("color: rgb(170, 0, 0);")
         self.lblPositionTargetValue.setObjectName("lblPositionTargetValue")
-        self.formLayout_3.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.lblPositionTargetValue)
+        self.formLayout_3.setWidget(
+            2, QtWidgets.QFormLayout.LabelRole, self.lblPositionTargetValue
+        )
         self.dsbPosTgtValue = QtWidgets.QDoubleSpinBox(self.verticalLayoutWidget)
         font = QtGui.QFont()
         font.setFamily("Cascadia Mono Light")
         font.setPointSize(10)
         self.dsbPosTgtValue.setFont(font)
-        self.dsbPosTgtValue.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.dsbPosTgtValue.setAlignment(
+            QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter
+        )
         self.dsbPosTgtValue.setMinimum(-1.0)
         self.dsbPosTgtValue.setMaximum(1.0)
         self.dsbPosTgtValue.setSingleStep(0.01)
         self.dsbPosTgtValue.setObjectName("dsbPosTgtValue")
-        self.formLayout_3.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.dsbPosTgtValue)
+        self.formLayout_3.setWidget(
+            2, QtWidgets.QFormLayout.FieldRole, self.dsbPosTgtValue
+        )
         self.lblControlBoundValue = QtWidgets.QLabel(self.verticalLayoutWidget)
         self.lblControlBoundValue.setMinimumSize(QtCore.QSize(320, 20))
         self.lblControlBoundValue.setMaximumSize(QtCore.QSize(320, 20))
@@ -148,18 +168,24 @@ class Ui_PlutoControlTesterWindow(object):
         self.lblControlBoundValue.setFont(font)
         self.lblControlBoundValue.setStyleSheet("color: rgb(170, 0, 0);")
         self.lblControlBoundValue.setObjectName("lblControlBoundValue")
-        self.formLayout_3.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.lblControlBoundValue)
+        self.formLayout_3.setWidget(
+            3, QtWidgets.QFormLayout.LabelRole, self.lblControlBoundValue
+        )
         self.dsbCtrlBndValue = QtWidgets.QDoubleSpinBox(self.verticalLayoutWidget)
         font = QtGui.QFont()
         font.setFamily("Cascadia Mono Light")
         font.setPointSize(10)
         self.dsbCtrlBndValue.setFont(font)
-        self.dsbCtrlBndValue.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.dsbCtrlBndValue.setAlignment(
+            QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter
+        )
         self.dsbCtrlBndValue.setMinimum(0.0)
         self.dsbCtrlBndValue.setMaximum(1.0)
         self.dsbCtrlBndValue.setSingleStep(0.01)
         self.dsbCtrlBndValue.setObjectName("dsbCtrlBndValue")
-        self.formLayout_3.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.dsbCtrlBndValue)
+        self.formLayout_3.setWidget(
+            3, QtWidgets.QFormLayout.FieldRole, self.dsbCtrlBndValue
+        )
         self.lblControlGainValue = QtWidgets.QLabel(self.verticalLayoutWidget)
         self.lblControlGainValue.setMinimumSize(QtCore.QSize(320, 20))
         self.lblControlGainValue.setMaximumSize(QtCore.QSize(320, 20))
@@ -169,19 +195,25 @@ class Ui_PlutoControlTesterWindow(object):
         self.lblControlGainValue.setFont(font)
         self.lblControlGainValue.setStyleSheet("color: rgb(170, 0, 0);")
         self.lblControlGainValue.setObjectName("lblControlGainValue")
-        self.formLayout_3.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.lblControlGainValue)
+        self.formLayout_3.setWidget(
+            4, QtWidgets.QFormLayout.LabelRole, self.lblControlGainValue
+        )
         self.dsbCtrlGainValue = QtWidgets.QDoubleSpinBox(self.verticalLayoutWidget)
         font = QtGui.QFont()
         font.setFamily("Cascadia Mono Light")
         font.setPointSize(10)
         self.dsbCtrlGainValue.setFont(font)
-        self.dsbCtrlGainValue.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.dsbCtrlGainValue.setAlignment(
+            QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter
+        )
         self.dsbCtrlGainValue.setDecimals(2)
         self.dsbCtrlGainValue.setMinimum(1.0)
         self.dsbCtrlGainValue.setMaximum(10.0)
         self.dsbCtrlGainValue.setSingleStep(0.01)
         self.dsbCtrlGainValue.setObjectName("dsbCtrlGainValue")
-        self.formLayout_3.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.dsbCtrlGainValue)
+        self.formLayout_3.setWidget(
+            4, QtWidgets.QFormLayout.FieldRole, self.dsbCtrlGainValue
+        )
         self.lblObjectPosition = QtWidgets.QLabel(self.verticalLayoutWidget)
         self.lblObjectPosition.setMinimumSize(QtCore.QSize(320, 20))
         self.lblObjectPosition.setMaximumSize(QtCore.QSize(320, 20))
@@ -191,7 +223,9 @@ class Ui_PlutoControlTesterWindow(object):
         self.lblObjectPosition.setFont(font)
         self.lblObjectPosition.setStyleSheet("color: rgb(170, 0, 0);")
         self.lblObjectPosition.setObjectName("lblObjectPosition")
-        self.formLayout_3.setWidget(5, QtWidgets.QFormLayout.LabelRole, self.lblObjectPosition)
+        self.formLayout_3.setWidget(
+            5, QtWidgets.QFormLayout.LabelRole, self.lblObjectPosition
+        )
         self.lblObjectDelPos = QtWidgets.QLabel(self.verticalLayoutWidget)
         self.lblObjectDelPos.setMinimumSize(QtCore.QSize(320, 20))
         self.lblObjectDelPos.setMaximumSize(QtCore.QSize(320, 20))
@@ -201,14 +235,18 @@ class Ui_PlutoControlTesterWindow(object):
         self.lblObjectDelPos.setFont(font)
         self.lblObjectDelPos.setStyleSheet("color: rgb(170, 0, 0);")
         self.lblObjectDelPos.setObjectName("lblObjectDelPos")
-        self.formLayout_3.setWidget(6, QtWidgets.QFormLayout.LabelRole, self.lblObjectDelPos)
+        self.formLayout_3.setWidget(
+            6, QtWidgets.QFormLayout.LabelRole, self.lblObjectDelPos
+        )
         self.dsbObjPos = QtWidgets.QDoubleSpinBox(self.verticalLayoutWidget)
         self.dsbObjPos.setEnabled(False)
         font = QtGui.QFont()
         font.setFamily("Cascadia Mono Light")
         font.setPointSize(10)
         self.dsbObjPos.setFont(font)
-        self.dsbObjPos.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.dsbObjPos.setAlignment(
+            QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter
+        )
         self.dsbObjPos.setDecimals(2)
         self.dsbObjPos.setMinimum(-90.0)
         self.dsbObjPos.setMaximum(0.0)
@@ -222,14 +260,18 @@ class Ui_PlutoControlTesterWindow(object):
         font.setFamily("Cascadia Mono Light")
         font.setPointSize(10)
         self.dsbObjDelPos.setFont(font)
-        self.dsbObjDelPos.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.dsbObjDelPos.setAlignment(
+            QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter
+        )
         self.dsbObjDelPos.setDecimals(2)
         self.dsbObjDelPos.setMinimum(1.0)
         self.dsbObjDelPos.setMaximum(40.0)
         self.dsbObjDelPos.setSingleStep(1.0)
         self.dsbObjDelPos.setProperty("value", 40.0)
         self.dsbObjDelPos.setObjectName("dsbObjDelPos")
-        self.formLayout_3.setWidget(6, QtWidgets.QFormLayout.FieldRole, self.dsbObjDelPos)
+        self.formLayout_3.setWidget(
+            6, QtWidgets.QFormLayout.FieldRole, self.dsbObjDelPos
+        )
         self.verticalLayout.addLayout(self.formLayout_3)
         self.pbSetTarget = QtWidgets.QPushButton(self.verticalLayoutWidget)
         font = QtGui.QFont()
@@ -264,20 +306,44 @@ class Ui_PlutoControlTesterWindow(object):
 
     def retranslateUi(self, PlutoControlTesterWindow):
         _translate = QtCore.QCoreApplication.translate
-        PlutoControlTesterWindow.setWindowTitle(_translate("PlutoControlTesterWindow", "PLUTO Test Window"))
-        self.gbControlType.setTitle(_translate("PlutoControlTesterWindow", "Choose Control Type"))
+        PlutoControlTesterWindow.setWindowTitle(
+            _translate("PlutoControlTesterWindow", "PLUTO Test Window")
+        )
+        self.gbControlType.setTitle(
+            _translate("PlutoControlTesterWindow", "Choose Control Type")
+        )
         self.radioPosition.setText(_translate("PlutoControlTesterWindow", "Position"))
-        self.radioPositionLinear.setText(_translate("PlutoControlTesterWindow", "Position Linear"))
+        self.radioPositionLinear.setText(
+            _translate("PlutoControlTesterWindow", "Position Linear")
+        )
         self.radioNone.setText(_translate("PlutoControlTesterWindow", "No Control"))
         self.radioTorque.setText(_translate("PlutoControlTesterWindow", "Torque"))
-        self.radioObjectSim.setText(_translate("PlutoControlTesterWindow", "Object Sim"))
-        self.lblTargetDuration.setText(_translate("PlutoControlTesterWindow", "Target Duration (s):"))
-        self.lblFeedforwardTorqueValue.setText(_translate("PlutoControlTesterWindow", "Feedforward Torque Value (Nm):"))
-        self.lblPositionTargetValue.setText(_translate("PlutoControlTesterWindow", "Target Position Value (deg):"))
-        self.lblControlBoundValue.setText(_translate("PlutoControlTesterWindow", "Control Bound:"))
-        self.lblControlGainValue.setText(_translate("PlutoControlTesterWindow", "Control Gain:"))
-        self.lblObjectPosition.setText(_translate("PlutoControlTesterWindow", "Object Position:"))
-        self.lblObjectDelPos.setText(_translate("PlutoControlTesterWindow", "Transition Width:"))
+        self.radioObjectSim.setText(
+            _translate("PlutoControlTesterWindow", "Object Sim")
+        )
+        self.lblTargetDuration.setText(
+            _translate("PlutoControlTesterWindow", "Target Duration (s):")
+        )
+        self.lblFeedforwardTorqueValue.setText(
+            _translate("PlutoControlTesterWindow", "Feedforward Torque Value (Nm):")
+        )
+        self.lblPositionTargetValue.setText(
+            _translate("PlutoControlTesterWindow", "Target Position Value (deg):")
+        )
+        self.lblControlBoundValue.setText(
+            _translate("PlutoControlTesterWindow", "Control Bound:")
+        )
+        self.lblControlGainValue.setText(
+            _translate("PlutoControlTesterWindow", "Control Gain:")
+        )
+        self.lblObjectPosition.setText(
+            _translate("PlutoControlTesterWindow", "Object Position:")
+        )
+        self.lblObjectDelPos.setText(
+            _translate("PlutoControlTesterWindow", "Transition Width:")
+        )
         self.pbSetTarget.setText(_translate("PlutoControlTesterWindow", "Set Target"))
         self.pbCtrlHold.setText(_translate("PlutoControlTesterWindow", "Control Hold"))
-        self.pbCtrlDecay.setText(_translate("PlutoControlTesterWindow", "Control Decay"))
+        self.pbCtrlDecay.setText(
+            _translate("PlutoControlTesterWindow", "Control Decay")
+        )

@@ -15,10 +15,14 @@ class Ui_PlutoSubjectCreatorWindow(object):
     def setupUi(self, PlutoSubjectCreatorWindow):
         PlutoSubjectCreatorWindow.setObjectName("PlutoSubjectCreatorWindow")
         PlutoSubjectCreatorWindow.resize(310, 161)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(PlutoSubjectCreatorWindow.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            PlutoSubjectCreatorWindow.sizePolicy().hasHeightForWidth()
+        )
         PlutoSubjectCreatorWindow.setSizePolicy(sizePolicy)
         self.centralwidget = QtWidgets.QWidget(PlutoSubjectCreatorWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -120,11 +124,19 @@ class Ui_PlutoSubjectCreatorWindow(object):
 
     def retranslateUi(self, PlutoSubjectCreatorWindow):
         _translate = QtCore.QCoreApplication.translate
-        PlutoSubjectCreatorWindow.setWindowTitle(_translate("PlutoSubjectCreatorWindow", "PLUTO Full Assessment Subject Creator"))
+        PlutoSubjectCreatorWindow.setWindowTitle(
+            _translate(
+                "PlutoSubjectCreatorWindow", "PLUTO Full Assessment Subject Creator"
+            )
+        )
         self.label.setText(_translate("PlutoSubjectCreatorWindow", "Subject ID: "))
         self.label_2.setText(_translate("PlutoSubjectCreatorWindow", "Subject Type:"))
-        self.cbSubjType.setItemText(0, _translate("PlutoSubjectCreatorWindow", "HEALTHY"))
-        self.cbSubjType.setItemText(1, _translate("PlutoSubjectCreatorWindow", "STROKE"))
+        self.cbSubjType.setItemText(
+            0, _translate("PlutoSubjectCreatorWindow", "HEALTHY")
+        )
+        self.cbSubjType.setItemText(
+            1, _translate("PlutoSubjectCreatorWindow", "STROKE")
+        )
         self.label_3.setText(_translate("PlutoSubjectCreatorWindow", "Dominant Side:"))
         self.cbDomLimb.setItemText(0, _translate("PlutoSubjectCreatorWindow", "LEFT"))
         self.cbDomLimb.setItemText(1, _translate("PlutoSubjectCreatorWindow", "RIGHT"))

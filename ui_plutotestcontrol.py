@@ -114,12 +114,24 @@ class Ui_PlutoTestControlWindow(object):
 
     def retranslateUi(self, PlutoTestControlWindow):
         _translate = QtCore.QCoreApplication.translate
-        PlutoTestControlWindow.setWindowTitle(_translate("PlutoTestControlWindow", "PLUTO Test Window"))
-        self.gbControlType.setTitle(_translate("PlutoTestControlWindow", "Choose Control Type"))
+        PlutoTestControlWindow.setWindowTitle(
+            _translate("PlutoTestControlWindow", "PLUTO Test Window")
+        )
+        self.gbControlType.setTitle(
+            _translate("PlutoTestControlWindow", "Choose Control Type")
+        )
         self.radioNone.setText(_translate("PlutoTestControlWindow", "No Control"))
         self.radioTorque.setText(_translate("PlutoTestControlWindow", "Torque"))
         self.radioPosition.setText(_translate("PlutoTestControlWindow", "Position"))
-        self.lblFeedforwardTorqueValue.setText(_translate("PlutoTestControlWindow", "Feedforward Torque Value (Nm):"))
-        self.lblPositionTargetValue.setText(_translate("PlutoTestControlWindow", "Target Position Value (deg):"))
-        self.lblControlBoundValue.setText(_translate("PlutoTestControlWindow", "Control Bound:"))
-        self.lblControlGainValue.setText(_translate("PlutoTestControlWindow", "Control Gain:"))
+        self.lblFeedforwardTorqueValue.setText(
+            _translate("PlutoTestControlWindow", "Feedforward Torque Value (Nm):")
+        )
+        self.lblPositionTargetValue.setText(
+            _translate("PlutoTestControlWindow", "Target Position Value (deg):")
+        )
+        self.lblControlBoundValue.setText(
+            _translate("PlutoTestControlWindow", "Control Bound:")
+        )
+        self.lblControlGainValue.setText(
+            _translate("PlutoTestControlWindow", "Control Gain:")
+        )

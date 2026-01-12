@@ -15,10 +15,14 @@ class Ui_PlutoSubjectSelectorWindow(object):
     def setupUi(self, PlutoSubjectSelectorWindow):
         PlutoSubjectSelectorWindow.setObjectName("PlutoSubjectSelectorWindow")
         PlutoSubjectSelectorWindow.resize(321, 78)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(PlutoSubjectSelectorWindow.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            PlutoSubjectSelectorWindow.sizePolicy().hasHeightForWidth()
+        )
         PlutoSubjectSelectorWindow.setSizePolicy(sizePolicy)
         PlutoSubjectSelectorWindow.setMinimumSize(QtCore.QSize(321, 78))
         PlutoSubjectSelectorWindow.setMaximumSize(QtCore.QSize(321, 78))
@@ -57,6 +61,12 @@ class Ui_PlutoSubjectSelectorWindow(object):
 
     def retranslateUi(self, PlutoSubjectSelectorWindow):
         _translate = QtCore.QCoreApplication.translate
-        PlutoSubjectSelectorWindow.setWindowTitle(_translate("PlutoSubjectSelectorWindow", "PLUTO Full Assessment Subject Selector"))
+        PlutoSubjectSelectorWindow.setWindowTitle(
+            _translate(
+                "PlutoSubjectSelectorWindow", "PLUTO Full Assessment Subject Selector"
+            )
+        )
         self.label.setText(_translate("PlutoSubjectSelectorWindow", "Subject ID: "))
-        self.pbSelect.setText(_translate("PlutoSubjectSelectorWindow", "Select Subject"))
+        self.pbSelect.setText(
+            _translate("PlutoSubjectSelectorWindow", "Select Subject")
+        )

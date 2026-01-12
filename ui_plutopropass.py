@@ -120,9 +120,13 @@ class Ui_PlutoPropAssessor(object):
 
     def retranslateUi(self, PlutoPropAssessor):
         _translate = QtCore.QCoreApplication.translate
-        PlutoPropAssessor.setWindowTitle(_translate("PlutoPropAssessor", "PLUTO Proprioception Assessment"))
+        PlutoPropAssessor.setWindowTitle(
+            _translate("PlutoPropAssessor", "PLUTO Proprioception Assessment")
+        )
         self.pbCalibration.setText(_translate("PlutoPropAssessor", "Calibrate PLUTO"))
-        self.pbSubject.setToolTip(_translate("PlutoPropAssessor", "Select the subject to assess"))
+        self.pbSubject.setToolTip(
+            _translate("PlutoPropAssessor", "Select the subject to assess")
+        )
         self.pbSubject.setText(_translate("PlutoPropAssessor", "Select Subject"))
         self.pbTestDevice.setText(_translate("PlutoPropAssessor", "Test Device"))
         self.label.setText(_translate("PlutoPropAssessor", "Subject Type:"))
@@ -137,4 +141,6 @@ class Ui_PlutoPropAssessor(object):
         self.cbGripType.setItemText(3, _translate("PlutoPropAssessor", "Three Finger"))
         self.pbRomAssess.setText(_translate("PlutoPropAssessor", "Assess ROM"))
         self.pbRomAssess.setShortcut(_translate("PlutoPropAssessor", "Ctrl+S, Ctrl+S"))
-        self.pbPropAssessment.setText(_translate("PlutoPropAssessor", "Proprioception Assessment"))
+        self.pbPropAssessment.setText(
+            _translate("PlutoPropAssessor", "Proprioception Assessment")
+        )

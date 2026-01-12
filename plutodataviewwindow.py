@@ -6,7 +6,6 @@ Date: 04 August 2024
 Email: siva82kb@gmail.com
 """
 
-
 import sys
 import numpy as np
 
@@ -27,8 +26,14 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO data viewer window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None,
-                 mode="SENSORSTREAM", pos: tuple[int]=None):
+
+    def __init__(
+        self,
+        parent=None,
+        plutodev: QtPluto = None,
+        mode="SENSORSTREAM",
+        pos: tuple[int] = None,
+    ):
         """
         Constructor for the PlutoDataViewWindow class.
         """
@@ -43,7 +48,7 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
 
         if pos is not None:
             self.move(*pos)
-        
+
         # PLUTO device
         self._pluto = plutodev
 
@@ -52,7 +57,7 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
         # Get the version and device information
         self._pluto.get_version()
         # Pause for 0.5sec
-        QTimer.singleShot(500, lambda: None) 
+        QTimer.singleShot(500, lambda: None)
         if self._mode == "DIAGNOSTICS":
             self._pluto.set_diagnostic_mode()
         else:
@@ -77,7 +82,7 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
     @property
     def pluto(self):
         return self._pluto
-    
+
     #
     # Update UI
     #
@@ -95,20 +100,28 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
             f"Time     : {self.pluto.systime}",
             f"Dev Time : {self.pluto.currt:6.3f}s  | Pack No : {self.pluto.packetnumber:06d}",
         ]
-        _statusstr = ' | '.join((pdef.get_name(pdef.OutDataType, self.pluto.datatype),
-                                 pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)))
+        _statusstr = " | ".join(
+            (
+                pdef.get_name(pdef.OutDataType, self.pluto.datatype),
+                pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration),
+            )
+        )
         _dispdata += [
             f"Status   : {_statusstr}",
             f"Error    : {pdef.get_name(pdef.ErrorTypes, self.pluto.error)}",
             f"Control  : {pdef.get_name(pdef.ControlTypes, self.pluto.controltype):<11s}",
             f"Mechanism: {pdef.get_name(pdef.Mechanisms, self.pluto.mechanism):<11s} | {pdef.get_name(pdef.CalibrationStatus, self.pluto.calibration)}",
             f"Actd     : {self.pluto.actuated:<11d} | Button  : {self.pluto.button}",
-            ""
+            "",
         ]
         _dispdata += [
             "~ SENSOR DATA ~",
             f"Angle    : {self.pluto.angle:-07.2f}deg"
-            + (f" [{self.pluto.hocdisp:05.2f}cm]" if self.pluto.calibration == 1 else "")
+            + (
+                f" [{self.pluto.hocdisp:05.2f}cm]"
+                if self.pluto.calibration == 1
+                else ""
+            ),
         ]
         _dispdata += [
             f"Torque  : {self.pluto.torque:+3.1f}Nm",
@@ -130,8 +143,8 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
         _dispdata += [
             f"C Bound  : {self.pluto.controlbound:1.2f} | C Dir    : {self.pluto.controldir} | C Gain   : {self.pluto.controlgain:02.2f}",
         ]
-        self.ui.textDevData.setText('\n'.join(_dispdata))
-    
+        self.ui.textDevData.setText("\n".join(_dispdata))
+
     #
     # Key release event
     #
@@ -146,10 +159,10 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
     def _callback_pluto_newdata(self):
         if np.random.rand() < 0.05:
             self.update_ui()
-    
+
     def _callback_pluto_button_released(self):
         print("Button released.")
-    
+
     def _callback_pluto_button_pressed(self):
         print("Button pressed.")
 
@@ -164,15 +177,15 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
             print(f"Error during close: {e}")
         return super().closeEvent(event)
 
-    
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     import qtjedi
+
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM19")
     plutodev.send_heartbeat()
     plutodev.set_limb("RIGHT")
-    pdataview = PlutoDataViewWindow(plutodev=plutodev,
-                                    mode="DIAGNOSTICS")
+    pdataview = PlutoDataViewWindow(plutodev=plutodev, mode="DIAGNOSTICS")
     pdataview.show()
     sys.exit(app.exec_())

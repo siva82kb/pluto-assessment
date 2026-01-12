@@ -27,24 +27,24 @@ def rangea_within_rangeb(rangea: tuple[float], rangeb: tuple[float]) -> bool:
 def is_out_of_range(val, minval, maxval, thres):
     return (val < minval - thres) or (val > maxval + thres)
 
+
 #
 # CSV Buffered Writer
 #
 class CSVBufferWriter(object):
-
     def __init__(self, fname, header, flush_interval=5.0, max_rows=1000):
         self._header = header
         self._fname = fname
         self._flush_interval = flush_interval
         self._max_rows = max_rows
         self._buffer = []
-        self._fhandle = open(self._fname, "w", newline='')
+        self._fhandle = open(self._fname, "w", newline="")
         # Write the header.
         self._writer = csv.writer(self._fhandle)
         self._buffer.append(self._header)
         self.flush()
         self._lastflush = time.time()
-    
+
     @property
     def filename(self):
         return self._fname
@@ -55,8 +55,9 @@ class CSVBufferWriter(object):
             raise ValueError("Row data length does not match header length.")
         self._buffer.append(rowdata)
         # Check if its time to flush.
-        if ((time.time() - self._lastflush) > self._flush_interval 
-            or len(self._buffer) >= self._max_rows):
+        if (time.time() - self._lastflush) > self._flush_interval or len(
+            self._buffer
+        ) >= self._max_rows:
             self.flush()
 
     def flush(self):

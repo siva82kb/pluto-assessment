@@ -65,7 +65,9 @@ class Ui_APRomAssessWindow(object):
 
     def retranslateUi(self, APRomAssessWindow):
         _translate = QtCore.QCoreApplication.translate
-        APRomAssessWindow.setWindowTitle(_translate("APRomAssessWindow", "PLUTO A/P/AP ROM Assessment"))
+        APRomAssessWindow.setWindowTitle(
+            _translate("APRomAssessWindow", "PLUTO A/P/AP ROM Assessment")
+        )
         self.lblTitle.setText(_translate("APRomAssessWindow", "PLUTO ROM Assessment"))
         self.cbTrialRun.setText(_translate("APRomAssessWindow", "Trial Run"))
         self.lblStatus.setText(_translate("APRomAssessWindow", "TextLabel"))

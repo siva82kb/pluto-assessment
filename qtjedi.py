@@ -1,4 +1,4 @@
-# Module implementing the JEDI serial communication protocol that work with 
+# Module implementing the JEDI serial communication protocol that work with
 # the QT framework for emitting a signal when new data packets are available.
 #
 # Author: Sivakumar Balasubramanian
@@ -11,10 +11,11 @@ import enum
 import sys
 import time
 from serial.tools.list_ports import comports
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QThread)
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, QThread
 
 _INDEBUG = False
 _OUTDEBUG = False
+
 
 class JediParsingStates(enum.Enum):
     LookingForHeader = 0
@@ -26,14 +27,15 @@ class JediParsingStates(enum.Enum):
 
 
 class JediComm(QThread):
-
     newdata_signal = pyqtSignal(list)
 
     def __init__(self, port=None, baudrate=115200) -> None:
         super().__init__()
         self._port = port
         self._baudrate = baudrate
-        self._ser = serial.Serial(port) if baudrate is None else serial.Serial(port, baudrate)
+        self._ser = (
+            serial.Serial(port) if baudrate is None else serial.Serial(port, baudrate)
+        )
         self._state = JediParsingStates.LookingForHeader
         self._in_payload = []
         self._out_payload = []
@@ -47,20 +49,18 @@ class JediComm(QThread):
         self._abort = False
         self._sleeping = False
         # self.setDaemon(False)
-    
+
     @property
     def sleeping(self):
-        """ Returns if the thread is sleeping.
-        """
+        """Returns if the thread is sleeping."""
         return self._sleeping
-    
+
     def is_open(self):
-        """Returns if the serial port is open.
-        """
+        """Returns if the serial port is open."""
         return self._port if self._ser.is_open else ""
 
     def send_message(self, outbytes):
-        _outpayload = [0xAA, 0xAA, len(outbytes)+1, *outbytes]
+        _outpayload = [0xAA, 0xAA, len(outbytes) + 1, *outbytes]
         _outpayload.append(sum(_outpayload) % 256)
         # Send payload.
         if _OUTDEBUG:
@@ -116,13 +116,13 @@ class JediComm(QThread):
         try:
             while self._ser.inWaiting():
                 _byte = self._ser.read()
-                if  _INDEBUG:
+                if _INDEBUG:
                     sys.stdout.write(f"{ord(_byte)} ")
                 if self._state == JediParsingStates.LookingForHeader:
-                    if ord(_byte) == 0xff:
+                    if ord(_byte) == 0xFF:
                         self._state = JediParsingStates.FoundHeader1
                 elif self._state == JediParsingStates.FoundHeader1:
-                    if ord(_byte) == 0xff:
+                    if ord(_byte) == 0xFF:
                         self._state = JediParsingStates.FoundHeader2
                     else:
                         self._state = JediParsingStates.LookingForHeader
@@ -135,7 +135,7 @@ class JediComm(QThread):
                     self._N = ord(_byte)
                     self._cnt = 0
                     self._chksum = 255 + 255 + self._N
-                    self._in_payload = [ None ] * (self._N - 1)
+                    self._in_payload = [None] * (self._N - 1)
                     self._state = JediParsingStates.ReadingPayload
                 elif self._state == JediParsingStates.ReadingPayload:
                     self._in_payload[self._cnt] = ord(_byte)
@@ -148,7 +148,7 @@ class JediComm(QThread):
                         self._state = JediParsingStates.FoundFullPacket
                     else:
                         self._state = JediParsingStates.LookingForHeader
-                
+
                 # Handle full packet.
                 if self._state == JediParsingStates.FoundFullPacket:
                     self.newdata_signal.emit(self._in_payload)
@@ -157,7 +157,7 @@ class JediComm(QThread):
             return
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     jedireader = JediComm("COM4")
     jedireader.start()
     time.sleep(10)
