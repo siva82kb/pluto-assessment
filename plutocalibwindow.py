@@ -66,7 +66,8 @@ class PlutoCalibrationStateMachine():
             PlutoCalibStates.CHECK_CALIB_ANGLE: self._check_calib_angle,
             PlutoCalibStates.SET_CALIB_END: self._calib_end,
             PlutoCalibStates.CALIB_ERROR: self._calib_error,
-            PlutoCalibStates.CALIB_DONE: self._calib_done
+            PlutoCalibStates.CALIB_DONE: self._calib_done,
+            PlutoCalibStates.EXIT: self._exit
         }
         self._mech = mech
         self._state_t0 = 0
@@ -167,6 +168,10 @@ class PlutoCalibrationStateMachine():
     def _calib_done(self, event):
         if event == pdef.PlutoEvents.RELEASED:
             self._state = PlutoCalibStates.EXIT
+
+    def _exit(self, event):
+        """Handle events in EXIT state - calibration is complete, ignore further events."""
+        pass
 
 
 class PlutoCalibrationWindow(QtWidgets.QMainWindow):

@@ -925,12 +925,12 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         # Reenable main controls
         self._maindisable = False
         # Check of the calibration was successful.
-        if (pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism) == self.protocol.mech
+        if (pdef.get_name(pdef.Mechanisms, self.pluto.mechanism) == self.protocol.mech
             and self.pluto.calibration == 1):
             # Run the state machine.
             self._smachine.run_statemachine(
                 Events.CALIB_DONE if data["done"] else Events.CALIB_NO_DONE,
-                {"mech": pdef.get_name(pdef.Mehcanisms, self.pluto.mechanism)}
+                {"mech": pdef.get_name(pdef.Mechanisms, self.pluto.mechanism)}
             )
         # Set the window closed flag.
         self._currwndclosed = True
