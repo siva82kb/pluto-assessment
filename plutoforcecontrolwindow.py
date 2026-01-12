@@ -418,7 +418,7 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
     Class for handling the operation of the force control assessment task.
     """
 
-    def __init__(self, parent=None, plutodev: QtPluto=None, assessinfo: dict=None, 
+    def __init__(self, parent=None, plutodev: QtPluto=None, assessinfo: dict=None,
                  modal=False, dataviewer=False, onclosecb=None, heartbeat=False):
         """
         Constructor for the PlutoForceControlWindow class.
@@ -426,6 +426,12 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
         super(PlutoForceControlWindow, self).__init__(parent)
         self.ui = Ui_APRomAssessWindow()
         self.ui.setupUi(self)
+
+        # Fix UI accessibility - ensure window can be resized
+        self.setMinimumSize(751, 329)
+        self.setMaximumSize(16777215, 16777215)
+        self.resize(900, 500)
+
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         

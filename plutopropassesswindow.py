@@ -654,6 +654,12 @@ class PlutoPropAssessWindow(QtWidgets.QMainWindow):
         super(PlutoPropAssessWindow, self).__init__(parent)
         self.ui = Ui_APRomAssessWindow()
         self.ui.setupUi(self)
+
+        # Fix UI accessibility - remove fixed size constraints
+        self.setMinimumSize(751, 429)
+        self.setMaximumSize(16777215, 16777215)
+        self.resize(900, 550)
+
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         

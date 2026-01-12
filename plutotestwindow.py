@@ -26,7 +26,7 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO test control window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None, limb=None, mech=None, modal=False, 
+    def __init__(self, parent=None, plutodev: QtPluto=None, limb=None, mech=None, modal=False,
                  dataviewer=False, onclosedb=None, heartbeat=False):
         """
         Constructor for the PTestControlViewWindow class.
@@ -34,6 +34,14 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
         super(PlutoTestControlWindow, self).__init__(parent)
         self.ui = Ui_PlutoTestControlWindow()
         self.ui.setupUi(self)
+
+        # Fix UI accessibility - remove fixed size constraints
+        self.setMinimumSize(395, 296)
+        self.setMaximumSize(16777215, 16777215)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.setSizePolicy(sizePolicy)
+        self.resize(550, 450)
+
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         

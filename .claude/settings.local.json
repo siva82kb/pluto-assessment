@@ -24,7 +24,8 @@
       "Bash(.venv/Scripts/python.exe -m pip install:*)",
       "Bash(uv sync:*)",
       "mcp__plugin_serena_serena__create_text_file",
-      "mcp__plugin_serena_serena__activate_project"
+      "mcp__plugin_serena_serena__activate_project",
+      "Bash(python -m py_compile:*)"
     ]
   }
 }

@@ -549,7 +549,7 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
     Class for handling the operation of the PLUTO ROM assessment window.
     """
 
-    def __init__(self, parent=None, plutodev: QtPluto=None, assessinfo: dict=None, 
+    def __init__(self, parent=None, plutodev: QtPluto=None, assessinfo: dict=None,
                  modal=False, dataviewer=False, onclosecb=None, heartbeat=False):
         """
         Constructor for the PlutoAssistPRomAssessWindow class.
@@ -557,6 +557,12 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
         super(PlutoAssistPRomAssessWindow, self).__init__(parent)
         self.ui = Ui_APRomAssessWindow()
         self.ui.setupUi(self)
+
+        # Fix UI accessibility - ensure window can be resized
+        self.setMinimumSize(751, 329)
+        self.setMaximumSize(16777215, 16777215)
+        self.resize(900, 500)
+
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         

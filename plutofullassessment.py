@@ -52,6 +52,7 @@ from plutoposholdwindow import PlutoPositionHoldAssessWindow
 from plutodiscreachwindow import PlutoDiscReachAssessWindow
 from plutopropassesswindow import PlutoPropAssessWindow
 from plutofullassesssdata import DataFrameModel
+from async_workers import LimbSetupWorker
 
 
 DEBUG = False
@@ -65,12 +66,20 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
         """View initializer."""
         super(PlutoFullAssesor, self).__init__(*args, **kwargs)
         self.setupUi(self)
+
+        # Fix UI accessibility - remove fixed size constraints that cause clipping
+        # Keep minimum size for usability, but allow resizing
+        self.setMinimumSize(1200, 607)
+        self.setMaximumSize(16777215, 16777215)  # Reset to default max
+
         self._flag = False
         self._subjdetails = ""
         self._title = "Pluto Full Assessment"
 
-        # Move close to top left corner
+        # Move close to top left corner and set initial size
         self.move(50, 100)
+        # Resize to a reasonable default that fits most screens
+        self.resize(1400, 800)
 
         # PLUTO COM
         self.pluto: QtPluto = QtPluto(port)
@@ -94,6 +103,10 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             data=self.data,
             progconsole=self.textProtocolDetails
         )
+
+        # Initialize worker thread for async operations
+        self._limb_setup_worker = None
+
         if DEBUG:
             self._smachine.run_statemachine(Events.SUBJECT_SET, 
                                             {"subjid": "1234"})
@@ -206,22 +219,68 @@ class PlutoFullAssesor(QtWidgets.QMainWindow, Ui_PlutoFullAssessor):
             QMessageBox.Ok | QMessageBox.Cancel
         )
         if reply == QMessageBox.Ok:
-            self.data.set_limb(self.cbLimb.currentText().lower())
+            # Disable the button while processing
+            self.pbSetLimb.setEnabled(False)
+            self.statusBar().showMessage("Setting up limb and protocol... Please wait.")
 
-        # Run the state machine.
-        self._smachine.run_statemachine(
-            Events.LIMB_SET,
-            {"limb": self.cbLimb.currentText().lower(),}
+            # Create and start the worker thread for I/O operations only
+            self._limb_setup_worker = LimbSetupWorker(
+                self.data,
+                self.cbLimb.currentText()
+            )
+            # Connect worker signals
+            self._limb_setup_worker.progress.connect(self._on_worker_progress)
+            self._limb_setup_worker.finished.connect(self._on_worker_finished)
+            self._limb_setup_worker.error.connect(self._on_worker_error)
+            # Start the worker
+            self._limb_setup_worker.start()
+
+    def _on_worker_progress(self, message):
+        """Handle progress updates from worker thread."""
+        self.statusBar().showMessage(message)
+
+    def _on_worker_finished(self):
+        """Handle worker thread completion."""
+        try:
+            # Now that I/O is done, run the state machine on the main thread
+            self.statusBar().showMessage("Finalizing setup...")
+            self._smachine.run_statemachine(
+                Events.LIMB_SET,
+                {"limb": self.cbLimb.currentText().lower()}
+            )
+
+            # Update window title and UI with new data
+            self._title = " | ".join(["Pluto Full Assessment",
+                                      self.data.subjid,
+                                      self.data.type,
+                                      f"Dom: {self.data.domlimb}",
+                                      f"Aff: {self.data.afflimb}",
+                                      f"Limb: {self.data.limb}",
+                                      f"{self.data.session}"])
+            self.setWindowTitle(self._title)
+            self.update_ui()
+            self.statusBar().showMessage("Limb setup completed successfully.")
+        except Exception as e:
+            self._on_worker_error(f"Error updating UI after setup: {str(e)}")
+        finally:
+            # Re-enable the button
+            self.pbSetLimb.setEnabled(True)
+            # Clean up worker reference
+            self._limb_setup_worker = None
+
+    def _on_worker_error(self, error_message):
+        """Handle errors from worker thread."""
+        # Re-enable the button
+        self.pbSetLimb.setEnabled(True)
+        # Clean up worker reference
+        self._limb_setup_worker = None
+        # Show error dialog
+        QMessageBox.critical(
+            self,
+            "Error",
+            f"Error during limb setup:\n{error_message}"
         )
-        self._title = " | ".join(["Pluto Full Assessment",
-                                  self.data.subjid,
-                                  self.data.type,
-                                  f"Dom: {self.data.domlimb}",
-                                  f"Aff: {self.data.afflimb}",
-                                  f"Limb: {self.data.limb}",
-                                  f"{self.data.session}"])
-        # Update UI
-        self.update_ui()
+        self.statusBar().showMessage("Error during limb setup.")
     
     def _callback_calibrate(self):
         # Disable main controls

@@ -716,6 +716,12 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
         super(PlutoDiscReachAssessWindow, self).__init__(parent)
         self.ui = Ui_APRomAssessWindow()
         self.ui.setupUi(self)
+
+        # Fix UI accessibility - ensure window can be resized
+        self.setMinimumSize(751, 329)
+        self.setMaximumSize(16777215, 16777215)
+        self.resize(900, 500)
+
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         

@@ -173,7 +173,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO calibration window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None, limb=None, mechanism: str=None, 
+    def __init__(self, parent=None, plutodev: QtPluto=None, limb=None, mechanism: str=None,
                  modal=False, dataviewer=False, onclosecb=None, heartbeat=False):
         """
         Constructor for the PlutoCalibrationWindow class.
@@ -181,6 +181,12 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
         super(PlutoCalibrationWindow, self).__init__(parent)
         self.ui = Ui_CalibrationWindow()
         self.ui.setupUi(self)
+
+        # Fix UI accessibility - remove fixed size constraints
+        self.setMinimumSize(451, 90)
+        self.setMaximumSize(16777215, 16777215)
+        self.resize(500, 150)
+
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         
@@ -339,7 +345,7 @@ class PlutoCalibrationWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     import qtjedi
     app = QtWidgets.QApplication(sys.argv)
-    plutodev = QtPluto("COM5")
+    plutodev = QtPluto("COM19")
     pcalib = PlutoCalibrationWindow(plutodev=plutodev, limb="LEFT", mechanism="FPS",
                                     dataviewer=True, heartbeat=True, 
                                     onclosecb=lambda data: print(dt.now()))

@@ -27,7 +27,7 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO data viewer window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None, 
+    def __init__(self, parent=None, plutodev: QtPluto=None,
                  mode="SENSORSTREAM", pos: tuple[int]=None):
         """
         Constructor for the PlutoDataViewWindow class.
@@ -35,6 +35,12 @@ class PlutoDataViewWindow(QtWidgets.QMainWindow):
         super(PlutoDataViewWindow, self).__init__(parent)
         self.ui = Ui_DevDataWindow()
         self.ui.setupUi(self)
+
+        # Fix UI accessibility - remove fixed size constraints that cause clipping
+        self.setMinimumSize(500, 420)
+        self.setMaximumSize(16777215, 16777215)  # Reset to default max
+        self.resize(600, 500)  # Slightly larger default
+
         if pos is not None:
             self.move(*pos)
         

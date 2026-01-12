@@ -388,6 +388,12 @@ class PlutoPositionHoldAssessWindow(QtWidgets.QMainWindow):
         super(PlutoPositionHoldAssessWindow, self).__init__(parent)
         self.ui = Ui_PosHoldAssessWindow()
         self.ui.setupUi(self)
+
+        # Fix UI accessibility - remove fixed size constraints
+        self.setMinimumSize(522, 451)
+        self.setMaximumSize(16777215, 16777215)
+        self.resize(700, 550)
+
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         
