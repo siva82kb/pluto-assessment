@@ -630,6 +630,12 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
         # Set control to NONE
         self._pluto.set_control_type("NONE")
 
+        # APROM assessment data
+        self.data: AssistPRomData = AssistPRomData(assessinfo=assessinfo)
+
+        # Initialize graph for plotting
+        self._romassess_add_graph()
+
         # Visual feedback display timer
         self._visfeedtimer = QTimer()
         self._visfeedtimer.timeout.connect(self._update_visual_feedabck)
@@ -641,12 +647,6 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
             self.heartbeattimer = QTimer()
             self.heartbeattimer.timeout.connect(lambda: self.pluto.send_heartbeat())
             self.heartbeattimer.start(250)
-
-        # APROM assessment data
-        self.data: AssistPRomData = AssistPRomData(assessinfo=assessinfo)
-
-        # Initialize graph for plotting
-        self._romassess_add_graph()
 
         # Initialize the state machine.
         self._smachine = PlutoAssistPRomAssessmentStateMachine(

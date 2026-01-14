@@ -483,13 +483,13 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
         # Set control to NONE
         self._pluto.set_control_type("NONE")
 
+        # Initialize graph for plotting
+        self._romassess_add_graph()
+
         # Visual feedback display timer
         self._visfeedtimer = QTimer()
         self._visfeedtimer.timeout.connect(self._update_visual_feedabck)
         self._visfeedtimer.start(pfadef.VISUAL_FEEDBACK_UPDATE_INTERVAL)
-
-        # Initialize graph for plotting
-        self._romassess_add_graph()
 
         # Initialize the state machine.
         self._smachine = PlutoAPRomAssessmentStateMachine(
