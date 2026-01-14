@@ -83,12 +83,12 @@
          </property>
          <item>
           <property name="text">
-           <string>HEALTHY</string>
+           <string>STROKE</string>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>STROKE</string>
+           <string>HEALTHY</string>
           </property>
          </item>
         </widget>

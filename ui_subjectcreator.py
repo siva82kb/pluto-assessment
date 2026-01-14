@@ -132,10 +132,10 @@ class Ui_PlutoSubjectCreatorWindow(object):
         self.label.setText(_translate("PlutoSubjectCreatorWindow", "Subject ID: "))
         self.label_2.setText(_translate("PlutoSubjectCreatorWindow", "Subject Type:"))
         self.cbSubjType.setItemText(
-            0, _translate("PlutoSubjectCreatorWindow", "HEALTHY")
+            0, _translate("PlutoSubjectCreatorWindow", "STROKE")
         )
         self.cbSubjType.setItemText(
-            1, _translate("PlutoSubjectCreatorWindow", "STROKE")
+            1, _translate("PlutoSubjectCreatorWindow", "HEALTHY")
         )
         self.label_3.setText(_translate("PlutoSubjectCreatorWindow", "Dominant Side:"))
         self.cbDomLimb.setItemText(0, _translate("PlutoSubjectCreatorWindow", "LEFT"))
