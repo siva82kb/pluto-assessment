@@ -140,6 +140,12 @@ class QtPluto(QObject):
         return pdef.control_to_torque(self.control)
 
     @property
+    def gripforce(self):
+        # Note: Device does not send grip force data
+        # Returning 0 as placeholder to prevent AttributeError
+        return 0.0
+
+    @property
     def control(self):
         _dtype = (
             self.datatype == pdef.OutDataType["SENSORSTREAM"]

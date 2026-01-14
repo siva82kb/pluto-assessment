@@ -1132,7 +1132,6 @@ class PlutoAssistPRomAssessWindow(QtWidgets.QMainWindow):
                     self.pluto.angle,
                     self.pluto.hocdisp,
                     self.pluto.torque,
-                    self.pluto.gripforce,
                     self.pluto.control,
                     self.pluto.target,
                     self.pluto.desired,
