@@ -480,26 +480,22 @@ class PlutoAssistPRomAssessmentStateMachine:
     def _act_torq_ctrl(self):
         if self._ctrl_is_torqlinear():
             return
-        self._pluto.set_control_type("TORQUELINEAR")
+        self._pluto.set_control_type("TORQUE")
 
     def _act_torq_tgt_dir1(self):
         if self._tgt_set(pfadef.APROM.TORQUE_DIR1):
             return
-        self._pluto.set_control_target(
-            target=pfadef.APROM.TORQUE_DIR1, dur=self._data.duration
-        )
+        self._pluto.set_control_target(target=pfadef.APROM.TORQUE_DIR1)
 
     def _act_torq_tgt_dir2(self):
         if self._tgt_set(pfadef.APROM.TORQUE_DIR2):
             return
-        self._pluto.set_control_target(
-            target=pfadef.APROM.TORQUE_DIR2, dur=self._data.duration
-        )
+        self._pluto.set_control_target(target=pfadef.APROM.TORQUE_DIR2)
 
     def _act_torq_tgt_zero(self):
         if self._tgt_set(0):
             return
-        self._pluto.set_control_target(target=0, dur=self._data.duration)
+        self._pluto.set_control_target(target=0)
 
     def _act_do_nothing(self):
         pass
@@ -534,7 +530,7 @@ class PlutoAssistPRomAssessmentStateMachine:
             lambda: self._pluto.controltype == pdef.ControlTypes["NONE"]
         )
         self._ctrl_is_torqlinear = (
-            lambda: self._pluto.controltype == pdef.ControlTypes["TORQUELINEAR"]
+            lambda: self._pluto.controltype == pdef.ControlTypes["TORQUE"]
         )
         self._tgt_set = lambda tgt: np.isclose(
             self._pluto.target, tgt, rtol=1e-03, atol=1e-03
