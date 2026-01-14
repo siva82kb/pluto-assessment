@@ -739,10 +739,8 @@ class PlutoForceControlWindow(QtWidgets.QMainWindow):
         if self.data.mechanism == "HOC":
             _pgobj.setXRange(-self.data.arom[1], self.data.arom[1])
         else:
-            _pgobj.setXRange(
-                pdef.PlutoAngleRanges[self.data.mechanism][0],
-                pdef.PlutoAngleRanges[self.data.mechanism][1],
-            )
+            _range = pdef.get_range_for_mechanism(self.data.mechanism)
+            _pgobj.setXRange(_range[0], _range[1])
         _pgobj.setYRange(-20, 30)
         _pgobj.getAxis("bottom").setStyle(showValues=False)
         _pgobj.getAxis("left").setStyle(showValues=False)
