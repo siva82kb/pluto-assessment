@@ -6,15 +6,15 @@ Date: 04 August 2024
 Email: siva82kb@gmail.com
 """
 
-
 import sys
 import numpy as np
 
 from qtpluto import QtPluto
-    
+
 from PyQt5 import (
     QtCore,
-    QtWidgets,)
+    QtWidgets,
+)
 from PyQt5.QtCore import QTimer
 
 import plutodefs as pdef
@@ -26,17 +26,37 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
     """
     Class for handling the operation of the PLUTO test control window.
     """
-    def __init__(self, parent=None, plutodev: QtPluto=None, limb=None, mech=None, modal=False, 
-                 dataviewer=False, onclosedb=None, heartbeat=False):
+
+    def __init__(
+        self,
+        parent=None,
+        plutodev: QtPluto = None,
+        limb=None,
+        mech=None,
+        modal=False,
+        dataviewer=False,
+        onclosedb=None,
+        heartbeat=False,
+    ):
         """
         Constructor for the PTestControlViewWindow class.
         """
         super(PlutoControlTesterWindow, self).__init__(parent)
         self.ui = Ui_PlutoControlTesterWindow()
         self.ui.setupUi(self)
+
+        # Fix UI accessibility - remove fixed size policy and constraints
+        self.setMinimumSize(452, 419)
+        self.setMaximumSize(16777215, 16777215)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
+        self.setSizePolicy(sizePolicy)
+        self.resize(600, 550)
+
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
-        
+
         # PLUTO device
         self._pluto = plutodev
         self._limb = limb
@@ -55,10 +75,16 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
 
         # Attach controls callback
         self.ui.radioNone.clicked.connect(self._callback_test_device_control_selected)
-        self.ui.radioPosition.clicked.connect(self._callback_test_device_control_selected)
-        self.ui.radioPositionLinear.clicked.connect(self._callback_test_device_control_selected)
+        self.ui.radioPosition.clicked.connect(
+            self._callback_test_device_control_selected
+        )
+        self.ui.radioPositionLinear.clicked.connect(
+            self._callback_test_device_control_selected
+        )
         self.ui.radioTorque.clicked.connect(self._callback_test_device_control_selected)
-        self.ui.radioObjectSim.clicked.connect(self._callback_test_device_control_selected)
+        self.ui.radioObjectSim.clicked.connect(
+            self._callback_test_device_control_selected
+        )
         self.ui.pbSetTarget.clicked.connect(self._callback_on_set_target)
 
         # Update UI.
@@ -76,17 +102,17 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
     @property
     def pluto(self):
         return self._pluto
-    
+
     # Overriding the closeEvent method
     def closeEvent(self, event):
         # Run the callback
         if self.on_close_callback:
             self.on_close_callback()
-        
+
         # Close the data viewer window if it is open.
         if hasattr(self, "_devdatawnd"):
             self._devdatawnd.close()
-        
+
         # Disconnect the PLUTO callbacks.
         self._detach_pluto_callbacks()
         return super().closeEvent(event)
@@ -96,7 +122,9 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
     #
     def update_ui(self):
         _torqcontrol = self.ui.radioTorque.isChecked()
-        _poscontrol = self.ui.radioPosition.isChecked() or self.ui.radioPositionLinear.isChecked()
+        _poscontrol = (
+            self.ui.radioPosition.isChecked() or self.ui.radioPositionLinear.isChecked()
+        )
         _objsimcontrol = self.ui.radioObjectSim.isChecked()
         # Enable/disable spinners
         self.ui.dsbTgtDur.setEnabled(_torqcontrol or _poscontrol)
@@ -106,7 +134,7 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         self.ui.dsbCtrlGainValue.setEnabled(_poscontrol)
         # Enable/disable control buttons
         self.ui.pbSetTarget.setEnabled(_torqcontrol or _poscontrol or _objsimcontrol)
-        
+
         # Check the status of the radio buttons.
         if not (_torqcontrol or _poscontrol or _objsimcontrol):
             self.ui.lblFeedforwardTorqueValue.setText("Feedforward Torque Value (Nm):")
@@ -134,7 +162,7 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
             self.ui.lblPositionTargetValue.setText("Target Position Value (deg):")
             self.ui.lblControlBoundValue.setText("Control Bound Value:")
             self.ui.lblControlGainValue.setText("Control Gain Value:")
-    
+
     def _update_tgtpos_dsb(self):
         _str = "Joint angle (deg): " if self._mech != "HOC" else "Hand Aperture (cm): "
         _scale = -pdef.HOCScale if self._mech == "HOC" else 1.0
@@ -143,43 +171,49 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
         self.ui.dsbPosTgtValue.blockSignals(True)
         self.ui.dsbPosTgtValue.setRange(_posrange[0], _posrange[1])
         self.ui.dsbPosTgtValue.setSingleStep(0.1 if self._mech != "HOC" else 1.0)
-        self.ui.dsbPosTgtValue.setValue(self.pluto.hocdisp if self._mech == "HOC" else self.pluto.angle)
+        self.ui.dsbPosTgtValue.setValue(
+            self.pluto.hocdisp if self._mech == "HOC" else self.pluto.angle
+        )
         # Renable the callback function for value change.
         self.ui.dsbPosTgtValue.blockSignals(False)
         # Update text
         _str += f"[{_posrange[0]:2.1f}, {_posrange[1]:2.1f}]:"
-        _str += f" {self.ui.dsbPosTgtValue.value():2.2f}" + "cm" if self._mech == "HOC" else "deg"
+        _str += (
+            f" {self.ui.dsbPosTgtValue.value():2.2f}" + "cm"
+            if self._mech == "HOC"
+            else "deg"
+        )
         self.ui.lblPositionTargetValue.setText(_str)
-    
+
     def _update_ctrlbnd_dsb(self):
         _str = "Control Bound Value:"
         _str += f"[{self.ui.dsbCtrlBndValue.minimum():1.1f}, {self.ui.dsbCtrlBndValue.maximum():1.1f}]:"
         self.ui.dsbCtrlBndValue.setValue(self.pluto.controlbound)
         _str += f" {self.ui.dsbCtrlBndValue.value():-1.2f}"
         self.ui.lblControlBoundValue.setText(_str)
-    
+
     def _update_ctrlgain_dsb(self):
         _str = "Control Gain Value:"
         _str += f"[{self.ui.dsbCtrlGainValue.minimum():1.1f}, {self.ui.dsbCtrlGainValue.maximum():1.1f}]:"
         self.ui.dsbCtrlGainValue.setValue(self.pluto.controlgain)
         _str += f" {self.ui.dsbCtrlGainValue.value():-1.2f}"
         self.ui.lblControlGainValue.setText(_str)
-    
+
     #
-    # Device Data Viewer Functions 
+    # Device Data Viewer Functions
     #
     def _open_devdata_viewer(self):
-        self._devdatawnd = PlutoDataViewWindow(plutodev=self.pluto,
-                                               mode="DIAGNOSTICS",
-                                               pos=(50, 300))
+        self._devdatawnd = PlutoDataViewWindow(
+            plutodev=self.pluto, mode="DIAGNOSTICS", pos=(50, 300)
+        )
         self._devdatawnd.show()
 
     #
     # Signal Callbacks
-    # 
+    #
     def _attach_pluto_callbacks(self):
         pass
-    
+
     def _detach_pluto_callbacks(self):
         pass
 
@@ -201,17 +235,17 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
             self.pluto.set_control_type("OBJECTSIM")
         self._dsbupdate = True
         self.update_ui()
-    
+
     def _callback_test_position_target_changed(self, event):
         self.update_ui()
-    
+
     def _callback_test_torque_target_changed(self, event):
         # Get the current target position and send it to the device.
         slrrange, valrange = self.get_torque_slider_value_ranges()
         _tgt = self._pos2tgt(slrrange, valrange, self.ui.dsbTorqTgtValue.value())
         # self.pluto.set_control_target(_tgt, target0=self.pluto.desired, t0=0, dur=2.0)
         self.update_ui()
-    
+
     def _callback_test_ctrlbnd_target_changed(self, event):
         self.pluto.set_control_bound((self.ui.dsbCtrlBndValue.value() * 1.0) / 255)
         self.update_ui()
@@ -219,21 +253,21 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
     def _callback_test_ctrlgain_target_changed(self, event):
         _off = pdef.PlutoMinControlGain
         _scale = pdef.PlutoMaxControlGain - _off
-        self.pluto.set_control_gain(_off + (_scale * self.ui.dsbCtrlGainValue.value()) / 255)
+        self.pluto.set_control_gain(
+            _off + (_scale * self.ui.dsbCtrlGainValue.value()) / 255
+        )
         self.update_ui()
-    
+
     def _callback_on_set_target(self, event):
         _dur = self.ui.dsbTgtDur.value()
         # Torque or position target is to be set.
         if self.ui.radioTorque.isChecked():
             _tgt = self.ui.dsbTorqTgtValue.value()
             # Set the control target.
-            self.pluto.set_control_target(
-                target=_tgt
-            )
+            self.pluto.set_control_target(target=_tgt)
         elif self.ui.radioPosition.isChecked():
             _tgt = self.ui.dsbPosTgtValue.value()
-            _tgt = - _tgt / pdef.HOCScale if self._mech == "HOC" else _tgt
+            _tgt = -_tgt / pdef.HOCScale if self._mech == "HOC" else _tgt
             # Set control bound.
             self.pluto.set_control_bound(self.ui.dsbCtrlBndValue.value())
             # Wait for 100ms
@@ -243,10 +277,8 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
             # Wait for 100ms
             QtCore.QThread.msleep(100)
             # Set the control target.
-            self.pluto.set_control_target(
-                target=_tgt
-            )
-    
+            self.pluto.set_control_target(target=_tgt)
+
     def _callback_on_control_hold(self, event):
         self.pluto.hold_control()
 
@@ -258,41 +290,38 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
     #
     def get_torque_slider_value_ranges(self):
         return (
-            (self.ui.dsbTorqTgtValue.minimum(),
-             self.ui.dsbTorqTgtValue.maximum()),
-            (pdef.get_target_range("TORQUE", self._mech)[0],
-             pdef.get_target_range("TORQUE", self._mech)[1])
+            (self.ui.dsbTorqTgtValue.minimum(), self.ui.dsbTorqTgtValue.maximum()),
+            (
+                pdef.get_target_range("TORQUE", self._mech)[0],
+                pdef.get_target_range("TORQUE", self._mech)[1],
+            ),
         )
 
     def get_position_slider_value_ranges(self):
         _scale = -pdef.HOCScale if self._mech == "HOC" else 1.0
         return (
-            (self.ui.dsbPosTgtValue.minimum(),
-             self.ui.dsbPosTgtValue.maximum()),
-            (_scale * pdef.get_target_range("POSITION", self._mech)[0],
-             _scale * pdef.get_target_range("POSITION", self._mech)[1])
+            (self.ui.dsbPosTgtValue.minimum(), self.ui.dsbPosTgtValue.maximum()),
+            (
+                _scale * pdef.get_target_range("POSITION", self._mech)[0],
+                _scale * pdef.get_target_range("POSITION", self._mech)[1],
+            ),
         )
 
     def get_ctrlbnd_slider_value_ranges(self):
         return (
-            (self.ui.dsbCtrlBndValue.minimum(),
-             self.ui.dsbCtrlBndValue.maximum()),    
-            (pdef.PlutoMinControlBound, 
-             pdef.PlutoMaxControlBound)
+            (self.ui.dsbCtrlBndValue.minimum(), self.ui.dsbCtrlBndValue.maximum()),
+            (pdef.PlutoMinControlBound, pdef.PlutoMaxControlBound),
         )
 
     def get_ctrlgain_slider_value_ranges(self):
         return (
-            (self.ui.dsbCtrlGainValue.minimum(),
-             self.ui.dsbCtrlGainValue.maximum()),
-            (pdef.PlutoMinControlGain, 
-             pdef.PlutoMaxControlGain)
+            (self.ui.dsbCtrlGainValue.minimum(), self.ui.dsbCtrlGainValue.maximum()),
+            (pdef.PlutoMinControlGain, pdef.PlutoMaxControlGain),
         )
-    
+
     def _tgt2pos(self, sldrrange, valrange, value):
         # Make sure this is not called by mistake for no control selection.
-        if not (self.ui.radioTorque.isChecked()
-                or self.ui.radioPosition.isChecked()):
+        if not (self.ui.radioTorque.isChecked() or self.ui.radioPosition.isChecked()):
             return 0
         # Make the convesion
         _mins, _maxs = sldrrange
@@ -301,8 +330,7 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
 
     def _pos2tgt(self, sldrrange, valrange, value):
         # Make sure this is not called by mistake for no control selection.
-        if not (self.ui.radioTorque.isChecked()
-                or self.ui.radioPosition.isChecked()):
+        if not (self.ui.radioTorque.isChecked() or self.ui.radioPosition.isChecked()):
             return 0
         # Make the convesion
         _mins, _maxs = sldrrange
@@ -312,7 +340,7 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
     def _get_torque_slider_value(self):
         slrrange, valrange = self.get_torque_slider_value_ranges()
         return self._pos2tgt(slrrange, valrange, self.ui.dsbPosTgtValue.value())
-    
+
     def _set_torque_slider_value(self, value):
         slrrange, valrange = self.get_torque_slider_value_ranges()
         self.ui.dsbTorqTgtValue.setValue(self._tgt2pos(slrrange, valrange, value))
@@ -320,21 +348,24 @@ class PlutoControlTesterWindow(QtWidgets.QMainWindow):
     def _get_position_slider_value(self):
         slrrange, valrange = self.get_position_slider_value_ranges()
         return self._pos2tgt(slrrange, valrange, self.ui.dsbPosTgtValue.value())
-    
+
     def _set_position_slider_value(self, value):
         slrrange, valrange = self.get_position_slider_value_ranges()
         self.ui.dsbPosTgtValue.setValue(self._tgt2pos(slrrange, valrange, value))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import qtjedi
+
     qtjedi._OUTDEBUG = False
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM5")
-    pdataview = PlutoControlTesterWindow(plutodev=plutodev,
-                                         mech="WFE",
-                                         dataviewer=True,
-                                         onclosedb=lambda: print("Window closed"),
-                                         heartbeat=True)
+    pdataview = PlutoControlTesterWindow(
+        plutodev=plutodev,
+        mech="WFE",
+        dataviewer=True,
+        onclosedb=lambda: print("Window closed"),
+        heartbeat=True,
+    )
     pdataview.show()
     sys.exit(app.exec_())

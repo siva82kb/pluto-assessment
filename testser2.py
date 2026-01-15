@@ -1,6 +1,6 @@
-
 from PyQt5 import QtWidgets
 import sys
+
 
 class CalibWindow(QtWidgets.QWidget):
     def __init__(self, on_close_callback=None):
@@ -13,6 +13,7 @@ class CalibWindow(QtWidgets.QWidget):
             self.on_close_callback()
         event.accept()
 
+
 class Controller:
     def __init__(self):
         self._test = 0
@@ -23,6 +24,7 @@ class Controller:
         print("on_close_callback called")
         self._test += 1
         print("Test count:", self._test)
+
 
 app = QtWidgets.QApplication(sys.argv)
 controller = Controller()

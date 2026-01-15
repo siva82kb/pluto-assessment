@@ -1,5 +1,5 @@
 """
-Module for handling the operation of the discrete reaching movement assessment 
+Module for handling the operation of the discrete reaching movement assessment
 with PLUTO.
 
 Author: Sivakumar Balasubramanian
@@ -7,16 +7,12 @@ Date: 29 May 2025
 Email: siva82kb@gmail.com
 """
 
-
 import sys
 import numpy as np
 
 from qtpluto import QtPluto
 
-from PyQt5 import (
-    QtCore,
-    QtWidgets,
-    QtGui)
+from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QGraphicsRectItem
@@ -31,7 +27,7 @@ from plutoapromwindow import RawDataLoggingState
 from ui_plutoapromassess import Ui_APRomAssessWindow
 from myqt import CommentDialog
 
-from misc import CSVBufferWriter 
+from misc import CSVBufferWriter
 
 
 class States(Enum):
@@ -67,52 +63,51 @@ class DiscreteReachData(object):
         # Logging variables
         self._logstate: RawDataLoggingState = RawDataLoggingState.WAIT_FOR_LOG
         self._rawfilewriter: CSVBufferWriter = CSVBufferWriter(
-            self.rawfile, 
-            header=DiscreteReach.RAW_HEADER
+            self.rawfile, header=DiscreteReach.RAW_HEADER
         )
         self._summaryfilewriter: CSVBufferWriter = CSVBufferWriter(
-            self.summaryfile, 
+            self.summaryfile,
             header=pfadef.DiscreteReach.SUMMARY_HEADER,
             flush_interval=0.0,
-            max_rows=1
+            max_rows=1,
         )
-    
+
     @property
     def type(self):
-        return self._assessinfo['type']
+        return self._assessinfo["type"]
 
     @property
     def limb(self):
-        return self._assessinfo['limb']
+        return self._assessinfo["limb"]
 
     @property
     def mechanism(self):
-        return self._assessinfo['mechanism']
-    
+        return self._assessinfo["mechanism"]
+
     @property
     def session(self):
-        return self._assessinfo['session']
+        return self._assessinfo["session"]
 
     @property
     def ntrials(self):
-        return self._assessinfo['ntrials']
-    
+        return self._assessinfo["ntrials"]
+
     @property
     def rawfile(self):
-        return self._assessinfo['rawfile']
-    
+        return self._assessinfo["rawfile"]
+
     @property
     def summaryfile(self):
-        return self._assessinfo['summaryfile']
-    
+        return self._assessinfo["summaryfile"]
+
     @property
     def summaryfile(self):
-        return self._assessinfo['summaryfile']
-    
+        return self._assessinfo["summaryfile"]
+
     @property
     def arom(self):
         return self._assessinfo["arom"]
-    
+
     @property
     def aromrange(self):
         return self.arom[1] - self.arom[0]
@@ -120,7 +115,7 @@ class DiscreteReachData(object):
     @property
     def target1(self):
         return DiscreteReach.TGT1_POSITION * self.aromrange + self.arom[0]
-    
+
     @property
     def target2(self):
         return DiscreteReach.TGT2_POSITION * self.aromrange + self.arom[0]
@@ -128,91 +123,92 @@ class DiscreteReachData(object):
     @property
     def currtrial(self):
         return self._currtrial
-    
+
     @property
     def rom(self):
         return self._rom
-    
+
     @property
     def startpos(self):
         return self._startpos
-    
+
     @property
     def trialdata(self):
         return self._trialdata
-    
+
     @property
     def demomode(self):
         return self._demomode
-    
+
     @demomode.setter
     def demomode(self, value):
         self._demomode = value
-    
+
     @property
     def logstate(self):
         return self._logstate
-        
+
     @property
     def all_trials_done(self):
-        """Check if all trials are done.
-        """
+        """Check if all trials are done."""
         return bool(self._currtrial >= self.ntrials)
-    
+
     @property
     def rawfilewriter(self):
         return self._rawfilewriter
-    
+
     @property
     def summaryfilewriter(self):
         return self._summaryfilewriter
-    
+
     def start_newtrial(self, reset: bool = False):
-        """Start a new trial.
-        """
+        """Start a new trial."""
         if self._currtrial < self.ntrials:
             self._trialdata = {"dt": [], "pos": [], "vel": []}
             self._trialrom = []
             self._startpos = None
             self._currtrial = 0 if reset else self._currtrial + 1
             # Update the summary file.
-            if self._currtrial == self.ntrials: return
+            if self._currtrial == self.ntrials:
+                return
             # All trials are not done.
             tgt_width = 0.5 * DiscreteReach.TGT_WIDTH * self.aromrange
-            self._summaryfilewriter.write_row([
-                self.session,
-                self.type,
-                self.limb,
-                self.mechanism,
-                self._currtrial,
-                self.arom[0],
-                self.arom[1],
-                self.aromrange,
-                self.target1,
-                self.target1 - tgt_width,
-                self.target1 + tgt_width,
-                self.target2,
-                self.target2 - tgt_width,
-                self.target2 + tgt_width,
-            ])
+            self._summaryfilewriter.write_row(
+                [
+                    self.session,
+                    self.type,
+                    self.limb,
+                    self.mechanism,
+                    self._currtrial,
+                    self.arom[0],
+                    self.arom[1],
+                    self.aromrange,
+                    self.target1,
+                    self.target1 - tgt_width,
+                    self.target1 + tgt_width,
+                    self.target2,
+                    self.target2 - tgt_width,
+                    self.target2 + tgt_width,
+                ]
+            )
 
     def add_newdata(self, dt, pos):
-        """Add new data to the trial data.
-        """
-        self._trialdata['dt'].append(dt)
-        self._trialdata['pos'].append(pos)
-        self._trialdata['vel'].append((pos - self._trialdata['pos'][-2]) / dt
-                                      if len(self._trialdata['pos']) > 1
-                                      else 0)
-        if len(self._trialdata['dt']) > DiscreteReach.POS_VEL_WINDOW_LENGHT:
-            self._trialdata['dt'].pop(0)
-            self._trialdata['pos'].pop(0)
-            self._trialdata['vel'].pop(0)
-    
+        """Add new data to the trial data."""
+        self._trialdata["dt"].append(dt)
+        self._trialdata["pos"].append(pos)
+        self._trialdata["vel"].append(
+            (pos - self._trialdata["pos"][-2]) / dt
+            if len(self._trialdata["pos"]) > 1
+            else 0
+        )
+        if len(self._trialdata["dt"]) > DiscreteReach.POS_VEL_WINDOW_LENGHT:
+            self._trialdata["dt"].pop(0)
+            self._trialdata["pos"].pop(0)
+            self._trialdata["vel"].pop(0)
+
     def add_new_trialrom_data(self) -> bool:
-        """Add new value to trial ROM.
-        """
-        _pos = float(np.mean(self._trialdata['pos']))
+        """Add new value to trial ROM."""
+        _pos = float(np.mean(self._trialdata["pos"]))
         if self.arom is None:
             self._trialrom.append(_pos)
             self._trialrom.sort()
@@ -226,18 +222,18 @@ class DiscreteReachData(object):
 
     def start_rawlogging(self):
         self._logstate = RawDataLoggingState.LOG_DATA
-    
+
     def terminate_rawlogging(self):
         self._logstate = RawDataLoggingState.LOGGING_DONE
         self._rawfilewriter.close()
         self._rawfilewriter = None
-    
+
     def terminate_summarylogging(self):
         self._summaryfilewriter.close()
         self._summaryfilewriter = None
 
 
-class PlutoAPRomAssessmentStateMachine():
+class PlutoAPRomAssessmentStateMachine:
     def __init__(self, plutodev, data: DiscreteReachData, dispctrls):
         self._state = States.FREE_RUNNING
         self._statetimer = 0
@@ -271,17 +267,17 @@ class PlutoAPRomAssessmentStateMachine():
     @property
     def state(self):
         return self._state
-    
+
     @property
     def in_a_trial_state(self):
         return self._state != States.FREE_RUNNING
-    
+
     def reset_statemachine(self):
         self._state = States.FREE_RUNNING
         self._statetimer = 0
         self._instruction = f""
         self._data.start_newtrial(reset=True)
-    
+
     def run_statemachine(self, event, dt) -> bool:
         """Execute the state machine depending on the given even that has occured.
         Returns if the UI needs an immediate update.
@@ -292,32 +288,31 @@ class PlutoAPRomAssessmentStateMachine():
         return retval
 
     def _free_running(self, event, dt):
-        """
-        """
+        """ """
         # Check if all trials are done.
         if not self._data.demomode and self._data.all_trials_done:
             # Set the logging state.
-            if self._data.rawfilewriter is not None: 
+            if self._data.rawfilewriter is not None:
                 self._data.terminate_rawlogging()
                 self._data.terminate_summarylogging()
             if event == pdef.PlutoEvents.RELEASED:
                 self._state = States.DISC_REACH_DONE
                 self._statetimer = 0
             return
-        
+
         # Wait for start.
         if event == pdef.PlutoEvents.RELEASED:
             self._state = States.GET_TO_TARGET1_START
             self._holdreachtimer = DiscreteReach.START_TGT_MAX_DURATION
             self._statetimer = 0
             # Set the logging state.
-            if not self._data.demomode: self._data.start_rawlogging()
+            if not self._data.demomode:
+                self._data.start_rawlogging()
             return True
         return False
 
     def _get_to_target1_start(self, event, dt):
-        """
-        """
+        """ """
         if event == pdef.PlutoEvents.NEWDATA:
             # Decrement the timer.
             self._holdreachtimer -= dt
@@ -338,8 +333,7 @@ class PlutoAPRomAssessmentStateMachine():
         return False
 
     def _holding_at_target1_start(self, event, dt):
-        """
-        """
+        """ """
         if event == pdef.PlutoEvents.NEWDATA:
             # Decrement the timer.
             self._holdreachtimer -= dt
@@ -356,7 +350,7 @@ class PlutoAPRomAssessmentStateMachine():
                 self._state = States.GET_TO_TARGET1_START
                 self._statetimer = 0
                 return True
-            if  not self.subj_is_holding():
+            if not self.subj_is_holding():
                 # Just reset the holding timer.
                 self._statetimer = DiscreteReach.START_HOLD_DURATION
             # Check if the state timer has run out.
@@ -366,10 +360,9 @@ class PlutoAPRomAssessmentStateMachine():
                 self._statetimer = 0
             return True
         return False
-    
+
     def _wait_to_start_reach_to_target2(self, event, dt):
-        """
-        """
+        """ """
         if event == pdef.PlutoEvents.NEWDATA:
             self._holdreachtimer -= dt
             # Check if the timer has run out.
@@ -385,8 +378,7 @@ class PlutoAPRomAssessmentStateMachine():
         return False
 
     def _moving_to_target2(self, event, dt):
-        """
-        """
+        """ """
         if event == pdef.PlutoEvents.NEWDATA:
             # Decrement the timer
             self._holdreachtimer -= dt
@@ -405,8 +397,7 @@ class PlutoAPRomAssessmentStateMachine():
         return False
 
     def _holding_at_target2_stop(self, event, dt):
-        """
-        """
+        """ """
         if event == pdef.PlutoEvents.NEWDATA:
             self._holdreachtimer -= dt
             self._statetimer -= dt
@@ -439,8 +430,7 @@ class PlutoAPRomAssessmentStateMachine():
         return False
 
     def _get_to_target2_start(self, event, dt):
-        """
-        """
+        """ """
         if event == pdef.PlutoEvents.NEWDATA:
             # Decrement the timer.
             self._holdreachtimer -= dt
@@ -451,7 +441,7 @@ class PlutoAPRomAssessmentStateMachine():
                 self._statetimer = DiscreteReach.RETURN_WAIT_DURATION
                 return True
             # Check if TARGET1 has been reached.
-            if not self.subj_in_target2():# or not self.subj_is_holding():
+            if not self.subj_in_target2():  # or not self.subj_is_holding():
                 return False
             # Subject in TARGET2.
             self._state = States.HOLDING_AT_TARGET2_START
@@ -460,8 +450,7 @@ class PlutoAPRomAssessmentStateMachine():
         return False
 
     def _holding_at_target2_start(self, event, dt):
-        """
-        """
+        """ """
         if event == pdef.PlutoEvents.NEWDATA:
             # Decrement the timer.
             self._holdreachtimer -= dt
@@ -478,7 +467,7 @@ class PlutoAPRomAssessmentStateMachine():
                 self._state = States.GET_TO_TARGET2_START
                 self._statetimer = 0
                 return True
-            if  not self.subj_is_holding():
+            if not self.subj_is_holding():
                 # Just reset the holding timer.
                 self._statetimer = DiscreteReach.START_HOLD_DURATION
             # Check if the state timer has run out.
@@ -488,10 +477,9 @@ class PlutoAPRomAssessmentStateMachine():
                 self._statetimer = 0
             return True
         return False
-    
+
     def _wait_to_start_reach_to_target1(self, event, dt):
-        """
-        """
+        """ """
         if event == pdef.PlutoEvents.NEWDATA:
             self._holdreachtimer -= dt
             # Check if the timer has run out.
@@ -507,8 +495,7 @@ class PlutoAPRomAssessmentStateMachine():
         return False
 
     def _moving_to_target1(self, event, dt):
-        """
-        """
+        """ """
         if event == pdef.PlutoEvents.NEWDATA:
             # Decrement the timer
             self._holdreachtimer -= dt
@@ -527,8 +514,7 @@ class PlutoAPRomAssessmentStateMachine():
         return False
 
     def _holding_at_target1_stop(self, event, dt):
-        """
-        """
+        """ """
         if event == pdef.PlutoEvents.NEWDATA:
             self._holdreachtimer -= dt
             self._statetimer -= dt
@@ -552,8 +538,7 @@ class PlutoAPRomAssessmentStateMachine():
         return False
 
     def _trial_done(self, event, dt):
-        """
-        """
+        """ """
         if event == pdef.PlutoEvents.NEWDATA:
             self._statetimer -= dt
             if self._statetimer <= 0:
@@ -561,10 +546,9 @@ class PlutoAPRomAssessmentStateMachine():
                 self._state = States.FREE_RUNNING
                 return True
         return False
-    
+
     def _trial_failed(self, event, dt):
-        """
-        """
+        """ """
         if event == pdef.PlutoEvents.NEWDATA:
             self._statetimer -= dt
             if self._statetimer <= 0:
@@ -574,13 +558,11 @@ class PlutoAPRomAssessmentStateMachine():
         return False
 
     def _disc_reach_done(self, event, dt):
-        """
-        """
+        """ """
         pass
 
     def _udpate_instructions(self):
-        """Update instructions for the task.
-        """
+        """Update instructions for the task."""
         if self._state == States.FREE_RUNNING:
             if self._data.all_trials_done:
                 self._instruction = f"Discrete Reaching Assessment Done. Press the PLUTO Button to exit."
@@ -594,7 +576,9 @@ class PlutoAPRomAssessmentStateMachine():
         elif self._state == States.GET_TO_TARGET1_START:
             if not self.subj_in_target1():
                 # Update instructions
-                self._instruction = f"Go to target 1 to start trial [{self._holdreachtimer:+1.1f}]."
+                self._instruction = (
+                    f"Go to target 1 to start trial [{self._holdreachtimer:+1.1f}]."
+                )
                 self._tgt1inst = ""
                 self._tgt2inst = ""
         elif self._state == States.HOLDING_AT_TARGET1_START:
@@ -624,7 +608,9 @@ class PlutoAPRomAssessmentStateMachine():
             self._tgt2inst = f"Hold [{self._statetimer:+1.1f}]"
         elif self._state == States.GET_TO_TARGET2_START:
             # Update instructions
-            self._instruction = f"Go to target 2 to start return [{self._holdreachtimer:+1.1f}]."
+            self._instruction = (
+                f"Go to target 2 to start return [{self._holdreachtimer:+1.1f}]."
+            )
             self._tgt1inst = ""
             self._tgt2inst = ""
         elif self._state == States.HOLDING_AT_TARGET2_START:
@@ -669,39 +655,53 @@ class PlutoAPRomAssessmentStateMachine():
     # Supporting functions
     #
     def subj_in_target1(self):
-        """Check if the subject is in target1.
-        """
+        """Check if the subject is in target1."""
         # print(self._pluto.angle, self._data.target1, )
-        return np.abs(self._pluto.angle - self._data.target1) < 0.5 * DiscreteReach.TGT_WIDTH * self._data.aromrange
-    
+        return (
+            np.abs(self._pluto.angle - self._data.target1)
+            < 0.5 * DiscreteReach.TGT_WIDTH * self._data.aromrange
+        )
+
     def subj_in_target2(self):
-        """Check if the subject is in target2.
-        """
-        return np.abs(self._pluto.angle - self._data.target2) < 0.5 * DiscreteReach.TGT_WIDTH * self._data.aromrange
-    
+        """Check if the subject is in target2."""
+        return (
+            np.abs(self._pluto.angle - self._data.target2)
+            < 0.5 * DiscreteReach.TGT_WIDTH * self._data.aromrange
+        )
+
     def subj_is_holding(self):
-        """Check if the subject is holding the position.
-        """
-        _th = (DiscreteReach.VEL_HOC_THRESHOLD
-               if self._data.mechanism == "HOC"
-               else DiscreteReach.VEL_NOT_HOC_THRESHOLD)
-        return bool(np.all(np.abs(self._data.trialdata['vel']) < _th))
-    
+        """Check if the subject is holding the position."""
+        _th = (
+            DiscreteReach.VEL_HOC_THRESHOLD
+            if self._data.mechanism == "HOC"
+            else DiscreteReach.VEL_NOT_HOC_THRESHOLD
+        )
+        return bool(np.all(np.abs(self._data.trialdata["vel"]) < _th))
+
     def away_from_start(self):
-        """Check if the subject has moved away from the start position.
-        """
+        """Check if the subject has moved away from the start position."""
         if self._data.mechanism == "HOC":
-            return np.abs(self._pluto.hocdisp - self._data.startpos) > pfadef.START_POS_HOC_THRESHOLD
+            return (
+                np.abs(self._pluto.hocdisp - self._data.startpos)
+                > pfadef.START_POS_HOC_THRESHOLD
+            )
         else:
-            return np.abs(self._pluto.angle - self._data.startpos) > pfadef.START_POS_NOT_HOC_THRESHOLD
-    
+            return (
+                np.abs(self._pluto.angle - self._data.startpos)
+                > pfadef.START_POS_NOT_HOC_THRESHOLD
+            )
+
     def subj_in_the_stop_zone(self):
-        """Check if the subject is in the stop zone.
-        """
+        """Check if the subject is in the stop zone."""
         if self._data.mechanism == "HOC":
-            return (self._pluto.hocdisp - self._data.startpos) < pfadef.STOP_POS_HOC_THRESHOLD
+            return (
+                self._pluto.hocdisp - self._data.startpos
+            ) < pfadef.STOP_POS_HOC_THRESHOLD
         else:
-            return np.abs(self._pluto.angle - self._data.startpos) < pfadef.STOP_POS_NOT_HOC_THRESHOLD
+            return (
+                np.abs(self._pluto.angle - self._data.startpos)
+                < pfadef.STOP_POS_NOT_HOC_THRESHOLD
+            )
 
 
 class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
@@ -709,29 +709,44 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
     Class for handling the operation of the PLUTO ROM assessment window.
     """
 
-    def __init__(self, parent=None, plutodev: QtPluto=None, assessinfo: dict=None, modal=False, onclosecb=None):
+    def __init__(
+        self,
+        parent=None,
+        plutodev: QtPluto = None,
+        assessinfo: dict = None,
+        modal=False,
+        onclosecb=None,
+    ):
         """
         Constructor for the PlutoDiscReachAssessWindow class.
         """
         super(PlutoDiscReachAssessWindow, self).__init__(parent)
         self.ui = Ui_APRomAssessWindow()
         self.ui.setupUi(self)
+
+        # Fix UI accessibility - ensure window can be resized
+        self.setMinimumSize(751, 329)
+        self.setMaximumSize(16777215, 16777215)
+        self.resize(900, 500)
+
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
-        
+
         # Set the title of the window.
         self.setWindowTitle(
-            " | ".join((
-                "PLUTO Full Assessment",
-                "Discrete Reaching",
-                f"{assessinfo['subjid'] if 'subjid' in assessinfo else ''}",
-                f"{assessinfo['type'] if 'type' in assessinfo else ''}",
-                f"{assessinfo['limb'] if 'limb' in assessinfo else ''}",
-                f"{assessinfo['mechanism'] if 'mechanism' in assessinfo else ''}",
-                f"{assessinfo['session'] if 'session' in assessinfo else ''}",
-            ))
+            " | ".join(
+                (
+                    "PLUTO Full Assessment",
+                    "Discrete Reaching",
+                    f"{assessinfo['subjid'] if 'subjid' in assessinfo else ''}",
+                    f"{assessinfo['type'] if 'type' in assessinfo else ''}",
+                    f"{assessinfo['limb'] if 'limb' in assessinfo else ''}",
+                    f"{assessinfo['mechanism'] if 'mechanism' in assessinfo else ''}",
+                    f"{assessinfo['session'] if 'session' in assessinfo else ''}",
+                )
+            )
         )
-        
+
         # PLUTO device
         self._pluto = plutodev
 
@@ -741,23 +756,25 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
 
         # Set control to NONE
         self._pluto.set_control_type("NONE")
-        
+
+        # Initialize graph for plotting
+        self._romassess_add_graph()
+
         # Visual feedback display timer
         self._visfeedtimer = QTimer()
         self._visfeedtimer.timeout.connect(self._update_visual_feedabck)
         self._visfeedtimer.start(pfadef.VISUAL_FEEDBACK_UPDATE_INTERVAL)
 
-        # Initialize graph for plotting
-        self._romassess_add_graph()
-
         # Initialize the state machine.
         self._smachine = PlutoAPRomAssessmentStateMachine(
-            self._pluto, 
-            self.data, 
-            {"inst": self.ui.subjInst, 
-             "timer": self.ui.timerText,
-             "tgt1": self.ui.tgt1Text,
-             "tgt2": self.ui.tgt2Text,}
+            self._pluto,
+            self.data,
+            {
+                "inst": self.ui.subjInst,
+                "timer": self.ui.timerText,
+                "tgt1": self.ui.tgt1Text,
+                "tgt2": self.ui.tgt2Text,
+            },
         )
 
         # Attach callbacks
@@ -775,11 +792,11 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
     @property
     def pluto(self):
         return self._pluto
-    
+
     @property
     def statemachine(self):
         return self._smachine
-    
+
     #
     # Update UI
     #
@@ -787,16 +804,21 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
         # Trial run checkbox
         if self.ui.cbTrialRun.isEnabled():
             _cond1 = self.data.demomode is False
-            _cond2 = (self.data.demomode is None
-                      and self._smachine.state == States.GET_TO_TARGET1_START)
+            _cond2 = (
+                self.data.demomode is None
+                and self._smachine.state == States.GET_TO_TARGET1_START
+            )
             if _cond1 or _cond2:
                 self.ui.cbTrialRun.setEnabled(False)
 
         # Update main text
-        if self.pluto.angle is None: return
-        _posstr = (f"[{self.pluto.hocdisp:5.2f}cm]" 
-                   if self.data.mechanism == "HOC"
-                   else f"[{self.pluto.angle:5.2f}deg]")
+        if self.pluto.angle is None:
+            return
+        _posstr = (
+            f"[{self.pluto.hocdisp:5.2f}cm]"
+            if self.data.mechanism == "HOC"
+            else f"[{self.pluto.angle:5.2f}deg]"
+        )
         self.ui.lblTitle.setText(f"Dsicrete Reach Assessment {_posstr}")
 
         # Update status message
@@ -805,7 +827,7 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
         # Close if needed
         if self._smachine.state == States.DISC_REACH_DONE:
             self.close()
-        
+
     def _update_visual_feedabck(self):
         self._update_current_position_cursor()
         self._updat_targets_display()
@@ -817,28 +839,24 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
             # Plot when there is data to be shown
             self.ui.currPosLine1.setData(
                 [self.pluto.hocdisp, self.pluto.hocdisp],
-                [DiscreteReach.CURSOR_LOWER_LIMIT, DiscreteReach.CURSOR_UPPER_LIMIT]
+                [DiscreteReach.CURSOR_LOWER_LIMIT, DiscreteReach.CURSOR_UPPER_LIMIT],
             )
             self.ui.currPosLine2.setData(
                 [-self.pluto.hocdisp, -self.pluto.hocdisp],
-                [DiscreteReach.CURSOR_LOWER_LIMIT, DiscreteReach.CURSOR_UPPER_LIMIT]
+                [DiscreteReach.CURSOR_LOWER_LIMIT, DiscreteReach.CURSOR_UPPER_LIMIT],
             )
         else:
             if self.pluto.angle is None:
                 return
             self.ui.currPosLine1.setData(
-                [self._dispsign * self.pluto.angle,
-                 self._dispsign * self.pluto.angle],
-                [DiscreteReach.CURSOR_LOWER_LIMIT,
-                 DiscreteReach.CURSOR_UPPER_LIMIT]
+                [self._dispsign * self.pluto.angle, self._dispsign * self.pluto.angle],
+                [DiscreteReach.CURSOR_LOWER_LIMIT, DiscreteReach.CURSOR_UPPER_LIMIT],
             )
             self.ui.currPosLine2.setData(
-                [self._dispsign * self.pluto.angle,
-                 self._dispsign * self.pluto.angle],
-                [DiscreteReach.CURSOR_LOWER_LIMIT,
-                 DiscreteReach.CURSOR_UPPER_LIMIT]
+                [self._dispsign * self.pluto.angle, self._dispsign * self.pluto.angle],
+                [DiscreteReach.CURSOR_LOWER_LIMIT, DiscreteReach.CURSOR_UPPER_LIMIT],
             )
-    
+
     def _updat_targets_display(self):
         # Display depending on the state.
         if self._smachine.state == States.FREE_RUNNING:
@@ -892,11 +910,10 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
     # Graph plot initialization
     #
     def _romassess_add_graph(self):
-        """Function to add graph and other objects for displaying HOC movements.
-        """
+        """Function to add graph and other objects for displaying HOC movements."""
         # Angle display sign for the limb.
         self._dispsign = 1.0 if self.data.limb.upper() == "RIGHT" else -1.0
-        
+
         _pgobj = pg.PlotWidget()
         _templayout = QtWidgets.QGridLayout()
         _templayout.addWidget(_pgobj)
@@ -906,77 +923,78 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
         _aromdisp.sort()
         _pgobj.setYRange(-30, 30)
         _pgobj.setXRange(_aromdisp[0], _aromdisp[1])
-        _pgobj.getAxis('bottom').setStyle(showValues=False)
-        _pgobj.getAxis('left').setStyle(showValues=False)
-        
+        _pgobj.getAxis("bottom").setStyle(showValues=False)
+        _pgobj.getAxis("left").setStyle(showValues=False)
+
         # Target1 box
         self.ui.tgt1 = QGraphicsRectItem()
         self.ui.tgt1.setBrush(DiscreteReach.HIDE_COLOR)
         self.ui.tgt1.setPen(pg.mkPen(None))
         self.ui.tgt1.setRect(
-            self._dispsign * self.data.target1 - 0.5 * DiscreteReach.TGT_WIDTH * self.data.aromrange,
+            self._dispsign * self.data.target1
+            - 0.5 * DiscreteReach.TGT_WIDTH * self.data.aromrange,
             DiscreteReach.CURSOR_LOWER_LIMIT,
             DiscreteReach.TGT_WIDTH * self.data.aromrange,
-            DiscreteReach.CURSOR_UPPER_LIMIT - DiscreteReach.CURSOR_LOWER_LIMIT
+            DiscreteReach.CURSOR_UPPER_LIMIT - DiscreteReach.CURSOR_LOWER_LIMIT,
         )
         _pgobj.addItem(self.ui.tgt1)
-        
+
         # Target2 box
         self.ui.tgt2 = QGraphicsRectItem()
         self.ui.tgt2.setBrush(DiscreteReach.HIDE_COLOR)
         self.ui.tgt2.setPen(pg.mkPen(None))
         self.ui.tgt2.setRect(
-            self._dispsign * self.data.target2 - 0.5 * DiscreteReach.TGT_WIDTH * self.data.aromrange,
+            self._dispsign * self.data.target2
+            - 0.5 * DiscreteReach.TGT_WIDTH * self.data.aromrange,
             DiscreteReach.CURSOR_LOWER_LIMIT,
             DiscreteReach.TGT_WIDTH * self.data.aromrange,
-            DiscreteReach.CURSOR_UPPER_LIMIT - DiscreteReach.CURSOR_LOWER_LIMIT
+            DiscreteReach.CURSOR_UPPER_LIMIT - DiscreteReach.CURSOR_LOWER_LIMIT,
         )
         _pgobj.addItem(self.ui.tgt2)
-        
+
         # Current position lines
         self.ui.currPosLine1 = pg.PlotDataItem(
             [0, 0],
             [DiscreteReach.CURSOR_LOWER_LIMIT, DiscreteReach.CURSOR_UPPER_LIMIT],
-            pen=pg.mkPen(color = '#FFFFFF',width=2)
+            pen=pg.mkPen(color="#FFFFFF", width=2),
         )
         self.ui.currPosLine2 = pg.PlotDataItem(
             [0, 0],
             [DiscreteReach.CURSOR_LOWER_LIMIT, DiscreteReach.CURSOR_UPPER_LIMIT],
-            pen=pg.mkPen(color = '#FFFFFF',width=2)
+            pen=pg.mkPen(color="#FFFFFF", width=2),
         )
         _pgobj.addItem(self.ui.currPosLine1)
         _pgobj.addItem(self.ui.currPosLine2)
-       
+
         # Instruction text
-        self.ui.subjInst = pg.TextItem(text='', color='w', anchor=(0.5, 0.5))
-        self.ui.subjInst.setPos(_aromdisp[0] + 0.5 * self.data.aromrange, 25)  # Set position (x, y)
+        self.ui.subjInst = pg.TextItem(text="", color="w", anchor=(0.5, 0.5))
+        self.ui.subjInst.setPos(
+            _aromdisp[0] + 0.5 * self.data.aromrange, 25
+        )  # Set position (x, y)
         self.ui.subjInst.setFont(QtGui.QFont("Cascadia Mono", 12))
         _pgobj.addItem(self.ui.subjInst)
-        
+
         # Timer text
-        self.ui.timerText = pg.TextItem(
-            text='', color='w', 
-            anchor=(0.5, 0.5)
-        )
-        self.ui.timerText.setPos(_aromdisp[0] + 0.5 * self.data.aromrange, 15)  # Set position (x, y)
+        self.ui.timerText = pg.TextItem(text="", color="w", anchor=(0.5, 0.5))
+        self.ui.timerText.setPos(
+            _aromdisp[0] + 0.5 * self.data.aromrange, 15
+        )  # Set position (x, y)
         self.ui.timerText.setFont(QtGui.QFont("Cascadia Mono", 10))
         _pgobj.addItem(self.ui.timerText)
 
         # Target 1 and Target 2 instructions.
         # Target 1
-        self.ui.tgt1Text = pg.TextItem(
-            text='', color='w', 
-            anchor=(0.5, 0.5)
-        )
-        self.ui.tgt1Text.setPos(self._dispsign * self.data.target1, 14)  # Set position (x, y)
+        self.ui.tgt1Text = pg.TextItem(text="", color="w", anchor=(0.5, 0.5))
+        self.ui.tgt1Text.setPos(
+            self._dispsign * self.data.target1, 14
+        )  # Set position (x, y)
         self.ui.tgt1Text.setFont(QtGui.QFont("Cascadia Mono", 10))
         _pgobj.addItem(self.ui.tgt1Text)
         # Target 2
-        self.ui.tgt2Text = pg.TextItem(
-            text='', color='w', 
-            anchor=(0.5, 0.5)
-        )
-        self.ui.tgt2Text.setPos(self._dispsign * self.data.target2, 14)  # Set position (x, y)
+        self.ui.tgt2Text = pg.TextItem(text="", color="w", anchor=(0.5, 0.5))
+        self.ui.tgt2Text.setPos(
+            self._dispsign * self.data.target2, 14
+        )  # Set position (x, y)
         self.ui.tgt2Text.setFont(QtGui.QFont("Cascadia Mono", 10))
         _pgobj.addItem(self.ui.tgt2Text)
 
@@ -986,49 +1004,51 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
     def _attach_pluto_callbacks(self):
         self.pluto.newdata.connect(self._callback_pluto_newdata)
         self.pluto.btnreleased.connect(self._callback_pluto_btn_released)
-    
+
     def _detach_pluto_callbacks(self):
         self.pluto.newdata.disconnect(self._callback_pluto_newdata)
         self.pluto.btnreleased.disconnect(self._callback_pluto_btn_released)
-    
+
     def _callback_pluto_newdata(self):
         # Update trial data.
         self.data.add_newdata(
             dt=self.pluto.delt(),
-            pos=self.pluto.hocdisp if self.data.mechanism == "HOC" else self.pluto.angle
+            pos=self.pluto.hocdisp
+            if self.data.mechanism == "HOC"
+            else self.pluto.angle,
         )
         # Run the statemachine
         _uiupdate = self._smachine.run_statemachine(
-            pdef.PlutoEvents.NEWDATA,
-            dt=self.pluto.delt()
+            pdef.PlutoEvents.NEWDATA, dt=self.pluto.delt()
         )
         # Update the GUI only at 1/10 the data rate
         if _uiupdate or np.random.rand() < 0.05:
             self.update_ui()
         #
         # Log data
-        if self.data.logstate == RawDataLoggingState.LOG_DATA:        
-            self.data.rawfilewriter.write_row([
-                self.pluto.systime,
-                self.pluto.currt,
-                self.pluto.packetnumber,
-                self.pluto.status,
-                self.pluto.controltype,
-                self.pluto.error,
-                self.pluto.limb,
-                self.pluto.mechanism,
-                self.pluto.angle,
-                self.pluto.hocdisp,
-                self.pluto.button,
-                self.data.currtrial,
-                f"{self._smachine.state.name}"
-            ])
+        if self.data.logstate == RawDataLoggingState.LOG_DATA:
+            self.data.rawfilewriter.write_row(
+                [
+                    self.pluto.systime,
+                    self.pluto.currt,
+                    self.pluto.packetnumber,
+                    self.pluto.status,
+                    self.pluto.controltype,
+                    self.pluto.error,
+                    self.pluto.limb,
+                    self.pluto.mechanism,
+                    self.pluto.angle,
+                    self.pluto.hocdisp,
+                    self.pluto.button,
+                    self.data.currtrial,
+                    f"{self._smachine.state.name}",
+                ]
+            )
 
     def _callback_pluto_btn_released(self):
         # Run the statemachine
         apromset = self._smachine.run_statemachine(
-            pdef.PlutoEvents.RELEASED,
-            dt=self.pluto.delt()
+            pdef.PlutoEvents.RELEASED, dt=self.pluto.delt()
         )
         self.update_ui()
 
@@ -1042,22 +1062,22 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
             self.data.demomode = False
             # Restart ROM assessment statemachine
             self._smachine.reset_statemachine()
-    
+
     def closeEvent(self, event):
         # Get comment from the experimenter.
         data = {"done": self.data.all_trials_done}
         if self.data.all_trials_done:
-            _comment = CommentDialog(label="AROM completed. Add optional comment.",
-                                     optionyesno=True)
-            if (_comment.exec_() == QtWidgets.QDialog.Accepted):
+            _comment = CommentDialog(
+                label="AROM completed. Add optional comment.", optionyesno=True
+            )
+            if _comment.exec_() == QtWidgets.QDialog.Accepted:
                 data["status"] = pfadef.AssessStatus.COMPLETE.value
             else:
                 data["status"] = pfadef.AssessStatus.REJECTED.value
             data["taskcomment"] = _comment.getText()
         else:
-            _comment = CommentDialog(label="AROM incomplete. Why?",
-                                     optionyesno=False)
-            if (_comment.exec_() == QtWidgets.QDialog.Rejected):
+            _comment = CommentDialog(label="AROM incomplete. Why?", optionyesno=False)
+            if _comment.exec_() == QtWidgets.QDialog.Rejected:
                 data["taskcomment"] = _comment.getText()
                 data["status"] = pfadef.AssessStatus.SKIPPED.value
         if self.on_close_callback:
@@ -1067,11 +1087,11 @@ class PlutoDiscReachAssessWindow(QtWidgets.QMainWindow):
         return super().closeEvent(event)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     plutodev = QtPluto("COM13")
     pcalib = PlutoDiscReachAssessWindow(
-        plutodev=plutodev, 
+        plutodev=plutodev,
         assessinfo={
             "subjid": "1234",
             "type": "Stroke",

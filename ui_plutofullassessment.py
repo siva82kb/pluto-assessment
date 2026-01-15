@@ -338,10 +338,12 @@ class Ui_PlutoFullAssessor(object):
         self.verticalLayout_2.addWidget(self.label_4)
         self.textPlutoData = QtWidgets.QTextEdit(self.centralwidget)
         self.textPlutoData.setEnabled(False)
-        self.textPlutoData.setStyleSheet("background-color: rgb(0, 0, 0);\n"
-"color: rgb(0, 255, 60);\n"
-"font: 8pt \"Cascadia Mono\";\n"
-"border: none;")
+        self.textPlutoData.setStyleSheet(
+            "background-color: rgb(0, 0, 0);\n"
+            "color: rgb(0, 255, 60);\n"
+            'font: 8pt "Cascadia Mono";\n'
+            "border: none;"
+        )
         self.textPlutoData.setReadOnly(True)
         self.textPlutoData.setObjectName("textPlutoData")
         self.verticalLayout_2.addWidget(self.textPlutoData)
@@ -363,11 +365,13 @@ class Ui_PlutoFullAssessor(object):
         font.setItalic(False)
         font.setWeight(50)
         self.textProtocolDetails.setFont(font)
-        self.textProtocolDetails.setStyleSheet("font: 8pt \"Cascadia Mono\";\n"
-"background: transparent;\n"
-"color: ;\n"
-"color: rgb(130, 130, 130);\n"
-"border: none;")
+        self.textProtocolDetails.setStyleSheet(
+            'font: 8pt "Cascadia Mono";\n'
+            "background: transparent;\n"
+            "color: ;\n"
+            "color: rgb(130, 130, 130);\n"
+            "border: none;"
+        )
         self.textProtocolDetails.setObjectName("textProtocolDetails")
         self.verticalLayout_2.addWidget(self.textProtocolDetails)
         self.horizontalLayout_3.addLayout(self.verticalLayout_2)
@@ -382,7 +386,9 @@ class Ui_PlutoFullAssessor(object):
         font.setFamily("Bahnschrift Light")
         font.setPointSize(10)
         self.tableProtocolProgress.setFont(font)
-        self.tableProtocolProgress.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.tableProtocolProgress.setEditTriggers(
+            QtWidgets.QAbstractItemView.NoEditTriggers
+        )
         self.tableProtocolProgress.setCornerButtonEnabled(False)
         self.tableProtocolProgress.setObjectName("tableProtocolProgress")
         self.verticalLayout_5.addWidget(self.tableProtocolProgress)
@@ -402,10 +408,18 @@ class Ui_PlutoFullAssessor(object):
 
     def retranslateUi(self, PlutoFullAssessor):
         _translate = QtCore.QCoreApplication.translate
-        PlutoFullAssessor.setWindowTitle(_translate("PlutoFullAssessor", "PLUTO Full Assessment"))
-        self.pbCreateSeelectSubject.setToolTip(_translate("PlutoFullAssessor", "Select the subject to assess"))
-        self.pbCreateSeelectSubject.setText(_translate("PlutoFullAssessor", "Create and Select Subject"))
-        self.pbSelectSubject.setToolTip(_translate("PlutoFullAssessor", "Select the subject to assess"))
+        PlutoFullAssessor.setWindowTitle(
+            _translate("PlutoFullAssessor", "PLUTO Full Assessment")
+        )
+        self.pbCreateSeelectSubject.setToolTip(
+            _translate("PlutoFullAssessor", "Select the subject to assess")
+        )
+        self.pbCreateSeelectSubject.setText(
+            _translate("PlutoFullAssessor", "Create and Select Subject")
+        )
+        self.pbSelectSubject.setToolTip(
+            _translate("PlutoFullAssessor", "Select the subject to assess")
+        )
         self.pbSelectSubject.setText(_translate("PlutoFullAssessor", "Select Subject"))
         self.lblSubjDetails.setText(_translate("PlutoFullAssessor", "TextLabel"))
         self.lblLimb.setText(_translate("PlutoFullAssessor", "Limb:"))
@@ -413,7 +427,9 @@ class Ui_PlutoFullAssessor(object):
         self.cbLimb.setItemText(2, _translate("PlutoFullAssessor", "Right"))
         self.pbSetLimb.setText(_translate("PlutoFullAssessor", "Set Limb"))
         self.gbMechanisms.setTitle(_translate("PlutoFullAssessor", "Mechanisms"))
-        self.pbFPS.setText(_translate("PlutoFullAssessor", "Forearm Pronation Supination"))
+        self.pbFPS.setText(
+            _translate("PlutoFullAssessor", "Forearm Pronation Supination")
+        )
         self.pbFPSSkip.setText(_translate("PlutoFullAssessor", "X"))
         self.pbWFE.setText(_translate("PlutoFullAssessor", "Wrist Flexion/Extension"))
         self.pbWFESkip.setText(_translate("PlutoFullAssessor", "X"))
@@ -425,9 +441,13 @@ class Ui_PlutoFullAssessor(object):
         self.pbAROMSkip.setText(_translate("PlutoFullAssessor", "X"))
         self.pbPROM.setText(_translate("PlutoFullAssessor", "Assess PROM"))
         self.pbPROMSkip.setText(_translate("PlutoFullAssessor", "X"))
-        self.pbAPROMSlow.setText(_translate("PlutoFullAssessor", "Assisted Pasive ROM (Slow)"))
+        self.pbAPROMSlow.setText(
+            _translate("PlutoFullAssessor", "Assisted Pasive ROM (Slow)")
+        )
         self.pbAPROMSlowSkip.setText(_translate("PlutoFullAssessor", "X"))
-        self.pbAPROMFast.setText(_translate("PlutoFullAssessor", "Assisted Pasive ROM (Fast)"))
+        self.pbAPROMFast.setText(
+            _translate("PlutoFullAssessor", "Assisted Pasive ROM (Fast)")
+        )
         self.pbAPROMFastSkip.setText(_translate("PlutoFullAssessor", "X"))
         self.pbDiscReach.setText(_translate("PlutoFullAssessor", "Discrete Reaching"))
         self.pbDiscReachSkip.setText(_translate("PlutoFullAssessor", "X"))
@@ -435,11 +455,19 @@ class Ui_PlutoFullAssessor(object):
         self.pbPosHoldSkip.setText(_translate("PlutoFullAssessor", "X"))
         self.pbProp.setText(_translate("PlutoFullAssessor", "Proprioception"))
         self.pbPropSkip.setText(_translate("PlutoFullAssessor", "X"))
-        self.pbForceCtrlLow.setText(_translate("PlutoFullAssessor", "Force Control (Low)"))
+        self.pbForceCtrlLow.setText(
+            _translate("PlutoFullAssessor", "Force Control (Low)")
+        )
         self.pbForceCtrlLowSkip.setText(_translate("PlutoFullAssessor", "X"))
-        self.pbForceCtrlMed.setText(_translate("PlutoFullAssessor", "Force Control (Med)"))
+        self.pbForceCtrlMed.setText(
+            _translate("PlutoFullAssessor", "Force Control (Med)")
+        )
         self.pbForceCtrlMedSkip.setText(_translate("PlutoFullAssessor", "X"))
-        self.pbForceCtrlHigh.setText(_translate("PlutoFullAssessor", "Force Control (High)"))
+        self.pbForceCtrlHigh.setText(
+            _translate("PlutoFullAssessor", "Force Control (High)")
+        )
         self.pbForceCtrlHighSkip.setText(_translate("PlutoFullAssessor", "X"))
         self.label_4.setText(_translate("PlutoFullAssessor", "PLUTO Device Data"))
-        self.label_3.setText(_translate("PlutoFullAssessor", "Assessment Protocol Progress"))
+        self.label_3.setText(
+            _translate("PlutoFullAssessor", "Assessment Protocol Progress")
+        )

@@ -63,7 +63,9 @@ class Ui_PosHoldAssessWindow(object):
 
     def retranslateUi(self, PosHoldAssessWindow):
         _translate = QtCore.QCoreApplication.translate
-        PosHoldAssessWindow.setWindowTitle(_translate("PosHoldAssessWindow", "Position Hold Assessment"))
+        PosHoldAssessWindow.setWindowTitle(
+            _translate("PosHoldAssessWindow", "Position Hold Assessment")
+        )
         self.lblTitle.setText(_translate("PosHoldAssessWindow", "PLUTO ROM Assessment"))
         self.cbTrialRun.setText(_translate("PosHoldAssessWindow", "Trial Run"))
         self.lblStatus.setText(_translate("PosHoldAssessWindow", "TextLabel"))

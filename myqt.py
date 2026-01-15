@@ -6,8 +6,13 @@ Date: 08 June 2025
 
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import (
-    QApplication, QDialog, QVBoxLayout, QTextEdit,
-    QDialogButtonBox, QLabel, QMessageBox
+    QApplication,
+    QDialog,
+    QVBoxLayout,
+    QTextEdit,
+    QDialogButtonBox,
+    QLabel,
+    QMessageBox,
 )
 from PyQt5.QtWidgets import QGraphicsPathItem
 from PyQt5.QtGui import QPainterPath, QBrush, QColor
@@ -18,8 +23,10 @@ import math
 from PyQt5.QtGui import QFont
 import sys
 
+
 class SingleLineWrapTextEdit(QTextEdit):
     """A QTextEdit that behaves like a single-line input with visual word wrapping."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAcceptRichText(False)
@@ -36,8 +43,12 @@ class SingleLineWrapTextEdit(QTextEdit):
 
 
 class CommentDialog(QDialog):
-    def __init__(self, parent=None, label="Commemnt: ", optionyesno=False,
-                 ):
+    def __init__(
+        self,
+        parent=None,
+        label="Commemnt: ",
+        optionyesno=False,
+    ):
         super().__init__(parent)
         self.setFixedSize(300, 200)
         self.setWindowFlags(QtCore.Qt.Dialog | QtCore.Qt.CustomizeWindowHint)
@@ -59,8 +70,9 @@ class CommentDialog(QDialog):
         # OK/Cancel buttons
         self.button_box = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-            if optionyesno else QDialogButtonBox.Cancel,
-            self
+            if optionyesno
+            else QDialogButtonBox.Cancel,
+            self,
         )
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
@@ -88,22 +100,24 @@ class CommentDialog(QDialog):
 
     def getText(self):
         # Just in case, ensure newlines are removed
-        return self.text_edit.toPlainText().replace('\n', ' ').strip()
+        return self.text_edit.toPlainText().replace("\n", " ").strip()
 
     def keyPressEvent(self, event):
         if event.key() in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
             event.ignore()  # Block dialog-level return behavior
         else:
             super().keyPressEvent(event)
-    
+
     def accept(self):
         self.text_edit.setStyleSheet("")
         super().accept()
-    
+
     def reject(self):
         comment = self.getText()
         if not comment:
-            QMessageBox.warning(self, "Empty Comment", "Please enter a comment before continuing.")
+            QMessageBox.warning(
+                self, "Empty Comment", "Please enter a comment before continuing."
+            )
             # You can also show a QMessageBox if you want feedback
             self.text_edit.setFocus()
             self.text_edit.setStyleSheet("border: 1px solid red;")
@@ -134,8 +148,7 @@ class MechTaskSkipDialog(QDialog):
 
         # OK/Cancel buttons
         self.button_box = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
-            self
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self
         )
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
@@ -156,31 +169,35 @@ class MechTaskSkipDialog(QDialog):
 
     def getText(self):
         # Just in case, ensure newlines are removed
-        return self.text_edit.toPlainText().replace('\n', ' ').strip()
+        return self.text_edit.toPlainText().replace("\n", " ").strip()
 
     def keyPressEvent(self, event):
         if event.key() in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
             event.ignore()  # Block dialog-level return behavior
         else:
             super().keyPressEvent(event)
-    
+
     def accept(self):
         comment = self.getText()
         if not comment:
-            QMessageBox.warning(self, "Empty Comment", "Please enter a comment before skipping.")
+            QMessageBox.warning(
+                self, "Empty Comment", "Please enter a comment before skipping."
+            )
             # You can also show a QMessageBox if you want feedback
             self.text_edit.setFocus()
             self.text_edit.setStyleSheet("border: 1px solid red;")
         else:
             self.text_edit.setStyleSheet("")  # Reset border
             super().accept()
-    
+
     def reject(self):
         self.text_edit.setStyleSheet("")
         super().reject()
 
 
-def create_sector(center, radius, start_angle_deg, span_angle_deg, color=QColor(255, 0, 0, 100)):
+def create_sector(
+    center, radius, start_angle_deg, span_angle_deg, color=QColor(255, 0, 0, 100)
+):
     """
     Create a QGraphicsPathItem representing a filled sector.
 
@@ -198,9 +215,14 @@ def create_sector(center, radius, start_angle_deg, span_angle_deg, color=QColor(
     path.moveTo(center)
 
     # Add arc
-    path.arcTo(center.x() - radius, center.y() - radius,
-               2 * radius, 2 * radius,
-               -start_angle_deg, -span_angle_deg)  # Negative for clockwise
+    path.arcTo(
+        center.x() - radius,
+        center.y() - radius,
+        2 * radius,
+        2 * radius,
+        -start_angle_deg,
+        -span_angle_deg,
+    )  # Negative for clockwise
 
     path.lineTo(center)  # Close back to center
 
@@ -215,8 +237,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     f""
     dialog = CommentDialog(
-        label="Reason for skipping Left limb HOC for 1234:",
-        optionyesno=False
+        label="Reason for skipping Left limb HOC for 1234:", optionyesno=False
     )
     if dialog.exec_() == QDialog.Accepted:
         print("Input:", dialog.getText())

@@ -85,6 +85,13 @@ class Ui_CalibrationWindow(object):
     def retranslateUi(self, CalibrationWindow):
         _translate = QtCore.QCoreApplication.translate
         CalibrationWindow.setWindowTitle(_translate("CalibrationWindow", "MainWindow"))
-        self.lblInstruction.setText(_translate("CalibrationWindow", "Bring the two handles together and press the PLUTO Button"))
+        self.lblInstruction.setText(
+            _translate(
+                "CalibrationWindow",
+                "Bring the two handles together and press the PLUTO Button",
+            )
+        )
         self.lblInstruction_2.setText(_translate("CalibrationWindow", "Calibration:"))
-        self.lblPositionTitle.setText(_translate("CalibrationWindow", "Handle Distance:"))
+        self.lblPositionTitle.setText(
+            _translate("CalibrationWindow", "Handle Distance:")
+        )

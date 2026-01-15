@@ -1,8 +1,16 @@
 from PyQt5.QtCore import QThread, pyqtSignal, QObject
 
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLabel
+from PyQt5.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+    QLabel,
+)
 from PyQt5.QtCore import QThread, pyqtSignal, QObject
+
 
 class Worker(QObject):
     finished = pyqtSignal()
@@ -19,19 +27,20 @@ class Worker(QObject):
             QThread.msleep(100)  # Simulate some work
         self.finished.emit()
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle('Qt Thread Example')
+        self.setWindowTitle("Qt Thread Example")
         self.setGeometry(100, 100, 400, 300)
 
         layout = QVBoxLayout()
 
-        self.label = QLabel('Progress:')
+        self.label = QLabel("Progress:")
         layout.addWidget(self.label)
 
-        self.button = QPushButton('Start Thread')
+        self.button = QPushButton("Start Thread")
         layout.addWidget(self.button)
 
         central_widget = QWidget()
@@ -54,10 +63,12 @@ class MainWindow(QMainWindow):
         self.thread.start()
 
     def update_progress(self, value):
-        self.label.setText(f'Progress: {value}%')
+        self.label.setText(f"Progress: {value}%")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     import sys
+
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()

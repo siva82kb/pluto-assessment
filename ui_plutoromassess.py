@@ -59,8 +59,9 @@ class Ui_RomAssessWindow(object):
         font.setFamily("Bahnschrift Light")
         font.setPointSize(12)
         self.textInstruction.setFont(font)
-        self.textInstruction.setStyleSheet("color: rgb(0, 0, 127);\n"
-"background-color: rgb(240, 240, 240);")
+        self.textInstruction.setStyleSheet(
+            "color: rgb(0, 0, 127);\nbackground-color: rgb(240, 240, 240);"
+        )
         self.textInstruction.setObjectName("textInstruction")
         self.verticalLayout.addWidget(self.textInstruction)
         RomAssessWindow.setCentralWidget(self.centralwidget)
@@ -73,7 +74,9 @@ class Ui_RomAssessWindow(object):
 
     def retranslateUi(self, RomAssessWindow):
         _translate = QtCore.QCoreApplication.translate
-        RomAssessWindow.setWindowTitle(_translate("RomAssessWindow", "PLUTO ROM Assessment"))
+        RomAssessWindow.setWindowTitle(
+            _translate("RomAssessWindow", "PLUTO ROM Assessment")
+        )
         self.label.setText(_translate("RomAssessWindow", "PLUTO ROM Assessment"))
         self.pbArom.setText(_translate("RomAssessWindow", "Assess AROM"))
         self.pbProm.setText(_translate("RomAssessWindow", "Assess PROM"))

@@ -64,9 +64,11 @@ class Ui_ProprioceptionAssessWindow(object):
         font.setItalic(False)
         font.setWeight(50)
         self.textInformation.setFont(font)
-        self.textInformation.setStyleSheet("color: rgb(85, 255, 0);\n"
-"background-color: rgb(0, 0, 0);\n"
-"font: 8pt \"Cascadia Mono\";")
+        self.textInformation.setStyleSheet(
+            "color: rgb(85, 255, 0);\n"
+            "background-color: rgb(0, 0, 0);\n"
+            'font: 8pt "Cascadia Mono";'
+        )
         self.textInformation.setObjectName("textInformation")
         self.verticalLayout.addWidget(self.textInformation)
         ProprioceptionAssessWindow.setCentralWidget(self.centralwidget)
@@ -79,7 +81,18 @@ class Ui_ProprioceptionAssessWindow(object):
 
     def retranslateUi(self, ProprioceptionAssessWindow):
         _translate = QtCore.QCoreApplication.translate
-        ProprioceptionAssessWindow.setWindowTitle(_translate("ProprioceptionAssessWindow", "PLUTO Proprioception Assessment Control Window"))
-        self.label.setText(_translate("ProprioceptionAssessWindow", "PLUTO Proprioception Assessment"))
-        self.pbStartStopProtocol.setText(_translate("ProprioceptionAssessWindow", "Start Protocol"))
-        self.checkBoxPauseProtocol.setText(_translate("ProprioceptionAssessWindow", "Pause Protocol"))
+        ProprioceptionAssessWindow.setWindowTitle(
+            _translate(
+                "ProprioceptionAssessWindow",
+                "PLUTO Proprioception Assessment Control Window",
+            )
+        )
+        self.label.setText(
+            _translate("ProprioceptionAssessWindow", "PLUTO Proprioception Assessment")
+        )
+        self.pbStartStopProtocol.setText(
+            _translate("ProprioceptionAssessWindow", "Start Protocol")
+        )
+        self.checkBoxPauseProtocol.setText(
+            _translate("ProprioceptionAssessWindow", "Pause Protocol")
+        )

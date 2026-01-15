@@ -36,7 +36,7 @@ class PlutoCalibStates(Enum):
     CALIB_ERROR = 4
 
 
-class PlutoCalibrationStateMachine():
+class PlutoCalibrationStateMachine:
     def __init__(self, plutodev):
         self._state = PlutoCalibStates.WAIT_FOR_ZERO_SET
         self._pluto = plutodev
@@ -45,18 +45,17 @@ class PlutoCalibrationStateMachine():
             PlutoCalibStates.WAIT_FOR_ROM_SET: self._rom_set,
             PlutoCalibStates.WAIT_FOR_CLOSE: self._close,
             PlutoCalibStates.CALIB_ERROR: self._calib_error,
-            PlutoCalibStates.CALIB_DONE: self._calib_done
+            PlutoCalibStates.CALIB_DONE: self._calib_done,
         }
-    
+
     @property
     def state(self):
         return self._state
 
     def run_statemachine(self, event, mech):
-        """Execute the state machine depending on the given even that has occured.
-        """
+        """Execute the state machine depending on the given even that has occured."""
         self._stateactions[self._state](event, mech)
-    
+
     def _zero_set(self, event, mech):
         # Check if the button release event has happened.
         if event == PlutoButtonEvents.RELEASED:
@@ -66,7 +65,7 @@ class PlutoCalibrationStateMachine():
         # Check of the calibration is done.
         if self._pluto.calibration == pdef.get_code(pdef.CalibrationStatus, "YESCALIB"):
             self._state = PlutoCalibStates.WAIT_FOR_ROM_SET
-    
+
     def _rom_set(self, event, mech):
         # Check of the calibration is done.
         if self._pluto.calibration == pdef.get_code(pdef.CalibrationStatus, "NOCALIB"):
@@ -75,21 +74,23 @@ class PlutoCalibrationStateMachine():
         # Check if the button release event has happened.
         if event == PlutoButtonEvents.RELEASED:
             # Check if the ROM is acceptable.
-            _romcheck = (-self._pluto.angle >= 0.9 * pdef.PlutoAngleRanges[mech]
-                         and -self._pluto.angle <= 1.1 * pdef.PlutoAngleRanges[mech])
+            _romcheck = (
+                -self._pluto.angle >= 0.9 * pdef.PlutoAngleRanges[mech]
+                and -self._pluto.angle <= 1.1 * pdef.PlutoAngleRanges[mech]
+            )
             if _romcheck:
                 # Everything looks good. Calibration is complete.
                 self._state = PlutoCalibStates.WAIT_FOR_CLOSE
             else:
                 # ROM is not acceptable. Calibration Error.
                 self._state = PlutoCalibStates.CALIB_ERROR
-    
+
     def _close(self, event, mech):
         # Check if the button release event has happened.
         if event == PlutoButtonEvents.RELEASED:
             # Calibration all done.
             self._state = PlutoCalibStates.CALIB_DONE
-    
+
     def _calib_error(self, event, mech):
         self._pluto.calibrate("NOMECH")
         if event == PlutoButtonEvents.RELEASED:
@@ -107,7 +108,7 @@ class PlutoRomAssessStates(Enum):
     ROM_DONE = 3
 
 
-class PlutoRomAssessmentStateMachine():
+class PlutoRomAssessmentStateMachine:
     def __init__(self, plutodev, aromval, promval):
         self._state = PlutoRomAssessStates.FREE_RUNNING
         self._instruction = "Select AROM or PROM to assess."
@@ -121,31 +122,29 @@ class PlutoRomAssessmentStateMachine():
             PlutoRomAssessStates.FREE_RUNNING: self._free_running,
             PlutoRomAssessStates.AROM_ASSESS: self._arom_assess,
             PlutoRomAssessStates.PROM_ASSESS: self._prom_assess,
-            PlutoRomAssessStates.ROM_DONE: self._rom_done
+            PlutoRomAssessStates.ROM_DONE: self._rom_done,
         }
-        
-    
+
     @property
     def state(self):
         return self._state
-    
+
     @property
     def instruction(self):
         return self._instruction
-    
+
     @property
     def arom(self):
         return self._arom
-    
+
     @property
     def prom(self):
         return self._prom
 
     def run_statemachine(self, event):
-        """Execute the state machine depending on the given even that has occured.
-        """
+        """Execute the state machine depending on the given even that has occured."""
         self._stateactions[self._state](event)
-    
+
     def _free_running(self, event):
         # Wait for AROM or PROM to be selected.
         if event == PlutoRomAssessEvent.AROM_SELECTED:
@@ -162,7 +161,7 @@ class PlutoRomAssessmentStateMachine():
             self._instruction = "ROM Assessment Done. Press the PLUTO Button to exit."
             if event == PlutoButtonEvents.RELEASED:
                 self._state = PlutoRomAssessStates.ROM_DONE
-    
+
     def _arom_assess(self, event):
         # Check if the button release event has happened.
         if event == PlutoButtonEvents.RELEASED:
@@ -172,7 +171,7 @@ class PlutoRomAssessmentStateMachine():
             # Update the instruction
             self._instruction = "Select AROM or PROM to assess."
             self._state = PlutoRomAssessStates.FREE_RUNNING
- 
+
     def _prom_assess(self, event):
         # Check if the button release event has happened.
         if event == PlutoButtonEvents.RELEASED:
@@ -184,7 +183,7 @@ class PlutoRomAssessmentStateMachine():
             else:
                 # Update the instruction
                 self._instruction = "Error! PROM cannot be less than AROM.\nAssessing PROM. Press the PLUTO Button when done."
-    
+
     def _rom_done(self, event):
         pass
 
@@ -202,7 +201,7 @@ class PlutoPropAssessStates(Enum):
     PROTOCOL_STOP = 9
 
 
-class PlutoPropAssessmentStateMachine():
+class PlutoPropAssessmentStateMachine:
     def __init__(self, plutodev, protocol, smtimer):
         self._state = PlutoPropAssessStates.WAIT_FOR_START
         self._instruction = "Press the Start Button to start assessment."
@@ -222,31 +221,31 @@ class PlutoPropAssessmentStateMachine():
             PlutoPropAssessStates.INTER_TRIAL_REST: self._inter_trial_rest,
             PlutoPropAssessStates.PROTOCOL_PAUSE: self._protocol_pause,
             PlutoPropAssessStates.PROTOCOL_STOP: self._protocol_stop,
-            PlutoPropAssessStates.PROP_DONE: self._protocol_done
+            PlutoPropAssessStates.PROP_DONE: self._protocol_done,
         }
-    
+
     @property
     def state(self):
         return self._state
-    
+
     @property
     def instruction(self):
         return self._instruction
-    
+
     def run_statemachine(self, event, timeval):
-        """Execute the state machine depending on the given even that has occured.
-        """
+        """Execute the state machine depending on the given even that has occured."""
         self._stateactions[self._state](event, timeval)
-    
+
     def _wait_for_start(self, event, timeval):
-        """Waits till the start button is pressed.
-        """
+        """Waits till the start button is pressed."""
         self._timer.stop()
         if event == PlutoPropAssessEvents.STARTSTOP_CLICKED:
             # Check to make sure the angle is close to zero.
             if self._pluto.hocdisp < 0.25:
                 self._state = PlutoPropAssessStates.WAIT_FOR_HAPTIC_DISPAY_START
-                self._instruction = "Starting the ProprioceptionAssessment Protocol Display."
+                self._instruction = (
+                    "Starting the ProprioceptionAssessment Protocol Display."
+                )
             else:
                 self._instruction = "Hand must be closed before we start."
 
@@ -262,7 +261,6 @@ class PlutoPropAssessmentStateMachine():
             self._state = PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY
             # Wait for the demo duration at the target.
             self._timer.start(1000)
-
 
     def _trial_haptic_display(self, event, timeval):
         # Check if the target has been reached.
@@ -287,7 +285,6 @@ class PlutoPropAssessmentStateMachine():
     def _protocol_done(self, event, timeval):
         pass
 
-    
     # def _wait_for_start(self, event, timeval):
     #     """Waits till the start button is pressed.
     #     """
@@ -312,7 +309,6 @@ class PlutoPropAssessmentStateMachine():
     #         self._state = PlutoPropAssessStates.TRIAL_HAPTIC_DISPLAY
     #         # Wait for the demo duration at the target.
     #         self._timer.start(1000)
-
 
     # def _trial_haptic_display(self, event, timeval):
     #     # Check if the target has been reached.

@@ -38,7 +38,9 @@ class Ui_PropriceptionAssessmentWindow(object):
         self.pdStartStopProtocol.setFont(font)
         self.pdStartStopProtocol.setObjectName("pdStartStopProtocol")
         self.horizontalLayout_3.addWidget(self.pdStartStopProtocol)
-        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        spacerItem = QtWidgets.QSpacerItem(
+            40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
         self.horizontalLayout_3.addItem(spacerItem)
         self.checkBoxPauseProtocol = QtWidgets.QCheckBox(self.verticalLayoutWidget)
         font = QtGui.QFont()
@@ -69,7 +71,18 @@ class Ui_PropriceptionAssessmentWindow(object):
 
     def retranslateUi(self, PropriceptionAssessmentWindow):
         _translate = QtCore.QCoreApplication.translate
-        PropriceptionAssessmentWindow.setWindowTitle(_translate("PropriceptionAssessmentWindow", "Proprioception Assessment Control Window"))
-        self.pdStartStopProtocol.setText(_translate("PropriceptionAssessmentWindow", "Start Assessment Protocol"))
-        self.checkBoxPauseProtocol.setText(_translate("PropriceptionAssessmentWindow", "Pause Assessment Protocol"))
-        self.lblInformation.setText(_translate("PropriceptionAssessmentWindow", "TextLabel"))
+        PropriceptionAssessmentWindow.setWindowTitle(
+            _translate(
+                "PropriceptionAssessmentWindow",
+                "Proprioception Assessment Control Window",
+            )
+        )
+        self.pdStartStopProtocol.setText(
+            _translate("PropriceptionAssessmentWindow", "Start Assessment Protocol")
+        )
+        self.checkBoxPauseProtocol.setText(
+            _translate("PropriceptionAssessmentWindow", "Pause Assessment Protocol")
+        )
+        self.lblInformation.setText(
+            _translate("PropriceptionAssessmentWindow", "TextLabel")
+        )

@@ -6,7 +6,6 @@ Date: 02 August 2024
 Email: siva82kb@gmail.com
 """
 
-
 import sys
 import pandas as pd
 import os
@@ -14,7 +13,8 @@ from datetime import datetime as dt
 
 from PyQt5 import (
     QtCore,
-    QtWidgets,)
+    QtWidgets,
+)
 from PyQt5.QtCore import QTimer
 from enum import Enum
 
@@ -26,7 +26,6 @@ import plutofullassessdef as pfadef
 # Class to handle the subjects list file.
 #
 class SubjectsListFile:
-
     HEADER = ["subjid", "subjtype", "domlimb", "afflimb", "createdat"]
 
     def __init__(self, filename=pfadef.SUBJLIST_FILE):
@@ -38,37 +37,38 @@ class SubjectsListFile:
             self.subjlist.to_csv(self.filename, index=False)
         else:
             self.subjlist: pd.DataFrame = pd.read_csv(self.filename, dtype=str)
-    
+
     def subject_exists(self, subjid):
         """
         Check if a subject exists in the subjects list.
-        
+
         Args:
             subject_id (str): The ID of the subject to check.
-        
+
         Returns:
             bool: True if the subject exists, False otherwise.
         """
-        return subjid in self.subjlist['subjid'].values
-    
+        return subjid in self.subjlist["subjid"].values
+
     def add_subject(self, subjinfo: dict):
-        if not self.subject_exists(subjinfo['subjid']):
-            self.subjlist = pd.concat([self.subjlist, pd.DataFrame([subjinfo])],
-                                      ignore_index=True)
+        if not self.subject_exists(subjinfo["subjid"]):
+            self.subjlist = pd.concat(
+                [self.subjlist, pd.DataFrame([subjinfo])], ignore_index=True
+            )
             self.subjlist.to_csv(self.filename, index=False)
-    
+
     def get_subject_info(self, subjid: str) -> dict:
         """
         Get the subject information for a given subject ID.
-        
+
         Args:
             subjid (str): The ID of the subject.
-        
+
         Returns:
             dict: The subject information if found, else an empty dict.
         """
         if self.subject_exists(subjid):
-            return self.subjlist[self.subjlist['subjid'] == subjid].iloc[0].to_dict()
+            return self.subjlist[self.subjlist["subjid"] == subjid].iloc[0].to_dict()
         return {}
 
 
@@ -76,6 +76,7 @@ class SubjectCreator(QtWidgets.QMainWindow):
     """
     Class for handling the creation of a new subject.
     """
+
     def __init__(self, parent=None, modal=False, onclosecb=None):
         """
         Constructor for the SubjectCreator class.
@@ -100,7 +101,7 @@ class SubjectCreator(QtWidgets.QMainWindow):
 
         # Update UI.
         self.update_ui()
-        
+
         # Set the callback when the window is closed.
         self.on_close_callback = onclosecb
 
@@ -118,10 +119,10 @@ class SubjectCreator(QtWidgets.QMainWindow):
         self.ui.cbAffLimb.setEnabled(_strokeflag and _subjidflag)
         # Create button is enabled only if all fields are filled
         _createflag = (
-            _subjidflag and
-            self.ui.cbSubjType.currentText() != "" and
-            self.ui.cbDomLimb.currentText() != "" and
-            (not _strokeflag or self.ui.cbAffLimb.currentText() != "")
+            _subjidflag
+            and self.ui.cbSubjType.currentText() != ""
+            and self.ui.cbDomLimb.currentText() != ""
+            and (not _strokeflag or self.ui.cbAffLimb.currentText() != "")
         )
 
     #
@@ -130,12 +131,13 @@ class SubjectCreator(QtWidgets.QMainWindow):
     def _callback_subjid_changed(self):
         if self.subjlistfile.subject_exists(self.ui.textSubjID.text()):
             QtWidgets.QMessageBox.warning(
-                self, "Subject Exists",
-                f"Subject ID '{self.ui.textSubjID.text()}' already exists in the list."
+                self,
+                "Subject Exists",
+                f"Subject ID '{self.ui.textSubjID.text()}' already exists in the list.",
             )
             self.ui.textSubjID.setText("")  # Clear the text box
         self.update_ui()
-    
+
     def _callback_create_subject(self):
         """
         Callback for creating a new subject.
@@ -143,27 +145,33 @@ class SubjectCreator(QtWidgets.QMainWindow):
         # Get the subject ID
         subjid = self.ui.textSubjID.text().strip().lower()
         if not subjid:
-            QtWidgets.QMessageBox.warning(self, "Invalid Subject ID", "Subject ID cannot be empty.")
+            QtWidgets.QMessageBox.warning(
+                self, "Invalid Subject ID", "Subject ID cannot be empty."
+            )
             return
-        
+
         # Create the subject data
         subjtype = self.ui.cbSubjType.currentText().lower()
         domlimb = self.ui.cbDomLimb.currentText().lower()
-        afflimb = self.ui.cbAffLimb.currentText().lower() if subjtype == "stroke" else ""
-        
+        afflimb = (
+            self.ui.cbAffLimb.currentText().lower() if subjtype == "stroke" else ""
+        )
+
         # Add to the subjects list
         self.newsubject = {
             "subjid": subjid,
             "subjtype": subjtype,
             "domlimb": domlimb,
             "afflimb": afflimb,
-            "createdat": dt.now().strftime("%Y-%m-%d %H:%M:%S")
+            "createdat": dt.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
-        
+
         # Append to the DataFrame and save
         self.subjlistfile.add_subject(self.newsubject)
-        QtWidgets.QMessageBox.information(self, "Subject Created", f"Subject '{subjid}' created successfully.")
-        
+        QtWidgets.QMessageBox.information(
+            self, "Subject Created", f"Subject '{subjid}' created successfully."
+        )
+
         # Close the window
         self._createflag = False
         self.close()
@@ -178,7 +186,7 @@ class SubjectCreator(QtWidgets.QMainWindow):
         return super().closeEvent(event)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     screate = SubjectCreator(onclosecb=lambda data: print(data))
     screate.show()
