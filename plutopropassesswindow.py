@@ -571,7 +571,7 @@ class PlutoPropAssessmentStateMachine:
         )
         if self._tgt_set(_tgtdetails["target"]):
             return
-        self._pluto.set_control_target(**_tgtdetails)
+        self._pluto.set_control_target(_tgtdetails["target"])
 
     def _act_ctrl_hold(self):
         if self._ctrl_hold():
@@ -588,7 +588,7 @@ class PlutoPropAssessmentStateMachine:
         _tgtdetails = self._compute_target_details(self._data.prom[1], demomode=False)
         if self._tgt_set(_tgtdetails["target"]):
             return
-        self._pluto.set_control_target(**_tgtdetails)
+        self._pluto.set_control_target(_tgtdetails["target"])
 
     def _act_do_nothing(self):
         pass

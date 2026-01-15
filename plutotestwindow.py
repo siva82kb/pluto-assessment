@@ -214,7 +214,7 @@ class PlutoTestControlWindow(QtWidgets.QMainWindow):
         # Get the current target position and send it to the device.
         slrrange, valrange = self.get_torque_slider_value_ranges()
         _tgt = self._pos2tgt(slrrange, valrange, self.ui.hSliderTorqTgtValue.value())
-        self.pluto.set_control_target(_tgt, target0=self.pluto.desired, t0=0, dur=2.0)
+        self.pluto.set_control_target(_tgt)
         self.update_ui()
 
     def _callback_test_ctrlbnd_target_changed(self, event):
