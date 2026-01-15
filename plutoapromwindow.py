@@ -837,7 +837,7 @@ class PlutoAPRomAssessWindow(QtWidgets.QMainWindow):
         # Instruction text
         self.ui.subjInst = pg.TextItem(text="", color="w", anchor=(0.5, 0.5))
         self.ui.subjInst.setPos(0, 15)
-        self.ui.subjInst.setFont(QtGui.QFont("Cascadia Mono Light", 14))
+        self.ui.subjInst.setFont(QtGui.QFont("Cascadia Mono Light", 12))
         _pgobj.addItem(self.ui.subjInst)
 
     #
