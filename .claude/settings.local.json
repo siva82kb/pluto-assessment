@@ -26,7 +26,8 @@
       "mcp__plugin_serena_serena__create_text_file",
       "mcp__plugin_serena_serena__activate_project",
       "Bash(python -m py_compile:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(pyuic5:*)"
     ]
   }
 }
