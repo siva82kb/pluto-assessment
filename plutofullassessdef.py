@@ -71,10 +71,10 @@ ALLTASKS = [
     "APROMFAST",
     "DISC",
     "POSHOLD",
-    "PROP",
-    "FCTRLLOW",
-    "FCTRLMED",
-    "FCTRLHIGH",
+    # "PROP",
+    # "FCTRLLOW",
+    # "FCTRLMED",
+    # "FCTRLHIGH",
 ]
 
 # Tasks labels

@@ -441,6 +441,18 @@ class QtPluto(QObject):
         )
         self.dev.send_message(_payload)
 
+    def hold_control(self):
+        """Hold control."""
+        if not self.is_connected():
+            return
+        self.dev.send_message([pdef.InDataType["HOLD_CONTROL"]])
+
+    def decay_control(self):
+        """Decay control."""
+        if not self.is_connected():
+            return
+        self.dev.send_message([pdef.InDataType["DECAY_CONTROL"]])
+
     def send_heartbeat(self):
         """Send a heartbeat signal to the device."""
         if not self.is_connected():
